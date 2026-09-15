@@ -35,6 +35,10 @@ add_library(liba32android SHARED
     src/memory/guest_memory.cpp
 )
 
+# CMake automatically prefixes shared libraries with "lib" on Android/Linux.
+# Keep the internal target name stable while producing exactly liba32android.so.
+set_target_properties(liba32android PROPERTIES OUTPUT_NAME a32android)
+
 target_include_directories(liba32android
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
