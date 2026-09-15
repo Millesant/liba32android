@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [bleeding, m0-bootstrap]
+  pull_request:
+    branches: [bleeding]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-smoke:
+    name: Linux A32 smoke
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libboost-dev
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLIBA32ANDROID_BUILD_TESTS=ON
+      - name: Build
+        run: cmake --build build --parallel 2
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  android-arm64-build:
+    name: Android arm64-v8a cross-build
+    runs-on: ubuntu-24.04
+    env:
+      NDK_VERSION: 27.3.13750724
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install host build dependencies
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libboost-dev
+      - name: Ensure pinned NDK
+        run: |
+          set -euxo pipefail
+          if [ ! -d "$ANDROID_HOME/ndk/$NDK_VERSION" ]; then
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK_VERSION"
+          fi
+          test -f "$ANDROID_HOME/ndk/$NDK_VERSION/build/cmake/android.toolchain.cmake"
+      - name: Stage Boost headers for cross compilation
+        run: |
+          set -euxo pipefail
+          mkdir -p "$RUNNER_TEMP/boost-headers"
+          cp -a /usr/include/boost "$RUNNER_TEMP/boost-headers/"
+          test -f "$RUNNER_TEMP/boost-headers/boost/variant.hpp"
+      - name: Configure arm64-v8a
+        run: >-
+          cmake -S . -B build-android -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/$NDK_VERSION/build/cmake/android.toolchain.cmake"
+          -DANDROID_ABI=arm64-v8a
+          -DANDROID_PLATFORM=android-26
+          -DARCHITECTURE=arm64
+          -DBoost_INCLUDE_DIR="$RUNNER_TEMP/boost-headers"
+          -DLIBA32ANDROID_BUILD_TESTS=OFF
+          -DDYNARMIC_ENABLE_NO_EXECUTE_SUPPORT=ON
+      - name: Build shared runtime
+        run: cmake --build build-android --target liba32android --parallel 2
