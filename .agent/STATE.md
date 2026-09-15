@@ -3,9 +3,9 @@
 Last updated: 2026-09-15
 Current milestone: M2 guest address-space research
 Integration branch: `bleeding`
-Last merged PR: #4 (`Fix Android shared library name and document diagnostics`)
-Merged integration commit: `dffa186314637558ec4130a251a1c10ca313c5e0`
-Validated PR head: `a1333d9f1f9d5af9ad0c6b1b6a3ed6c209db6c38`
+Last merged PR: #5 (`Persist Android probe logs and crash markers`)
+Merged integration commit: `65640512f9a79fef9264cae77a3c61b3f38cac5b`
+Validated PR head: `74d78e6f3015b445f6a8ebf44e4099237fb554ad`
 
 ## Working / proven
 
@@ -15,36 +15,49 @@ Validated PR head: `a1333d9f1f9d5af9ad0c6b1b6a3ed6c209db6c38`
 - Dynarmic fastmem is treated separately from low-VA pointer identity: fastmem needs a contiguous 4 GiB host range, but its host base may be above 4 GiB.
 - `android_address_space_probe` is IMPLEMENTED as a standalone Android arm64-v8a diagnostic executable. It measures kernel/page information, low-4-GiB mappings, `mmap_min_addr`, a 4 GiB `PROT_NONE` reservation plus page commit, `MAP_FIXED_NOREPLACE`, RW->RX transition, and optional generated AArch64 return-42 execution.
 - The probe never uses destructive `MAP_FIXED` against unowned ranges.
-- The shared runtime now produces exactly `liba32android.so`; CI explicitly rejects the former duplicated `libliba32android.so` filename on Linux and Android.
-- GitHub Actions uploads the Android arm64-v8a runtime as an artifact in addition to the address-space probe.
-- `docs/diagnostics.md` documents copy-pasteable evidence collection: CI run URLs, complete probe `key=value` output, and the intended future `A32ERR|...` runtime format.
+- The probe now mirrors stdout/stderr diagnostics into a file when possible. Default selection prefers `/sdcard/Download/liba32android/address-space-probe.log`, then `$HOME/liba32android/address-space-probe.log`, then the current working directory. Exact path is reported through `diagnostics.log_file=`.
+- Probe logging can be overridden with `--log-file PATH` or `LIBA32ANDROID_LOG_FILE`; `--no-log-file` disables file output explicitly.
+- The probe installs minimal async-signal-safe fatal-signal markers for SIGABRT/SIGBUS/SIGFPE/SIGILL/SIGSEGV using `A32CRASH|component=android_address_space_probe|...`, while leaving Android's normal fatal-signal/tombstone path to continue.
+- The file log is opened before generated-code probing and is unbuffered, improving the chance that diagnostics survive a native crash.
+- Android scoped-storage limitations are documented: direct Downloads logging is a standalone/adb-shell convenience, not a generic embedded-runtime assumption. A future host app must provide an app-appropriate writable directory/export mechanism.
+- The shared runtime produces exactly `liba32android.so`; CI rejects the former duplicated `libliba32android.so` filename on Linux and Android.
+- GitHub Actions uploads both the Android arm64-v8a runtime and address-space probe as artifacts.
+- `docs/diagnostics.md` documents copy-pasteable CI, file-log, crash-marker and adb collection flows.
 - Existing ARM/Thumb and generic-memory regression tests remain TESTED/PASS.
 
 ## Test status
 
-GitHub Actions run `35014025702` on PR #4 / validated head `a1333d9f1f9d5af9ad0c6b1b6a3ed6c209db6c38`:
+Final PR #5 validation: GitHub Actions run `35016070736` (#19) on validated head `74d78e6f3015b445f6a8ebf44e4099237fb554ad`.
 
 - Linux configure/build: PASS
-- Linux shared-library filename check: PASS (`build/liba32android.so` exists; `build/libliba32android.so` does not)
-- Linux CTest: 8/8 PASS, 0 failures
+- Linux shared-library filename check: PASS
+- Linux CTest regression suite: PASS
 - Android `arm64-v8a` runtime + address-space probe configure/build/link: PASS
-- Android shared-library filename check: PASS (`build-android/liba32android.so` exists; `build-android/libliba32android.so` does not)
+- Android shared-library filename check: PASS
+- Android diagnostic marker verification: PASS
 - Android runtime artifact upload: PASS
-- Runtime artifact ID: `10414882071`
-- Runtime artifact size: 7,260,173 bytes
-- Runtime artifact digest: `sha256:55cafdb60861639b5e59a2414709dc10749a0b376c26952b56bfe856633e5275`
+- Runtime artifact ID: `10415339143`
+- Runtime artifact digest: `sha256:77397f4e55074956e4ab7cef896a97170315fb90ff0481882c4bb92c5f09e903`
 - Address-space probe artifact upload: PASS
-- Probe artifact ID: `10415465115`
+- Probe artifact ID: `10416115128`
+- Probe artifact size: 31,537 bytes
+- Probe artifact digest: `sha256:30b677ad20c88720886a3ddefd7e3ddb66d5694874a679d025673f91120c2bae`
 - Actual address-space probe execution on Android/AArch64: NOT RUN
+- Actual creation of `/sdcard/Download/liba32android/address-space-probe.log`: NOT RUN
+- Android fallback logging under real storage permissions/scoped storage: NOT RUN
+- `A32CRASH|...` emission during a real fatal signal: NOT RUN
+- Android tombstone/backtrace coexistence with the crash marker: NOT RUN
 - Generated AArch64 RW->RX execution probe on Android/AArch64: NOT RUN
 - Actual A32 guest execution through Dynarmic's AArch64 backend on Android: NOT RUN
-- Runtime-wide `A32ERR|...` structured error emission: NOT IMPLEMENTED; documented as the intended public-runtime diagnostic contract.
+- Runtime-wide public/app-integrated `A32ERR|...` logging API: NOT IMPLEMENTED.
 
-PR #4 was subsequently squash-merged into `bleeding` as `dffa186314637558ec4130a251a1c10ca313c5e0`.
+Run #18 (`35015821583`) had Android build/link PASS but failed an initial CI-only assertion that expected the compiler to preserve the `A32CRASH` prefix as one contiguous string for `strings(1)`. That test assertion was corrected; it was not an implementation compile/link failure.
+
+PR #5 was squash-merged into `bleeding` as `65640512f9a79fef9264cae77a3c61b3f38cac5b`.
 
 ## Evidence boundary
 
-The eight execution/memory tests run on the GitHub-hosted Linux x86-64 runner through Dynarmic's x86-64 backend. The Android job proves the runtime, Dynarmic AArch64 backend, correctly named shared object, and address-space diagnostic probe compile/link for `arm64-v8a`; it does not prove runtime address-space behavior or guest execution on Android.
+The Linux execution/memory tests run on the GitHub-hosted Linux x86-64 runner through Dynarmic's x86-64 backend. The Android job proves the runtime, Dynarmic AArch64 backend, correctly named shared object, enhanced diagnostic probe, and logger/crash-marker code compile/link for `arm64-v8a`; it does not prove storage permissions, crash behavior, runtime address-space behavior or guest execution on an Android device.
 
 The provided `libemu32.so` was statically inspected as a behavioral reference. Direct observations include AArch64 Android ELF metadata, imports for `mmap`/`mprotect`/`munmap`/`sysconf`/environment parsing, and `EMU32_ARENA_BASE`, `EMU32_ARENA_MB`, `EMU32_ARENA_LOG` strings. Exact arena semantics, `MAP_FIXED_NOREPLACE`, low-VA identity and 4 GiB reservation remain unproven for that binary.
 
@@ -64,4 +77,4 @@ The provided `libemu32.so` was statically inspected as a behavioral reference. D
 
 ## Current blocker
 
-A suitable Android arm64 device/emulator execution path is required to turn the address-space strategy measurements from NOT RUN into observed device evidence. This does not block independent M1 instruction-regression work.
+A suitable Android arm64 device/emulator execution path is required to turn address-space, shared-Downloads logging and crash-marker behavior from NOT RUN into observed device evidence. This does not block independent M1 instruction-regression work.
