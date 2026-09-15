@@ -1,26 +1,26 @@
 # Current State
 
 Last updated: 2026-09-15
-Current milestone: M1/M2 CPU + guest-memory foundation
+Current milestone: M2 guest address-space research
 Integration branch: `bleeding`
-Last merged PR: #2 (`M1/M2: generic guest memory and A32 execution seam`)
-Merged integration commit: `f1224743e9f52e1bdfca7e4c1ea2e39f0487d942`
-Validated PR head: `48602ec5fafa1a6107e628d2f44f68a6cd12254c`
+Active branch: `m2-address-space-probe`
+Active PR: #3 (`M2: Android address-space probe and mapping strategy boundary`)
+Implementation commit: `11301da46195e323cc8cf56eee5ae9fd60ec1a1c`
 
 ## Working / proven
 
 - Dynarmic remains isolated behind the internal CPU adapter and pinned to `azahar-emu/dynarmic` commit `e77b1ba0b7da7cbe93021b01a663acfe7c4dd516`.
-- The hidden M0 4 KiB callback scratch buffer has been replaced by the engine-independent `memory::GuestMemory` contract.
-- `LinearGuestMemory` provides a bounded contiguous AArch32 guest-memory implementation with explicit read/write failure outside its mapped range.
-- The generic A32 execution seam accepts initial registers, entry PC, instruction set and a bounded instruction count, and reports register/CPSR state, exceptions and memory faults without exposing Dynarmic types.
-- ARM and Thumb return-42 regression smokes remain TESTED/PASS.
-- Focused ARM tests for register state, branch, BL/LR, memory load/store and stack use are TESTED/PASS.
-- Guest-memory boundary validation is TESTED/PASS.
-- Android `arm64-v8a` configure/build/link remains TESTED/PASS with NDK `27.3.13750724`.
+- `memory::GuestMemory` remains the engine-independent CPU/memory boundary; `LinearGuestMemory` remains the correctness-oriented initial implementation.
+- D-0003 is accepted: AArch32 guest VAs remain logical 32-bit values; guest pointer == host pointer is not a generic-runtime requirement.
+- Dynarmic fastmem is treated separately from low-VA pointer identity: fastmem needs a contiguous 4 GiB host range, but its host base may be above 4 GiB.
+- `android_address_space_probe` is IMPLEMENTED as a standalone Android arm64-v8a diagnostic executable. It measures kernel/page information, low-4-GiB mappings, `mmap_min_addr`, a 4 GiB `PROT_NONE` reservation plus page commit, `MAP_FIXED_NOREPLACE`, RW->RX transition, and optional generated AArch64 return-42 execution.
+- The probe never uses destructive `MAP_FIXED` against unowned ranges.
+- GitHub Actions cross-builds the probe with NDK `27.3.13750724` / Android API 26 and uploads it as an artifact.
+- Existing ARM/Thumb and generic-memory regression tests remain TESTED/PASS.
 
 ## Test status
 
-Final pre-merge GitHub Actions validation: run `34992539556` on PR #2, head `48602ec5fafa1a6107e628d2f44f68a6cd12254c`.
+GitHub Actions run `35012394383` on PR #3 / implementation commit `11301da46195e323cc8cf56eee5ae9fd60ec1a1c`:
 
 - `guest_arm_return_42`: PASS
 - `guest_thumb_return_42`: PASS
@@ -31,22 +31,30 @@ Final pre-merge GitHub Actions validation: run `34992539556` on PR #2, head `486
 - `guest_stack`: PASS
 - `guest_memory_bounds`: PASS
 - Linux configure/build: PASS
-- Android `arm64-v8a` configure/build/link: PASS
-- Actual execution on Android/AArch64 hardware or emulator: NOT RUN
-
-CTest reported 8/8 passed with 0 failures. PR #2 was subsequently squash-merged into `bleeding` as `f1224743e9f52e1bdfca7e4c1ea2e39f0487d942`.
+- Linux CTest: 8/8 PASS, 0 failures
+- Android `arm64-v8a` runtime configure/build/link: PASS
+- Android `arm64-v8a` address-space probe compile/link: PASS
+- Probe artifact upload: PASS
+- Artifact ID: `10413174866`
+- Artifact digest: `sha256:e1b91c649fc1c448c0ea00455d00c68ce62b0c83eca7aaa10cc1765f41a5e894`
+- Actual address-space probe execution on Android/AArch64: NOT RUN
+- Generated AArch64 RW->RX execution probe on Android/AArch64: NOT RUN
+- Actual A32 guest execution through Dynarmic's AArch64 backend on Android: NOT RUN
 
 ## Evidence boundary
 
-The eight execution/memory tests run on the GitHub-hosted Linux x86-64 runner. The Android job proves the same runtime and Dynarmic AArch64 backend compile and link for `arm64-v8a`; it does not yet prove guest execution through the AArch64 backend on Android.
+The eight execution/memory tests run on the GitHub-hosted Linux x86-64 runner through Dynarmic's x86-64 backend. The Android job proves the runtime, Dynarmic AArch64 backend, and address-space diagnostic probe compile/link for `arm64-v8a`; it does not prove runtime address-space behavior or guest execution on Android.
 
-`LinearGuestMemory` proves the generic callback seam and bounded address checks only. It does not prove low-address host mappings, a 4 GiB reservation, page-table mode, fastmem, mapping permissions, guard pages or Android-specific address-space behavior.
+The provided `libemu32.so` was statically inspected as a behavioral reference. Direct observations include AArch64 Android ELF metadata, imports for `mmap`/`mprotect`/`munmap`/`sysconf`/environment parsing, and `EMU32_ARENA_BASE`, `EMU32_ARENA_MB`, `EMU32_ARENA_LOG` strings. Exact arena semantics, `MAP_FIXED_NOREPLACE`, low-VA identity and 4 GiB reservation remain unproven for that binary.
 
 ## Partially working / not implemented
 
 - M1 instruction coverage is PARTIAL: basic integer register state, ARM branch/call, stack and load/store paths are tested; broader Thumb/Thumb-2, VFP/NEON, exception and edge-case coverage remains future work.
-- M2 guest address space is PARTIAL: a generic memory contract and linear test implementation exist, but mapped regions, permissions, lifecycle and Android mapping strategy are NOT IMPLEMENTED.
-- Low-VA/direct mapping or Dynarmic fastmem strategy on Android: HYPOTHESIS / NOT TESTED.
+- M2 guest address space is PARTIAL: the generic memory contract exists and a reproducible Android probe is built, but mapped-region lifecycle, permissions and a selected Android mapping strategy are NOT IMPLEMENTED.
+- Callback memory: IMPLEMENTED as correctness path.
+- Dynarmic page-table integration: NOT IMPLEMENTED.
+- Dynarmic fastmem integration: NOT IMPLEMENTED; device feasibility evidence NOT RUN.
+- Direct low-VA pointer identity: HYPOTHESIS / optional experimental strategy; device evidence NOT RUN.
 - ELF32 loader/linker and ARM relocations: NOT IMPLEMENTED.
 - Guest AAPCS32 <-> host AAPCS64 ABI bridge and `host_add(20,22)` proof: NOT IMPLEMENTED.
 - libc/libm/libdl/pthread/TLS/signals/JNI/EGL/GLES/OpenSL bridges: NOT IMPLEMENTED.
@@ -55,4 +63,4 @@ The eight execution/memory tests run on the GitHub-hosted Linux x86-64 runner. T
 
 ## Current blocker
 
-None for the generic CPU/memory seam. Device/emulator access is required for Android/AArch64 execution evidence and Android-specific address-space experiments.
+A suitable Android arm64 device/emulator execution path is required to turn the address-space strategy measurements from NOT RUN into observed device evidence. This does not block independent M1 instruction-regression work.

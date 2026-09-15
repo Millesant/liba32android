@@ -1,6 +1,6 @@
 # Android guest address-space research
 
-Status: PARTIAL — probe implemented, device evidence NOT RUN
+Status: PARTIAL — probe cross-build TESTED/PASS, device evidence NOT RUN
 
 ## Scope
 
@@ -93,9 +93,19 @@ It records:
 
 The probe never uses destructive `MAP_FIXED` against unowned address ranges.
 
-### Build
+### GitHub CI evidence
 
-GitHub Actions cross-builds the probe with the same NDK/API configuration as the runtime and uploads it as an artifact. A successful CI build proves only that the probe compiles/links for Android arm64-v8a.
+GitHub Actions run `35012394383`, PR #3 implementation commit `11301da46195e323cc8cf56eee5ae9fd60ec1a1c`:
+
+- existing Linux build and CTest: PASS, 8/8 tests, 0 failures;
+- Android `arm64-v8a` runtime configure/build/link: PASS;
+- `android_address_space_probe` compile/link with NDK `27.3.13750724`, API 26: PASS;
+- artifact upload: PASS;
+- artifact ID: `10413174866`;
+- artifact size: 19,816 bytes;
+- artifact digest: `sha256:e1b91c649fc1c448c0ea00455d00c68ce62b0c83eca7aaa10cc1765f41a5e894`.
+
+This is build evidence only. No Android `mmap`, `mprotect`, fastmem reservation or generated-code result is inferred from CI.
 
 ### Device execution
 
