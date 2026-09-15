@@ -57,3 +57,38 @@ This keeps the CPU engine unaware of mapping policy while allowing memory implem
 ### Supersedes / Superseded by
 
 None.
+
+## D-0003 — Keep guest virtual addresses independent from host pointer identity
+
+Status: Accepted
+Date: 2026-09-15
+
+### Context
+
+The reference binary exposes arena-related configuration strings, and Dynarmic offers both page-table and 4 GiB fastmem mechanisms. It would be easy to conflate a contiguous fastmem reservation with the stronger assumption that every 32-bit guest pointer must equal the numeric host virtual address.
+
+### Decision
+
+Treat AArch32 guest addresses as logical 32-bit virtual addresses owned by the guest-memory layer. Do not require guest pointer == host pointer in the generic runtime.
+
+Treat these as separate optional implementation strategies:
+
+- callbacks as the correctness fallback;
+- page-table acceleration for mapped guest pages;
+- fastmem when a contiguous 4 GiB host reservation is available;
+- direct low-VA pointer identity only as an experimental optimization backed by device evidence.
+
+### Rationale
+
+The pinned Dynarmic API accepts an arbitrary host `uintptr_t` as the beginning of its 4 GiB fastmem space; low-VA identity is not required by that mechanism. Keeping translation explicit also prevents ELF, ABI and bridge code from depending on an Android virtual-address assumption that has not been proven across devices.
+
+### Consequences
+
+- Guest pointers stored in registers/memory remain 32-bit guest values, not raw host pointers.
+- Loader and ABI layers must use the guest-memory/address translation boundary.
+- A successful high-address 4 GiB reservation may enable fastmem even if exact low-VA mappings are unavailable.
+- Direct low-VA mapping requires a future explicit decision and measured compatibility evidence.
+
+### Supersedes / Superseded by
+
+None.
