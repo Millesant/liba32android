@@ -25,6 +25,11 @@ jobs:
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLIBA32ANDROID_BUILD_TESTS=ON
       - name: Build
         run: cmake --build build --parallel 2
+      - name: Verify shared library name
+        run: |
+          set -euxo pipefail
+          test -f build/liba32android.so
+          test ! -e build/libliba32android.so
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
@@ -64,6 +69,18 @@ jobs:
           -DDYNARMIC_ENABLE_NO_EXECUTE_SUPPORT=ON
       - name: Build shared runtime and address-space probe
         run: cmake --build build-android --target liba32android android_address_space_probe --parallel 2
+      - name: Verify shared library name
+        run: |
+          set -euxo pipefail
+          test -f build-android/liba32android.so
+          test ! -e build-android/libliba32android.so
+      - name: Upload Android runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: liba32android-arm64-v8a-${{ github.sha }}
+          path: build-android/liba32android.so
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload Android address-space probe
         uses: actions/upload-artifact@v4
         with:
