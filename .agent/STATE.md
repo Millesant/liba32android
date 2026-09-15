@@ -3,9 +3,9 @@
 Last updated: 2026-09-15
 Current milestone: M2 guest address-space research
 Integration branch: `bleeding`
-Active branch: `m2-address-space-probe`
-Active PR: #3 (`M2: Android address-space probe and mapping strategy boundary`)
-Implementation commit: `11301da46195e323cc8cf56eee5ae9fd60ec1a1c`
+Last merged PR: #3 (`M2: Android address-space probe and mapping strategy boundary`)
+Merged integration commit: `583f65671742d6123d47a2ac7834b7497183e3f8`
+Validated PR head: `9528dda3365f0de05a646cd025848d4489464754`
 
 ## Working / proven
 
@@ -20,7 +20,7 @@ Implementation commit: `11301da46195e323cc8cf56eee5ae9fd60ec1a1c`
 
 ## Test status
 
-GitHub Actions run `35012394383` on PR #3 / implementation commit `11301da46195e323cc8cf56eee5ae9fd60ec1a1c`:
+Final pre-merge GitHub Actions validation: run `35012807328` on PR #3, head `9528dda3365f0de05a646cd025848d4489464754`.
 
 - `guest_arm_return_42`: PASS
 - `guest_thumb_return_42`: PASS
@@ -35,11 +35,14 @@ GitHub Actions run `35012394383` on PR #3 / implementation commit `11301da46195e
 - Android `arm64-v8a` runtime configure/build/link: PASS
 - Android `arm64-v8a` address-space probe compile/link: PASS
 - Probe artifact upload: PASS
-- Artifact ID: `10413174866`
-- Artifact digest: `sha256:e1b91c649fc1c448c0ea00455d00c68ce62b0c83eca7aaa10cc1765f41a5e894`
+- Artifact ID: `10414775315`
+- Artifact size: 19,816 bytes
+- Artifact digest: `sha256:1fa30858377412b7f7cd8c87c52e244d692f1b56e48c045bbf15494d06a05e6b`
 - Actual address-space probe execution on Android/AArch64: NOT RUN
 - Generated AArch64 RW->RX execution probe on Android/AArch64: NOT RUN
 - Actual A32 guest execution through Dynarmic's AArch64 backend on Android: NOT RUN
+
+PR #3 was subsequently squash-merged into `bleeding` as `583f65671742d6123d47a2ac7834b7497183e3f8`.
 
 ## Evidence boundary
 
