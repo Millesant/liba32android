@@ -10,6 +10,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 option(LIBA32ANDROID_BUILD_TESTS "Build liba32android tests" ${BUILD_TESTING})
+option(LIBA32ANDROID_BUILD_ANDROID_PROBES "Build Android-only diagnostic probes" OFF)
 
 # Keep Dynarmic narrowly scoped to the A32 frontend needed by this runtime.
 set(DYNARMIC_FRONTENDS "A32" CACHE STRING "" FORCE)
@@ -45,6 +46,18 @@ target_link_libraries(liba32android
 )
 
 target_compile_features(liba32android PRIVATE cxx_std_20)
+
+if(LIBA32ANDROID_BUILD_ANDROID_PROBES)
+    if(NOT ANDROID)
+        message(FATAL_ERROR "LIBA32ANDROID_BUILD_ANDROID_PROBES requires an Android toolchain")
+    endif()
+    if(NOT CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
+        message(FATAL_ERROR "Android address-space probes currently require arm64-v8a")
+    endif()
+
+    add_executable(android_address_space_probe tools/android_address_space_probe.cpp)
+    target_compile_features(android_address_space_probe PRIVATE cxx_std_20)
+endif()
 
 if(LIBA32ANDROID_BUILD_TESTS)
     add_executable(cpu_smoke tests/cpu_smoke.cpp)
