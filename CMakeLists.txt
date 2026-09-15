@@ -31,6 +31,7 @@ FetchContent_MakeAvailable(dynarmic)
 
 add_library(liba32android SHARED
     src/cpu/dynarmic_cpu.cpp
+    src/memory/guest_memory.cpp
 )
 
 target_include_directories(liba32android
@@ -50,6 +51,20 @@ if(LIBA32ANDROID_BUILD_TESTS)
     target_include_directories(cpu_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(cpu_smoke PRIVATE liba32android)
 
+    add_executable(cpu_execution tests/cpu_execution.cpp)
+    target_include_directories(cpu_execution PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(cpu_execution PRIVATE liba32android)
+
+    add_executable(guest_memory_test tests/guest_memory.cpp)
+    target_include_directories(guest_memory_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(guest_memory_test PRIVATE liba32android)
+
     add_test(NAME guest_arm_return_42 COMMAND cpu_smoke arm)
     add_test(NAME guest_thumb_return_42 COMMAND cpu_smoke thumb)
+    add_test(NAME guest_register_state COMMAND cpu_execution registers)
+    add_test(NAME guest_branch COMMAND cpu_execution branch)
+    add_test(NAME guest_call COMMAND cpu_execution call)
+    add_test(NAME guest_memory_load_store COMMAND cpu_execution memory)
+    add_test(NAME guest_stack COMMAND cpu_execution stack)
+    add_test(NAME guest_memory_bounds COMMAND guest_memory_test)
 endif()

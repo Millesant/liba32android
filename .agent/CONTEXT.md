@@ -10,15 +10,19 @@ Keep CPU execution, guest address space, ELF32 loading/linking, AAPCS32/AAPCS64 
 
 ## Current milestone
 
-M0: choose/integrate CPU engine and prove a tiny A32 execution slice. No ELF loader or Android bridges yet.
+M1/M2 foundation: expand verified A32 behavior while establishing a generic guest-memory/address-space seam. No ELF loader or Android API bridges yet.
 
 ## CPU dependency
 
 Dynarmic is selected behind `src/cpu/`, pinned to azahar-emu/dynarmic commit `e77b1ba0b7da7cbe93021b01a663acfe7c4dd516`.
 
+## Current memory seam
+
+`memory::GuestMemory` is the engine-independent read/write contract. `LinearGuestMemory` is the initial contiguous implementation used by focused tests; it is not a decision in favor of low-VA mappings, page tables or fastmem.
+
 ## Build/test entry points
 
-Host smoke:
+Host tests:
 
 ```sh
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLIBA32ANDROID_BUILD_TESTS=ON
@@ -26,7 +30,7 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-Android arm64 is cross-built in GitHub Actions with NDK 27.2.12479018.
+Android `arm64-v8a` is cross-built in GitHub Actions with NDK `27.3.13750724`.
 
 ## Evidence labels
 

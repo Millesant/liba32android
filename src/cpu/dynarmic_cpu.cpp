@@ -1,70 +1,92 @@
-#include "cpu/dynarmic_cpu.h"
+#include "cpu/a32_cpu.h"
 
-#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <stdexcept>
+#include <span>
 
 #include "dynarmic/interface/A32/a32.h"
 #include "dynarmic/interface/A32/arch_version.h"
 #include "dynarmic/interface/A32/config.h"
+#include "memory/guest_memory.h"
 
 namespace liba32android::cpu {
 namespace {
 
-constexpr std::size_t kMemorySize = 4096;
-
 class Environment final : public Dynarmic::A32::UserCallbacks {
 public:
-    explicit Environment(std::span<const std::uint8_t> code) {
-        if (code.size() > memory_.size()) {
-            throw std::invalid_argument("guest code does not fit M0 scratch memory");
-        }
-        std::copy(code.begin(), code.end(), memory_.begin());
-    }
+    explicit Environment(memory::GuestMemory& memory) : memory_{memory} {}
 
     std::uint8_t MemoryRead8(std::uint32_t vaddr) override {
-        if (vaddr >= memory_.size()) {
+        std::array<std::uint8_t, 1> bytes{};
+        if (!read_bytes(vaddr, bytes)) {
             return 0;
         }
-        return memory_[vaddr];
+        return bytes[0];
     }
 
     std::uint16_t MemoryRead16(std::uint32_t vaddr) override {
-        return static_cast<std::uint16_t>(MemoryRead8(vaddr)) |
-               static_cast<std::uint16_t>(MemoryRead8(vaddr + 1)) << 8;
+        std::array<std::uint8_t, 2> bytes{};
+        if (!read_bytes(vaddr, bytes)) {
+            return 0;
+        }
+        return static_cast<std::uint16_t>(bytes[0]) |
+               static_cast<std::uint16_t>(bytes[1]) << 8;
     }
 
     std::uint32_t MemoryRead32(std::uint32_t vaddr) override {
-        return static_cast<std::uint32_t>(MemoryRead16(vaddr)) |
-               static_cast<std::uint32_t>(MemoryRead16(vaddr + 2)) << 16;
+        std::array<std::uint8_t, 4> bytes{};
+        if (!read_bytes(vaddr, bytes)) {
+            return 0;
+        }
+        return static_cast<std::uint32_t>(bytes[0]) |
+               static_cast<std::uint32_t>(bytes[1]) << 8 |
+               static_cast<std::uint32_t>(bytes[2]) << 16 |
+               static_cast<std::uint32_t>(bytes[3]) << 24;
     }
 
     std::uint64_t MemoryRead64(std::uint32_t vaddr) override {
-        return static_cast<std::uint64_t>(MemoryRead32(vaddr)) |
-               static_cast<std::uint64_t>(MemoryRead32(vaddr + 4)) << 32;
+        std::array<std::uint8_t, 8> bytes{};
+        if (!read_bytes(vaddr, bytes)) {
+            return 0;
+        }
+
+        std::uint64_t value = 0;
+        for (std::size_t index = 0; index < bytes.size(); ++index) {
+            value |= static_cast<std::uint64_t>(bytes[index]) << (index * 8);
+        }
+        return value;
     }
 
     void MemoryWrite8(std::uint32_t vaddr, std::uint8_t value) override {
-        if (vaddr < memory_.size()) {
-            memory_[vaddr] = value;
-        }
+        const std::array<std::uint8_t, 1> bytes{value};
+        write_bytes(vaddr, bytes);
     }
 
     void MemoryWrite16(std::uint32_t vaddr, std::uint16_t value) override {
-        MemoryWrite8(vaddr, static_cast<std::uint8_t>(value));
-        MemoryWrite8(vaddr + 1, static_cast<std::uint8_t>(value >> 8));
+        const std::array<std::uint8_t, 2> bytes{
+            static_cast<std::uint8_t>(value),
+            static_cast<std::uint8_t>(value >> 8),
+        };
+        write_bytes(vaddr, bytes);
     }
 
     void MemoryWrite32(std::uint32_t vaddr, std::uint32_t value) override {
-        MemoryWrite16(vaddr, static_cast<std::uint16_t>(value));
-        MemoryWrite16(vaddr + 2, static_cast<std::uint16_t>(value >> 16));
+        const std::array<std::uint8_t, 4> bytes{
+            static_cast<std::uint8_t>(value),
+            static_cast<std::uint8_t>(value >> 8),
+            static_cast<std::uint8_t>(value >> 16),
+            static_cast<std::uint8_t>(value >> 24),
+        };
+        write_bytes(vaddr, bytes);
     }
 
     void MemoryWrite64(std::uint32_t vaddr, std::uint64_t value) override {
-        MemoryWrite32(vaddr, static_cast<std::uint32_t>(value));
-        MemoryWrite32(vaddr + 4, static_cast<std::uint32_t>(value >> 32));
+        std::array<std::uint8_t, 8> bytes{};
+        for (std::size_t index = 0; index < bytes.size(); ++index) {
+            bytes[index] = static_cast<std::uint8_t>(value >> (index * 8));
+        }
+        write_bytes(vaddr, bytes);
     }
 
     void InterpreterFallback(std::uint32_t, std::size_t) override {
@@ -79,28 +101,46 @@ public:
         exception_raised_ = true;
     }
 
-    void AddTicks(std::uint64_t ticks) override {
-        ticks_left_ = ticks >= ticks_left_ ? 0 : ticks_left_ - ticks;
-    }
+    void AddTicks(std::uint64_t) override {}
 
     std::uint64_t GetTicksRemaining() override {
-        return ticks_left_;
+        return 1;
     }
 
     [[nodiscard]] bool exception_raised() const noexcept {
         return exception_raised_;
     }
 
+    [[nodiscard]] bool memory_fault() const noexcept {
+        return memory_fault_;
+    }
+
 private:
-    std::array<std::uint8_t, kMemorySize> memory_{};
-    std::uint64_t ticks_left_ = 1;
+    template <std::size_t Size>
+    [[nodiscard]] bool read_bytes(std::uint32_t vaddr, std::array<std::uint8_t, Size>& bytes) {
+        if (!memory_.read(vaddr, std::span<std::uint8_t>{bytes})) {
+            memory_fault_ = true;
+            return false;
+        }
+        return true;
+    }
+
+    template <std::size_t Size>
+    void write_bytes(std::uint32_t vaddr, const std::array<std::uint8_t, Size>& bytes) {
+        if (!memory_.write(vaddr, std::span<const std::uint8_t>{bytes})) {
+            memory_fault_ = true;
+        }
+    }
+
+    memory::GuestMemory& memory_;
     bool exception_raised_ = false;
+    bool memory_fault_ = false;
 };
 
 }  // namespace
 
-ExecutionResult execute_one(std::span<const std::uint8_t> code, InstructionSet instruction_set) {
-    Environment environment{code};
+ExecutionResult execute(memory::GuestMemory& memory, const ExecutionRequest& request) {
+    Environment environment{memory};
 
     Dynarmic::A32::UserConfig config{};
     config.callbacks = &environment;
@@ -109,19 +149,26 @@ ExecutionResult execute_one(std::span<const std::uint8_t> code, InstructionSet i
     config.always_little_endian = true;
 
     Dynarmic::A32::Jit jit{config};
-    jit.Regs().fill(0);
+    jit.Regs() = request.regs;
     jit.ExtRegs().fill(0);
-    jit.Regs()[15] = 0;
+    jit.Regs()[15] = request.entry_pc;
 
-    // User mode (0x10), plus Thumb state when requested.
-    const std::uint32_t cpsr = instruction_set == InstructionSet::Thumb ? 0x30u : 0x10u;
+    // Start in AAPCS32 user mode. The T bit selects Thumb state.
+    const std::uint32_t cpsr = request.instruction_set == InstructionSet::Thumb ? 0x30u : 0x10u;
     jit.SetCpsr(cpsr);
-    static_cast<void>(jit.Step());
+
+    std::size_t executed = 0;
+    while (executed < request.instruction_count && !environment.exception_raised() && !environment.memory_fault()) {
+        static_cast<void>(jit.Step());
+        ++executed;
+    }
 
     return ExecutionResult{
         .regs = jit.Regs(),
         .cpsr = jit.Cpsr(),
+        .instructions_executed = executed,
         .exception_raised = environment.exception_raised(),
+        .memory_fault = environment.memory_fault(),
     };
 }
 
