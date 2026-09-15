@@ -1,40 +1,50 @@
 # Current State
 
 Last updated: 2026-09-15
-Current milestone: M0 Architecture / Bootstrap
-Current branch: m0-bootstrap
-Validated implementation commit: c74ea163a1b85d50493ece062234babdd9c267ac
+Current milestone: M1/M2 CPU + guest-memory foundation
+Current branch: m1-guest-memory
+Active PR: #2
+Validated implementation commit: bdd228039dc28f7e7268aea363b59869f97935ca
 
 ## Working / proven
 
-- Dynarmic CPU strategy is researched, selected and pinned to `azahar-emu/dynarmic` commit `e77b1ba0b7da7cbe93021b01a663acfe7c4dd516`.
-- The Dynarmic-specific integration is isolated behind `src/cpu/`.
-- The M0 ARM guest smoke is TESTED/PASS in GitHub Actions: `guest_arm_return_42` executed guest ARM code and observed guest `r0 == 42`.
-- The M0 Thumb guest smoke is TESTED/PASS in GitHub Actions: `guest_thumb_return_42` executed guest Thumb code and observed guest `r0 == 42`.
-- The runtime and Dynarmic AArch64 backend are TESTED/PASS for Android `arm64-v8a` cross-compilation with NDK `27.3.13750724`.
-- GitHub Actions run `34957900341` completed successfully in both jobs for validated implementation commit `c74ea163a1b85d50493ece062234babdd9c267ac`.
+- Dynarmic remains isolated behind the internal CPU adapter and pinned to `azahar-emu/dynarmic` commit `e77b1ba0b7da7cbe93021b01a663acfe7c4dd516`.
+- The hidden M0 4 KiB callback scratch buffer has been replaced by the engine-independent `memory::GuestMemory` contract.
+- `LinearGuestMemory` provides a bounded contiguous AArch32 guest-memory implementation with explicit read/write failure outside its mapped range.
+- The generic A32 execution seam accepts initial registers, entry PC, instruction set and a bounded instruction count, and reports register/CPSR state, exceptions and memory faults without exposing Dynarmic types.
+- ARM and Thumb return-42 regression smokes remain TESTED/PASS.
+- Focused ARM tests for register state, branch, BL/LR, memory load/store and stack use are TESTED/PASS.
+- Guest-memory boundary validation is TESTED/PASS.
+- Android `arm64-v8a` configure/build/link remains TESTED/PASS with NDK `27.3.13750724`.
 
 ## Test status
 
-- `guest_arm_return_42`: PASS — GitHub Actions run `34957900341`, job `Linux A32 smoke`; CTest reported Passed.
-- `guest_thumb_return_42`: PASS — GitHub Actions run `34957900341`, job `Linux A32 smoke`; CTest reported Passed.
-- Linux host configure/build: PASS — GitHub Actions run `34957900341`.
-- Android `arm64-v8a` configure/build: PASS — GitHub Actions run `34957900341`, NDK `27.3.13750724`; the AArch64 Dynarmic backend and `libliba32android.so` linked successfully.
-- Actual execution of the smoke test on Android/AArch64 hardware: NOT RUN.
+GitHub Actions run `34992082931` on PR #2 / implementation commit `bdd228039dc28f7e7268aea363b59869f97935ca`:
+
+- `guest_arm_return_42`: PASS
+- `guest_thumb_return_42`: PASS
+- `guest_register_state`: PASS
+- `guest_branch`: PASS
+- `guest_call`: PASS
+- `guest_memory_load_store`: PASS
+- `guest_stack`: PASS
+- `guest_memory_bounds`: PASS
+- Linux configure/build: PASS
+- Android `arm64-v8a` configure/build/link: PASS
+- Actual execution on Android/AArch64 hardware or emulator: NOT RUN
+
+CTest reported 8/8 passed with 0 failures.
 
 ## Evidence boundary
 
-The ARM and Thumb execution tests above ran on the GitHub-hosted Linux x86-64 runner using Dynarmic's x86-64 backend. The Android job proves that the same runtime integration and Dynarmic AArch64 backend compile and link for Android `arm64-v8a`; it does **not** yet prove guest execution on a physical/emulated Android AArch64 device. On-device execution therefore remains NOT RUN.
+The eight execution/memory tests run on the GitHub-hosted Linux x86-64 runner. The Android job proves the same runtime and Dynarmic AArch64 backend compile and link for `arm64-v8a`; it does not yet prove guest execution through the AArch64 backend on Android.
 
-## CI history / resolved failures
+`LinearGuestMemory` proves the generic callback seam and bounded address checks only. It does not prove low-address host mappings, a 4 GiB reservation, page-table mode, fastmem, mapping permissions, guard pages or Android-specific address-space behavior.
 
-- Run `34956597653`: BLOCKED/FAIL at CI environment setup because `android-actions/setup-android@v3` attempted to install the obsolete SDK `tools` package. No Android code validation was obtained from that job.
-- Run `34956800492`: Linux ARM/Thumb smoke tests PASS. Android configure PASS, then build FAIL because host Boost headers were not visible to Android Clang (`boost/variant.hpp` not found).
-- Run `34957900341`: PASS. Android CI now uses the runner SDK directly, pins NDK `27.3.13750724`, stages Boost headers in a cross-compile-visible directory, and explicitly supplies `ARCHITECTURE=arm64` for the known `arm64-v8a` target.
+## Partially working / not implemented
 
-## Not implemented / not proven
-
-- Guest address-space implementation beyond the 4 KiB M0 callback-memory test scaffold: NOT IMPLEMENTED.
+- M1 instruction coverage is PARTIAL: basic integer register state, ARM branch/call, stack and load/store paths are tested; broader Thumb/Thumb-2, VFP/NEON, exception and edge-case coverage remains future work.
+- M2 guest address space is PARTIAL: a generic memory contract and linear test implementation exist, but mapped regions, permissions, lifecycle and Android mapping strategy are NOT IMPLEMENTED.
 - Low-VA/direct mapping or Dynarmic fastmem strategy on Android: HYPOTHESIS / NOT TESTED.
 - ELF32 loader/linker and ARM relocations: NOT IMPLEMENTED.
 - Guest AAPCS32 <-> host AAPCS64 ABI bridge and `host_add(20,22)` proof: NOT IMPLEMENTED.
@@ -44,4 +54,4 @@ The ARM and Thumb execution tests above ran on the GitHub-hosted Linux x86-64 ru
 
 ## Current blocker
 
-None for M0 bootstrap. A suitable Android/AArch64 execution environment will be required to convert the on-device execution item from NOT RUN to TESTED.
+None for the generic CPU/memory seam. Device/emulator access is required for Android/AArch64 execution evidence and Android-specific address-space experiments.

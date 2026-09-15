@@ -1,15 +1,18 @@
 # CPU engine architecture
 
-Status: Accepted for M0
+Status: Accepted for M0 and the initial M1/M2 seam
 
 ## Boundary
 
-The CPU engine is an internal service. It executes AArch32 instructions and exposes guest CPU state/memory interaction to the rest of the runtime. It must not know about ELF dependency resolution, Android APIs, JNI, graphics, audio, Minecraft, or application profiles.
+The CPU engine is an internal service. It executes AArch32 instructions and interacts with guest memory only through the generic memory contract. It must not know about ELF dependency resolution, Android APIs, JNI, graphics, audio, Minecraft, or application profiles.
 
 Dependency direction is intentionally one-way:
 
 ```text
 runtime / loader / ABI layers
+          |
+          v
+ guest address space
           |
           v
    CPU engine adapter
@@ -22,7 +25,7 @@ Application-specific code may depend on the generic runtime, never the reverse.
 
 ## Selected engine
 
-M0 uses Dynarmic, pinned to `azahar-emu/dynarmic` commit `e77b1ba0b7da7cbe93021b01a663acfe7c4dd516` (2026-06-24).
+The runtime uses Dynarmic, pinned to `azahar-emu/dynarmic` commit `e77b1ba0b7da7cbe93021b01a663acfe7c4dd516` (2026-06-24).
 
 The selection is based on directly observed upstream properties:
 
@@ -35,15 +38,27 @@ The selection is based on directly observed upstream properties:
 - 0BSD license for Dynarmic itself.
 - The selected fork had a verified upstream commit in June 2026 and is used by the actively maintained Azahar emulator tree.
 
-## M0 integration
+## CPU adapter
 
-`src/cpu/dynarmic_cpu.*` is deliberately small. It owns the Dynarmic-specific callback implementation and prevents Dynarmic types from leaking upward into future ELF/linker/ABI modules.
+`src/cpu/a32_cpu.h` is the generic execution seam. Callers provide an instruction set, entry PC, initial A32 registers and a bounded instruction count. Results contain the final registers/CPSR plus exception and memory-fault state.
 
-The M0 scratch-memory implementation is callback-based and only 4 KiB. It is not the future guest address-space design and must not be mistaken for one.
+`src/cpu/dynarmic_cpu.cpp` owns the Dynarmic-specific `UserCallbacks` implementation. Dynarmic types do not appear in the generic CPU or memory APIs.
 
-## Future memory design
+## Guest-memory seam
 
-Dynarmic exposes both a page table and `fastmem_pointer`, where fastmem models a contiguous 4 GiB guest address space. This is relevant to the low-VA/direct-address hypothesis from reverse-engineering research, but no low-address reservation strategy is accepted yet. Android mapping restrictions, ASLR collisions, executable permissions, guards and fallback behavior must be measured before M2 chooses a memory model.
+M0's fixed 4 KiB callback-owned scratch array has been removed.
+
+`src/memory/guest_memory.h` defines `memory::GuestMemory`, an engine-independent read/write contract. The Dynarmic adapter translates all callback memory accesses through this interface and reports failed accesses through `ExecutionResult::memory_fault`.
+
+`LinearGuestMemory` is the first concrete implementation. It provides a bounded contiguous guest range and explicit out-of-range failure. It exists to make CPU/memory integration deterministic and testable; it is not the final M2 address-space model.
+
+The current CI test set proves basic ARM register state, branch, BL/LR, load/store and stack behavior through this seam, while retaining ARM and Thumb return-42 smoke tests.
+
+## Future address-space design
+
+Dynarmic exposes both a page table and `fastmem_pointer`, where fastmem can model a contiguous 4 GiB guest address space. This is relevant to the low-VA/direct-address hypothesis from reverse-engineering research, but no low-address reservation strategy is accepted yet.
+
+Android mapping restrictions, `MAP_FIXED_NOREPLACE` behavior, ASLR collisions, executable permissions, guard regions, lifecycle and fallback behavior must be measured before M2 selects an optimized mapping strategy. Callback memory remains the correctness baseline until stronger evidence exists.
 
 ## Correctness policy
 
