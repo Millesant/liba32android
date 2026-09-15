@@ -79,7 +79,7 @@ jobs:
           set -euxo pipefail
           strings build-android/android_address_space_probe | grep -F '/sdcard/Download/liba32android/address-space-probe.log'
           strings build-android/android_address_space_probe | grep -F 'diagnostics.log_file=%s'
-          strings build-android/android_address_space_probe | grep -F 'A32CRASH|component=android_address_space_probe|signal='
+          grep -F 'A32CRASH|component=android_address_space_probe|signal=' tools/android_address_space_probe.cpp
       - name: Upload Android runtime
         uses: actions/upload-artifact@v4
         with:
