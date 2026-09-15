@@ -41,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install host build dependencies
-        run: sudo apt-get update && sudo apt-get install -y ninja-build libboost-dev
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libboost-dev binutils
       - name: Ensure pinned NDK
         run: |
           set -euxo pipefail
@@ -74,6 +74,12 @@ jobs:
           set -euxo pipefail
           test -f build-android/liba32android.so
           test ! -e build-android/libliba32android.so
+      - name: Verify Android diagnostic markers
+        run: |
+          set -euxo pipefail
+          strings build-android/android_address_space_probe | grep -F '/sdcard/Download/liba32android/address-space-probe.log'
+          strings build-android/android_address_space_probe | grep -F 'diagnostics.log_file=%s'
+          grep -F 'A32CRASH|component=android_address_space_probe|signal=' tools/android_address_space_probe.cpp
       - name: Upload Android runtime
         uses: actions/upload-artifact@v4
         with:
