@@ -2,9 +2,10 @@
 
 Last updated: 2026-09-15
 Current milestone: M1/M2 CPU + guest-memory foundation
-Current branch: m1-guest-memory
-Active PR: #2
-Validated implementation commit: bdd228039dc28f7e7268aea363b59869f97935ca
+Integration branch: `bleeding`
+Last merged PR: #2 (`M1/M2: generic guest memory and A32 execution seam`)
+Merged integration commit: `f1224743e9f52e1bdfca7e4c1ea2e39f0487d942`
+Validated PR head: `48602ec5fafa1a6107e628d2f44f68a6cd12254c`
 
 ## Working / proven
 
@@ -19,7 +20,7 @@ Validated implementation commit: bdd228039dc28f7e7268aea363b59869f97935ca
 
 ## Test status
 
-GitHub Actions run `34992082931` on PR #2 / implementation commit `bdd228039dc28f7e7268aea363b59869f97935ca`:
+Final pre-merge GitHub Actions validation: run `34992539556` on PR #2, head `48602ec5fafa1a6107e628d2f44f68a6cd12254c`.
 
 - `guest_arm_return_42`: PASS
 - `guest_thumb_return_42`: PASS
@@ -33,7 +34,7 @@ GitHub Actions run `34992082931` on PR #2 / implementation commit `bdd228039dc28
 - Android `arm64-v8a` configure/build/link: PASS
 - Actual execution on Android/AArch64 hardware or emulator: NOT RUN
 
-CTest reported 8/8 passed with 0 failures.
+CTest reported 8/8 passed with 0 failures. PR #2 was subsequently squash-merged into `bleeding` as `f1224743e9f52e1bdfca7e4c1ea2e39f0487d942`.
 
 ## Evidence boundary
 
