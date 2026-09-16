@@ -66,9 +66,6 @@ if(LIBA32ANDROID_BUILD_ANDROID_PROBES)
     target_include_directories(android_runtime_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(android_runtime_smoke PRIVATE liba32android)
     target_compile_features(android_runtime_smoke PRIVATE cxx_std_20)
-    # Keep the executable and shared runtime side-by-side in the downloadable
-    # artifact so Termux can run it without installing the library globally.
-    set_target_properties(android_runtime_smoke PROPERTIES BUILD_RPATH "$ORIGIN")
 endif()
 
 if(LIBA32ANDROID_BUILD_TESTS)
