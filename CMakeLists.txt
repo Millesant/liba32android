@@ -11,6 +11,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 option(LIBA32ANDROID_BUILD_TESTS "Build liba32android tests" ${BUILD_TESTING})
 option(LIBA32ANDROID_BUILD_ANDROID_PROBES "Build Android-only diagnostic probes" OFF)
+set(LIBA32ANDROID_ARM32_FIXTURE_PATH "" CACHE FILEPATH
+    "Optional generated ARM32 Android ET_DYN fixture used by the real ELF32 loader integration test")
 
 # Keep Dynarmic narrowly scoped to the A32 frontend needed by this runtime.
 set(DYNARMIC_FRONTENDS "A32" CACHE STRING "" FORCE)
@@ -94,6 +96,10 @@ if(LIBA32ANDROID_BUILD_TESTS)
     target_include_directories(elf32_loader_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(elf32_loader_test PRIVATE liba32android)
 
+    add_executable(elf32_real_fixture_test tests/elf32_real_fixture.cpp)
+    target_include_directories(elf32_real_fixture_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(elf32_real_fixture_test PRIVATE liba32android)
+
     add_test(NAME guest_arm_return_42 COMMAND cpu_smoke arm)
     add_test(NAME guest_thumb_return_42 COMMAND cpu_smoke thumb)
     add_test(NAME guest_register_state COMMAND cpu_execution registers)
@@ -110,4 +116,13 @@ if(LIBA32ANDROID_BUILD_TESTS)
     add_test(NAME elf32_program_header_bounds COMMAND elf32_loader_test ph_bounds)
     add_test(NAME elf32_segment_validation COMMAND elf32_loader_test segments)
     add_test(NAME elf32_address_conflict COMMAND elf32_loader_test address_conflict)
+
+    if(LIBA32ANDROID_ARM32_FIXTURE_PATH)
+        if(NOT EXISTS "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
+            message(FATAL_ERROR
+                "LIBA32ANDROID_ARM32_FIXTURE_PATH does not exist: ${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
+        endif()
+        add_test(NAME elf32_real_arm32_fixture
+                 COMMAND elf32_real_fixture_test "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
+    endif()
 endif()
