@@ -10,7 +10,9 @@ Keep CPU execution, guest address space, ELF32 loading/linking, AAPCS32/AAPCS64 
 
 ## Current milestone
 
-M2 guest address space: the generic memory seam now has both a callback-oriented linear implementation and a mapped 4 GiB implementation with optional Dynarmic fastmem. ELF loading and Android API bridges are not implemented yet.
+M3 ELF32 loading. M2 guest address space is complete for its current scope: the generic memory seam has callback and mapped 4 GiB implementations, Dynarmic fastmem integration, and direct Android/AArch64 evidence for both mapped fastmem data access and fastmem fault -> callback fallback on the known Android 16 / SDK 36 Termux environment. Broader device compatibility remains separate evidence work.
+
+M3 begins with ELF32 validation, `PT_LOAD` mapping, BSS zero-fill, page permissions, and load bias. Dynamic symbol resolution/linking remains later work.
 
 ## CPU dependency
 
