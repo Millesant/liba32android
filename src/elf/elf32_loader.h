@@ -39,6 +39,7 @@ enum class Elf32LoadError : std::uint8_t {
     DynamicSegmentAddressOverflow,
     DynamicSegmentOutsideLoad,
     DynamicSegmentNotReadable,
+    DynamicSegmentFileMappingMismatch,
     SegmentPageOverlap,
     AddressConflict,
     MapFailed,
@@ -76,7 +77,8 @@ struct Elf32LoadResult {
     std::uint32_t entry{};
     std::vector<Elf32LoadedSegment> segments;
     // Missing PT_DYNAMIC is valid and leaves this empty. A present PT_DYNAMIC
-    // is validated as one unique, non-empty range inside a readable PT_LOAD.
+    // is validated as one unique, non-empty range inside a readable PT_LOAD,
+    // with its file bytes matching that PT_LOAD's file-to-guest mapping.
     std::optional<Elf32DynamicSegment> dynamic_segment;
 
     [[nodiscard]] explicit operator bool() const noexcept {
