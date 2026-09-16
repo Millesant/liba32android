@@ -28,6 +28,14 @@ struct ExecutionResult {
     std::size_t instructions_executed{};
     bool exception_raised{};
     bool memory_fault{};
+
+    // Internal diagnostics used to prove which CPU/memory path was configured
+    // and whether a fastmem fault fell back to callbacks. These fields are not
+    // a public runtime ABI.
+    bool fastmem_enabled{};
+    std::size_t code_read_callbacks{};
+    std::size_t data_read_callbacks{};
+    std::size_t data_write_callbacks{};
 };
 
 // Generic A32 execution seam. Dynarmic is an implementation detail in the
