@@ -1,39 +1,42 @@
 # Next
 
-The generic CPU/memory seam is validated, the Android address-space probe is cross-built, and the probe now persists copy-pasteable diagnostics/crash markers when Android permits file creation. Device behavior is still NOT RUN.
+Real Android/AArch64 evidence now exists and D-0004 selects a high-base contiguous 4 GiB reservation as the preferred first fastmem acceleration path, with callbacks retained as the mandatory correctness fallback.
 
-1. Execute `android_address_space_probe` on representative Android arm64 environments and persist the raw evidence.
-   - Start with the default non-generated-code mode; then run `--execute-generated-code` explicitly.
-   - The probe first tries `/sdcard/Download/liba32android/address-space-probe.log`; use the emitted `diagnostics.log_file=` path if it falls back elsewhere.
-   - Send/store the complete log, including `diagnostics.*`, Android build/API, kernel release, page size, `mmap_min_addr`, low-4-GiB mappings, 4 GiB reservation result, `MAP_FIXED_NOREPLACE` results, RW->RX result and generated-code return value.
-   - If the process crashes, preserve any `A32CRASH|...` marker and Android tombstone/native backtrace in addition to the file log.
-   - Prefer more than one Android/kernel generation before making a compatibility claim.
-   - Store outputs under `docs/research/evidence/` with probe commit and device/kernel metadata.
-   - DoD: observed device results are separated from inference and are sufficient to compare callback/page-table/fastmem/direct-low-VA strategies, and real logging/crash-marker behavior is recorded as PASS/FAIL rather than assumed.
+1. Implement the first mapped guest-address-space backend.
+   - Reserve a contiguous 4 GiB host range without requiring a low host VA.
+   - Keep unmapped guest pages inaccessible and track guest mapping/permission metadata explicitly.
+   - Support page-aligned map, protect and unmap lifecycle operations needed by ELF `PT_LOAD` later.
+   - Expose the reservation base only through an internal capability suitable for Dynarmic fastmem; do not expose host pointers as guest/runtime API values.
+   - Preserve callback reads/writes as the correctness fallback for fastmem faults and unsupported accesses.
+   - DoD: Linux tests cover mapping, permissions, unmapping, bounds and callback fallback; Android arm64 cross-build passes.
 
-2. After device evidence exists, choose the first production guest-address-space backend.
-   - Keep callbacks as mandatory correctness fallback.
-   - Compare page-table acceleration against fastmem using observed constraints.
-   - Do not choose direct low-VA pointer identity unless evidence demonstrates a safe compatibility envelope and fallback.
-   - DoD: accepted decision records mapping lifecycle, permissions, fallback behavior, cache invalidation interaction and Android constraints.
+2. Wire optional Dynarmic fastmem to the mapped backend.
+   - Set `UserConfig::fastmem_pointer` only when the memory backend owns a valid contiguous 4 GiB reservation.
+   - Keep `recompile_on_fastmem_failure` enabled so protected/unmapped pages can fall back to callbacks.
+   - Add targeted data load/store tests that exercise the same CPU seam with and without fastmem capability.
+   - DoD: callback-only and fastmem-capable memory backends produce identical guest-visible results in tests.
 
-3. While device execution is unavailable, continue independent M1 regression coverage.
-   - Add Thumb branch/call and memory/stack coverage.
-   - Add exception and invalid-memory behavior around the generic CPU seam.
-   - Defer broad ISA completeness claims; targeted regressions prove runtime integration behavior.
+3. Add an Android/AArch64 runtime smoke executable and artifact.
+   - Execute the existing A32 return-42 test through Dynarmic's AArch64 backend on device.
+   - Add a guest load/store case to exercise the mapped backend/fastmem path when implemented.
+   - Reuse file diagnostics so the user can run it from Termux without adb or Wi-Fi and return one log file.
+   - DoD: real Android device evidence shows A32 guest execution returns 42 through `liba32android`.
 
-4. Add an Android/AArch64 A32 execution test when a suitable runner/device path is available.
-   - Current CI proves Android `arm64-v8a` compile/link only.
-   - DoD: execute the A32 return-42 smoke through Dynarmic's AArch64 backend on Android and record evidence.
+4. Correct probe environment metadata before the next device sample.
+   - Rename compile-time `android.api` to `android.ndk_api` (or equivalent).
+   - Report runtime Android SDK/release separately using platform properties.
+   - Preserve probe format compatibility where practical and document the version change.
 
-5. When the public runtime/app integration layer is introduced, add host-configured diagnostics.
-   - Do not hard-code `/sdcard/Download` inside the generic embedded runtime.
-   - Accept an app-provided writable directory or callback/sink; let the Android host export/share logs through platform-appropriate storage APIs.
-   - Reuse stable `A32ERR|...` and fatal `A32CRASH|...` shapes where applicable.
-   - DoD: runtime errors and fatal markers survive into a host-controlled diagnostic artifact without requiring logcat as the only source.
+5. Collect additional Android/vendor/kernel samples.
+   - Repeat the address-space probe on at least one materially different Android environment before broad compatibility claims.
+   - Preserve raw logs under `docs/research/evidence/` and classify observations separately from inference.
 
-6. After the guest-address-space contract is selected and stable enough, design M3 ELF32 loading.
-   - Start with validation, PT_LOAD, BSS, permissions and load bias before dynamic linking.
+6. Exercise crash diagnostics deliberately only after a safe dedicated crash-test mode exists.
+   - Verify `A32CRASH|...` survives to the file/stderr and Android still emits its native tombstone/backtrace.
+   - Do not induce crashes in normal runtime/probe modes merely to test logging.
+
+7. After the guest-address-space backend and CPU fastmem seam are stable, design M3 ELF32 loading.
+   - Start with validation, `PT_LOAD`, BSS, permissions and load bias before dynamic linking.
    - Keep ELF/linker responsibilities independent from the CPU engine.
 
-7. Decide the project's own open-source license before public release.
+8. Decide the project's own open-source license before public release.
