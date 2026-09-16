@@ -14,6 +14,7 @@
 
 namespace {
 
+using liba32android::elf::Elf32LoadError;
 using liba32android::elf::Elf32LoadOptions;
 using liba32android::elf::Elf32LoadedSegment;
 using liba32android::elf::load_elf32;
@@ -196,6 +197,18 @@ int main(int argc, char** argv) {
         return fail("fixture dynamic base is outside the 32-bit guest range or host-page unaligned");
     }
 
+    bool misaligned_bias_rejected = false;
+    if (host_page_size < maximum_alignment) {
+        MappedGuestMemory misaligned_memory;
+        Elf32LoadOptions bad_options;
+        bad_options.dynamic_base = static_cast<std::uint32_t>(dynamic_base_u64 + host_page_size);
+        const auto bad_result = load_elf32(misaligned_memory, image, bad_options);
+        if (bad_result.error != Elf32LoadError::DynamicBaseUnaligned) {
+            return fail("ET_DYN load bias violating real PT_LOAD p_align was not rejected");
+        }
+        misaligned_bias_rejected = true;
+    }
+
     Elf32LoadOptions options;
     options.dynamic_base = static_cast<std::uint32_t>(dynamic_base_u64);
     const auto result = load_elf32(memory, image, options);
@@ -278,6 +291,7 @@ int main(int argc, char** argv) {
               << "fixture.has_bss=true\n"
               << "fixture.max_p_align=" << maximum_alignment << '\n'
               << "fixture.host_page_size=" << host_page_size << '\n'
+              << "fixture.misaligned_bias_rejected=" << (misaligned_bias_rejected ? "true" : "not_applicable") << '\n'
               << "fixture.load_bias=0x" << std::hex << result.load_bias << std::dec << '\n'
               << "fixture.status=PASS\n";
     return 0;
