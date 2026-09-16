@@ -1,6 +1,6 @@
 # ELF32 loader architecture
 
-Status: first M3 PT_LOAD slice implemented and tested with synthetic images plus a reproducible real ARMv7/Android ET_DYN fixture
+Status: M3 PT_LOAD mapping plus PT_DYNAMIC range discovery implemented and covered by synthetic images plus a reproducible real ARMv7/Android ET_DYN fixture
 
 ## Boundary
 
@@ -16,6 +16,8 @@ ELF32 byte image
       v
  ELF32 validator / PT_LOAD planner
       |
+      +----> PT_DYNAMIC guest-range metadata only
+      |
       v
  MappedGuestMemory
       |
@@ -23,7 +25,7 @@ ELF32 byte image
  logical AArch32 guest VAs
 ```
 
-Dynamic linking will be a later layer above this mapping primitive rather than being folded into the initial loader.
+Dynamic linking remains a later layer above this mapping primitive rather than being folded into the loader.
 
 ## Supported image policy
 
@@ -35,7 +37,8 @@ The current slice accepts:
 - `EM_ARM`;
 - `ET_DYN` and `ET_EXEC`;
 - standard ELF32 header/program-header sizes;
-- `PT_LOAD` segments whose final permissions are `None`, `R`, `RW`, or `RX`.
+- `PT_LOAD` segments whose final permissions are `None`, `R`, `RW`, or `RX`;
+- either no `PT_DYNAMIC`, or exactly one validated non-empty `PT_DYNAMIC` range contained in a readable `PT_LOAD`.
 
 `ET_EXEC` loads at its fixed guest virtual addresses with `load_bias == 0`.
 
@@ -43,7 +46,29 @@ The current slice accepts:
 
 This additional load-bias rule is required even when an ELF segment alignment is larger than the current host page size. A real NDK-generated ARMv7 fixture with `p_align=0x4000` demonstrated that a 4 KiB-aligned base is not necessarily a valid 16 KiB-aligned load bias.
 
-The result exposes guest entry/load-bias/segment metadata. Host reservation pointers are not part of the loader API.
+The result exposes guest entry/load-bias/PT_LOAD metadata plus optional `PT_DYNAMIC` guest metadata. Host reservation pointers are not part of the loader API.
+
+## PT_DYNAMIC discovery policy
+
+Missing `PT_DYNAMIC` is valid. This preserves support for ELF images that do not require dynamic-linker metadata.
+
+When `PT_DYNAMIC` is present, the loader validates it before guest mappings are mutated:
+
+- only one `PT_DYNAMIC` program header is accepted;
+- `p_memsz` must be non-zero;
+- `p_filesz <= p_memsz`;
+- its file-backed range must be within the input ELF image;
+- its un-biased and biased guest ranges must fit the 32-bit guest address space;
+- its complete `p_memsz` range must be contained inside a `PT_LOAD` memory range;
+- the containing `PT_LOAD` must be readable.
+
+On success, `Elf32LoadResult::dynamic_segment` reports only:
+
+- biased guest virtual address;
+- `p_filesz`;
+- `p_memsz`.
+
+It deliberately does **not** parse `Elf32_Dyn` entries or interpret `DT_NEEDED`, `DT_REL`, symbol/string tables, GNU hash, or any other tag. Those belong to a later linker layer.
 
 ## Validation-before-mapping rule
 
@@ -53,13 +78,14 @@ Before mapping any guest page, the loader validates:
 - supported type and `EM_ARM` machine;
 - header and program-header entry sizes;
 - program-header table bounds;
-- `p_filesz <= p_memsz`;
-- file ranges within the input byte image;
+- `PT_LOAD p_filesz <= p_memsz`;
+- `PT_LOAD` file ranges within the input byte image;
 - 32-bit guest-address overflow;
 - ELF segment alignment constraints;
 - supported segment permission shapes;
 - ET_DYN host-page alignment, load-bias range, and every `PT_LOAD p_align` constraint;
 - entry-point overflow;
+- the `PT_DYNAMIC` policy above when present;
 - page-overlapping `PT_LOAD` ranges;
 - conflicts with pages already mapped in `MappedGuestMemory`.
 
@@ -85,13 +111,16 @@ Synthetic host tests cover:
 
 - valid `ET_DYN` load-bias calculation;
 - valid fixed-address `ET_EXEC` loading;
+- missing `PT_DYNAMIC` as a valid case;
+- valid biased `PT_DYNAMIC` result metadata;
+- rejection of multiple, empty, file-out-of-bounds, address-overflowing, outside-PT_LOAD, and non-readable `PT_DYNAMIC` ranges;
 - file-byte copy;
 - BSS zero-fill;
 - final RX/RW permission behavior;
 - malformed identity/header fields;
 - out-of-bounds program-header tables;
-- `p_filesz > p_memsz`;
-- out-of-bounds file ranges;
+- `PT_LOAD p_filesz > p_memsz`;
+- out-of-bounds PT_LOAD file ranges;
 - guest-address overflow;
 - bad segment alignment;
 - unsupported RWX segment permissions;
@@ -107,10 +136,10 @@ Observed real fixture properties include:
 - all `PT_LOAD p_align=0x4000`;
 - R, RX and RW load segments;
 - BSS;
-- `PT_DYNAMIC`;
+- one `PT_DYNAMIC` range at pre-bias guest VA `0x826c`, file/memory size `0x60`;
 - GNU RELRO and ARM EXIDX program headers.
 
-The real fixture integration test verifies PT_LOAD metadata, exact copied file bytes, BSS zero-fill, final guest permissions, a valid aligned load bias, and rejection of a load bias that is host-page-aligned but violates the fixture's 16 KiB `p_align`.
+The real fixture integration test verifies PT_LOAD metadata, exact copied file bytes, BSS zero-fill, final guest permissions, a valid aligned load bias, rejection of a load bias that is host-page-aligned but violates the fixture's 16 KiB `p_align`, and exact biased `PT_DYNAMIC` result metadata.
 
 Raw/current evidence is documented in `docs/research/evidence/arm32-loader-fixture-ndk-r27d-2026-09-16.md`.
 
@@ -118,14 +147,12 @@ Android CI cross-builds the same loader into `liba32android.so`; actual ELF32 lo
 
 ## Next M3 boundary
 
-The real fixture contains `PT_DYNAMIC` and real dynamic-table metadata. The next loader step may identify and return the loaded `PT_DYNAMIC` guest range/metadata location so a later linker layer can consume it.
-
-That step must remain metadata discovery only. Dynamic tags, DT_NEEDED dependencies, symbols and relocations must not be resolved as a side effect of PT_LOAD mapping.
+The next M3 metadata slice may parse the dynamic array structure itself into validated guest-address metadata needed by the future linker, but it must not perform dependency loading, symbol resolution, or relocations as a side effect of ELF mapping.
 
 ## Not implemented in this slice
 
-- `PT_DYNAMIC` interpretation beyond observing it in the fixture;
-- dynamic symbol/string tables as loader output;
+- `Elf32_Dyn` tag interpretation;
+- dynamic symbol/string table parsing as linker metadata;
 - DT_NEEDED dependency loading;
 - ARM relocations;
 - symbol lookup/interposition;
@@ -133,7 +160,7 @@ That step must remain metadata discovery only. Dynamic tags, DT_NEEDED dependenc
 - TLS segments;
 - GNU/Android-specific dynamic-linker metadata processing;
 - automatic guest-VA allocation for `ET_DYN`;
-- loading this fixture through the runtime on a real Android device;
+- loading the real fixture through the runtime on a real Android device;
 - executing loaded ARM32 fixture symbols.
 
 Those items belong to later M3/M4 work and must preserve the loader/linker separation.
