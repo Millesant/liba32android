@@ -67,8 +67,8 @@ jobs:
           -DLIBA32ANDROID_BUILD_TESTS=OFF
           -DLIBA32ANDROID_BUILD_ANDROID_PROBES=ON
           -DDYNARMIC_ENABLE_NO_EXECUTE_SUPPORT=ON
-      - name: Build shared runtime and address-space probe
-        run: cmake --build build-android --target liba32android android_address_space_probe --parallel 2
+      - name: Build shared runtime and Android diagnostics
+        run: cmake --build build-android --target liba32android android_address_space_probe android_runtime_smoke --parallel 2
       - name: Verify shared library name
         run: |
           set -euxo pipefail
@@ -80,6 +80,12 @@ jobs:
           strings build-android/android_address_space_probe | grep -F '/sdcard/Download/liba32android/address-space-probe.log'
           strings build-android/android_address_space_probe | grep -F 'diagnostics.log_file=%s'
           grep -F 'A32CRASH|component=android_address_space_probe|signal=' tools/android_address_space_probe.cpp
+          strings build-android/android_runtime_smoke | grep -F 'a32.return42.status=%s'
+          strings build-android/android_runtime_smoke | grep -F 'a32.memory.fastmem_direct=%s'
+          grep -F 'A32CRASH|component=android_runtime_smoke|signal=' tools/android_runtime_smoke.cpp
+          grep -F 'A32ERR|component=android_runtime_smoke|' tools/android_runtime_smoke.cpp
+          grep -F 'signal(signal_number, SIG_DFL);' tools/android_runtime_smoke.cpp
+          readelf -d build-android/android_runtime_smoke | grep -F 'Shared library: [liba32android.so]'
       - name: Upload Android runtime
         uses: actions/upload-artifact@v4
         with:
@@ -92,5 +98,40 @@ jobs:
         with:
           name: android-address-space-probe-${{ github.sha }}
           path: build-android/android_address_space_probe
+          if-no-files-found: error
+          retention-days: 14
+      - name: Stage Android runtime smoke bundle
+        run: |
+          set -euxo pipefail
+          mkdir -p runtime-smoke-bundle
+          cp build-android/android_runtime_smoke runtime-smoke-bundle/
+          cp build-android/liba32android.so runtime-smoke-bundle/
+          cat > runtime-smoke-bundle/run.sh <<'EOF'
+          #!/system/bin/sh
+          set -eu
+          SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+          export LD_LIBRARY_PATH="$SCRIPT_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          exec "$SCRIPT_DIR/android_runtime_smoke" "$@"
+          EOF
+          chmod 755 runtime-smoke-bundle/run.sh
+          cat > runtime-smoke-bundle/README.txt <<'EOF'
+          Copy/extract this whole directory into an executable Termux-private directory (not /sdcard), then run:
+            chmod 700 android_runtime_smoke run.sh
+            ./run.sh
+
+          Optional fastmem fault/fallback validation after the normal smoke passes:
+            ./run.sh --exercise-fastmem-fault
+
+          The program prints diagnostics.log_file=... with the log path. On Termux it first tries:
+            ~/storage/downloads/liba32android-runtime-smoke.log
+          EOF
+          test -f runtime-smoke-bundle/android_runtime_smoke
+          test -f runtime-smoke-bundle/liba32android.so
+          grep -F 'LD_LIBRARY_PATH' runtime-smoke-bundle/run.sh
+      - name: Upload Android runtime smoke bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-runtime-smoke-${{ github.sha }}
+          path: runtime-smoke-bundle/
           if-no-files-found: error
           retention-days: 14

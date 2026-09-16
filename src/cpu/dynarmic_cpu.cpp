@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 
 #include "dynarmic/interface/A32/a32.h"
@@ -16,6 +17,19 @@ namespace {
 class Environment final : public Dynarmic::A32::UserCallbacks {
 public:
     explicit Environment(memory::GuestMemory& memory) : memory_{memory} {}
+
+    std::optional<std::uint32_t> MemoryReadCode(std::uint32_t vaddr) override {
+        ++code_read_callbacks_;
+        std::array<std::uint8_t, 4> bytes{};
+        if (!memory_.read_code(vaddr, std::span<std::uint8_t>{bytes})) {
+            memory_fault_ = true;
+            return std::nullopt;
+        }
+        return static_cast<std::uint32_t>(bytes[0]) |
+               static_cast<std::uint32_t>(bytes[1]) << 8 |
+               static_cast<std::uint32_t>(bytes[2]) << 16 |
+               static_cast<std::uint32_t>(bytes[3]) << 24;
+    }
 
     std::uint8_t MemoryRead8(std::uint32_t vaddr) override {
         std::array<std::uint8_t, 1> bytes{};
@@ -115,9 +129,22 @@ public:
         return memory_fault_;
     }
 
+    [[nodiscard]] std::size_t code_read_callbacks() const noexcept {
+        return code_read_callbacks_;
+    }
+
+    [[nodiscard]] std::size_t data_read_callbacks() const noexcept {
+        return data_read_callbacks_;
+    }
+
+    [[nodiscard]] std::size_t data_write_callbacks() const noexcept {
+        return data_write_callbacks_;
+    }
+
 private:
     template <std::size_t Size>
     [[nodiscard]] bool read_bytes(std::uint32_t vaddr, std::array<std::uint8_t, Size>& bytes) {
+        ++data_read_callbacks_;
         if (!memory_.read(vaddr, std::span<std::uint8_t>{bytes})) {
             memory_fault_ = true;
             return false;
@@ -127,6 +154,7 @@ private:
 
     template <std::size_t Size>
     void write_bytes(std::uint32_t vaddr, const std::array<std::uint8_t, Size>& bytes) {
+        ++data_write_callbacks_;
         if (!memory_.write(vaddr, std::span<const std::uint8_t>{bytes})) {
             memory_fault_ = true;
         }
@@ -135,6 +163,9 @@ private:
     memory::GuestMemory& memory_;
     bool exception_raised_ = false;
     bool memory_fault_ = false;
+    std::size_t code_read_callbacks_ = 0;
+    std::size_t data_read_callbacks_ = 0;
+    std::size_t data_write_callbacks_ = 0;
 };
 
 }  // namespace
@@ -147,6 +178,12 @@ ExecutionResult execute(memory::GuestMemory& memory, const ExecutionRequest& req
     config.arch_version = Dynarmic::A32::ArchVersion::v7;
     config.code_cache_size = 8 * 1024 * 1024;
     config.always_little_endian = true;
+
+    const auto fastmem = memory.fastmem_base();
+    if (fastmem.has_value()) {
+        config.fastmem_pointer = *fastmem;
+        config.recompile_on_fastmem_failure = true;
+    }
 
     Dynarmic::A32::Jit jit{config};
     jit.Regs() = request.regs;
@@ -169,6 +206,10 @@ ExecutionResult execute(memory::GuestMemory& memory, const ExecutionRequest& req
         .instructions_executed = executed,
         .exception_raised = environment.exception_raised(),
         .memory_fault = environment.memory_fault(),
+        .fastmem_enabled = fastmem.has_value(),
+        .code_read_callbacks = environment.code_read_callbacks(),
+        .data_read_callbacks = environment.data_read_callbacks(),
+        .data_write_callbacks = environment.data_write_callbacks(),
     };
 }
 
