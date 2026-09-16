@@ -122,6 +122,14 @@ void crash_handler(int signal_number, siginfo_t* info, void*) {
     if (fd >= 0 && fd != STDERR_FILENO) {
         safe_write_all(fd, message, size);
     }
+
+    // Dynarmic's POSIX fastmem SIGSEGV handler saves the previously installed
+    // action and chains to it by calling the function pointer directly for an
+    // unhandled fault. In that chained path the kernel cannot apply
+    // SA_RESETHAND for us, so explicitly restore the default disposition.
+    // Recoverable fastmem faults never reach this callback: Dynarmic handles
+    // them first and rewrites the JIT context to its fallback path.
+    signal(signal_number, SIG_DFL);
 }
 
 bool install_crash_handlers() {
