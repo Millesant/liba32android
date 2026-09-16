@@ -40,9 +40,10 @@ enum class Elf32LoadError : std::uint8_t {
 };
 
 struct Elf32LoadOptions {
-    // For ET_DYN, this is the guest address where the lowest page-aligned
-    // PT_LOAD mapping should begin. ET_EXEC ignores this field and loads at
-    // its fixed guest virtual addresses with load_bias == 0.
+    // For ET_DYN, this is the guest address where the lowest host-page-aligned
+    // PT_LOAD mapping should begin. The resulting load bias must also preserve
+    // every PT_LOAD p_align congruence requirement. ET_EXEC ignores this field
+    // and loads at its fixed guest virtual addresses with load_bias == 0.
     std::optional<std::uint32_t> dynamic_base;
 };
 

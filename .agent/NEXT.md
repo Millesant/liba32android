@@ -1,35 +1,41 @@
 # Next
 
-The first M3 ELF32 `PT_LOAD` mapping slice is merged to `bleeding` as `8059c07b989f845b5b48e306e39cdca6c66d502b` and post-merge GitHub Actions run `35086133758` (#52) is PASS. M3 remains the active milestone.
+The first M3 ELF32 `PT_LOAD` mapping slice is merged. PR #9 adds a reproducible real ARMv7/Android ET_DYN fixture, real PT_LOAD integration evidence, and PT_LOAD-aligned ET_DYN load-bias validation. M3 remains the active milestone.
 
-1. Add a reproducible real ARM32 ELF fixture for loader-only compatibility evidence.
-   - Prefer generating a tiny freestanding ARMv7/Android `ET_DYN` fixture reproducibly from source rather than committing an opaque application binary.
-   - Feed the fixture bytes through the host ELF32 loader and validate load bias, mapped ranges, file bytes, BSS and final permissions.
-   - Record the fixture's observed `PT_LOAD` layout, alignment and page-boundary behavior as evidence.
-   - Explicitly include 16 KiB host-page compatibility in the evidence plan: current synthetic loader tests execute on a 4 KiB Ubuntu host and do not prove shared-page behavior on 16 KiB Android hosts.
-   - If the real fixture demonstrates page-overlapping `PT_LOAD` ranges, implement an explicit shared-page mapping plan without silently granting RWX; otherwise retain the current rejection.
-   - DoD: fixture generation is reproducible, loader-only integration test PASS, synthetic malformed tests remain PASS, and the observed page-layout constraints are documented.
+1. Integrate PR #9 after the final documented-head CI is green.
+   - Keep the PR bounded to reproducible fixture generation, loader-only real ELF validation, evidence capture, and p_align-preserving ET_DYN load bias.
+   - Do not fold dynamic linking or relocation application into the merge.
+   - DoD: PR #9 merged to `bleeding`, post-merge CI PASS, durable state reconciled.
 
-2. Extend M3 metadata parsing needed by the future linker without performing linking yet.
-   - Identify loaded `PT_DYNAMIC` and relevant read-only metadata by guest VA/range.
-   - Keep parser output in guest-address terms only; host pointers must remain absent from the loader/linker boundary.
-   - Do not resolve DT_NEEDED, symbols or relocations in this step.
+2. Extend M3 loader metadata to identify `PT_DYNAMIC` without performing linking.
+   - Parse program-header metadata needed to locate a loaded PT_DYNAMIC range.
+   - Return its guest virtual address/range after load bias in guest-address terms only.
+   - Define policy for missing PT_DYNAMIC and reject malformed/multiple conflicting PT_DYNAMIC ranges explicitly.
+   - Validate that the reported dynamic range is inside a mapped readable PT_LOAD region.
+   - Use the reproducible real ARM32 fixture as the positive integration case; it has observed PT_DYNAMIC at pre-bias guest VA `0x826c` with size `0x60`.
+   - Do not interpret DT_NEEDED, DT_REL, symbols, strings, GNU hash, or apply relocations in this slice.
+   - DoD: synthetic malformed cases plus the real fixture metadata case PASS; existing 17 tests remain green; Android arm64 cross-build remains PASS.
 
-3. Correct the standalone address-space probe environment metadata.
+3. Add actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
+   - Run the mapped-memory/runtime diagnostics on an Android AArch64 environment whose runtime page size is 16384.
+   - Exercise the real 16 KiB-aligned ARM32 fixture through the loader on that host if a suitable diagnostic entry point exists by then.
+   - Keep the current status explicit: 16 KiB ELF metadata is TESTED on a 4 KiB Linux host; actual 16 KiB `MappedGuestMemory` runtime behavior is NOT RUN.
+
+4. Correct the standalone address-space probe environment metadata.
    - Rename compile-time `android.api` to `android.ndk_api` (or equivalent).
    - Report runtime Android SDK/release separately using platform properties, matching `android_runtime_smoke` where practical.
 
-4. Add the next focused M1 regressions independently of M3.
+5. Add the next focused M1 regressions independently of M3.
    - Add Thumb branch/call coverage.
    - Add Thumb memory/stack coverage.
    - Add targeted exception and invalid-code/memory behavior around the generic CPU seam.
 
-5. Begin M4 dynamic linking only after M3 mapping/metadata behavior is stable.
+6. Begin M4 dynamic linking only after M3 mapping/metadata behavior is stable.
    - Add dynamic string/symbol table parsing, DT_NEEDED resolution and ARM relocations as separate tested layers.
    - Preserve loader/linker separation and add malformed metadata/relocation tests before real application loading.
 
-6. Collect at least one materially different Android/vendor/kernel sample before broad fastmem compatibility claims.
+7. Collect at least one materially different Android/vendor/kernel sample before broad fastmem compatibility claims.
 
-7. Exercise fatal crash diagnostics deliberately only after a dedicated safe crash-test mode exists.
+8. Exercise fatal crash diagnostics deliberately only after a dedicated safe crash-test mode exists.
 
-8. Decide the project's own open-source license before public release.
+9. Decide the project's own open-source license before public release.

@@ -31,6 +31,7 @@ struct RawLoadSegment {
     std::uint32_t virtual_address{};
     std::uint32_t file_size{};
     std::uint32_t memory_size{};
+    std::uint32_t alignment{};
     memory::MemoryPermission permissions{memory::MemoryPermission::None};
 };
 
@@ -181,7 +182,7 @@ Elf32LoadResult load_elf32(memory::MappedGuestMemory& memory,
         segment.file_size = read_u32(image, offset + 16);
         segment.memory_size = read_u32(image, offset + 20);
         const std::uint32_t flags = read_u32(image, offset + 24);
-        const std::uint32_t alignment = read_u32(image, offset + 28);
+        segment.alignment = read_u32(image, offset + 28);
 
         if (segment.file_size > segment.memory_size) {
             return failure(Elf32LoadError::SegmentFileszExceedsMemsz);
@@ -193,9 +194,9 @@ Elf32LoadResult load_elf32(memory::MappedGuestMemory& memory,
             kGuestAddressSpaceSize) {
             return failure(Elf32LoadError::SegmentAddressOverflow);
         }
-        if (alignment > 1 &&
-            (!is_power_of_two(alignment) ||
-             (segment.virtual_address % alignment) != (segment.offset % alignment))) {
+        if (segment.alignment > 1 &&
+            (!is_power_of_two(segment.alignment) ||
+             (segment.virtual_address % segment.alignment) != (segment.offset % segment.alignment))) {
             return failure(Elf32LoadError::SegmentAlignmentInvalid);
         }
         if (!decode_permissions(flags, segment.permissions)) {
@@ -238,6 +239,11 @@ Elf32LoadResult load_elf32(memory::MappedGuestMemory& memory,
         if (bias > std::numeric_limits<std::uint32_t>::max() ||
             maximum_page_end + bias > kGuestAddressSpaceSize) {
             return failure(Elf32LoadError::LoadBiasOverflow);
+        }
+        for (const RawLoadSegment& segment : raw_segments) {
+            if (segment.alignment > 1 && (bias % segment.alignment) != 0) {
+                return failure(Elf32LoadError::DynamicBaseUnaligned);
+            }
         }
         load_bias = static_cast<std::uint32_t>(bias);
     }
