@@ -1,41 +1,39 @@
 # Next
 
-M2 guest address space is complete for its current scope. Direct Android/AArch64 evidence now covers A32 execution, mapped direct-fastmem data access, and fastmem fault -> callback fallback on the known Android 16 / SDK 36 Termux environment. M3 ELF32 loading is the active milestone.
+M2 guest address space is complete for its current scope. The first M3 ELF32 `PT_LOAD` mapping slice is implemented on PR #8 and validated in GitHub Actions with Linux 16/16 PASS plus Android arm64 cross-build PASS.
 
-1. Implement the first bounded M3 ELF32 loader slice.
-   - Add an ELF32 parser/validator independent from Dynarmic types.
-   - Validate ELF magic/class/data/version, `ET_DYN`/supported type policy, `EM_ARM`, program-header bounds, and overflow cases before mapping anything.
-   - Parse `PT_LOAD` segments and compute page-aligned guest mapping ranges/load bias using logical guest VAs.
-   - Map segments into `MappedGuestMemory`, copy file bytes, zero-fill BSS (`p_memsz > p_filesz`), and apply final `R`/`RW`/`RX` permissions.
-   - Do not implement dynamic symbol resolution or relocations in this first slice.
-   - DoD: focused host tests cover one valid synthetic ELF32 image plus malformed headers, out-of-bounds program headers, segment overflow, BSS zero-fill, and final permissions; full existing CTest remains PASS; Android arm64 cross-build remains PASS.
+1. Integrate PR #8 after the final documented-head CI is green.
+   - Keep the first slice bounded to ELF32 validation + `PT_LOAD` mapping.
+   - Do not fold relocations/symbol resolution into the merge.
+   - DoD: PR merged to `bleeding`, post-merge CI PASS, state reconciled.
 
-2. Define the M3 loader API boundary before adding linking.
-   - Loader must consume a byte image plus `GuestMemory`/mapped-memory services and return guest metadata such as load bias, entry VA, and loaded ranges.
-   - Host pointers must not appear in the public loader result.
-   - Keep ELF parsing/loading separate from symbol resolution, relocation application, CPU execution, and Android compatibility bridges.
+2. Add a reproducible real ARM32 ELF fixture for loader-only compatibility evidence.
+   - Prefer generating a tiny freestanding ARMv7/Android `ET_DYN` fixture reproducibly from source rather than committing an opaque application binary.
+   - Feed the fixture bytes through the host ELF32 loader and validate load bias, mapped ranges, file bytes, BSS and final permissions.
+   - Record the real fixture's `PT_LOAD` layout/alignment as evidence.
+   - If the fixture demonstrates page-overlapping `PT_LOAD` ranges, implement an explicit shared-page plan without silently granting RWX; otherwise retain the current rejection.
+   - DoD: fixture generation is reproducible, loader-only integration test PASS, synthetic malformed tests remain PASS.
 
-3. Correct the standalone address-space probe environment metadata.
+3. Extend M3 metadata parsing needed by the future linker without performing linking yet.
+   - Identify loaded `PT_DYNAMIC` and relevant read-only metadata by guest VA/range.
+   - Keep parser output in guest-address terms only.
+   - Do not resolve DT_NEEDED, symbols or relocations in this step.
+
+4. Correct the standalone address-space probe environment metadata.
    - Rename compile-time `android.api` to `android.ndk_api` (or equivalent).
    - Report runtime Android SDK/release separately using platform properties, matching `android_runtime_smoke` where practical.
-   - Preserve format compatibility where reasonable and document the probe-version change.
 
-4. Add the next focused M1 regressions independently of M3.
+5. Add the next focused M1 regressions independently of M3.
    - Add Thumb branch/call coverage.
    - Add Thumb memory/stack coverage.
    - Add targeted exception and invalid-code/memory behavior around the generic CPU seam.
-   - Defer broad ISA completeness claims.
 
-5. Collect at least one materially different Android/vendor/kernel sample before broad fastmem compatibility claims.
-   - Preserve raw logs under `docs/research/evidence/`.
-   - Compare 4 GiB reservation, normal runtime smoke, fastmem direct access, page size, and fault fallback behavior.
+6. Begin M4 dynamic linking only after M3 mapping/metadata behavior is stable.
+   - Add dynamic string/symbol table parsing, DT_NEEDED resolution and ARM relocations as separate tested layers.
+   - Preserve loader/linker separation and add malformed metadata/relocation tests before real application loading.
 
-6. Add dynamic linking only after the initial ELF32 mapping slice is stable.
-   - Introduce ARM relocation handling and symbol resolution as separate work.
-   - Preserve loader/linker separation and add malformed relocation/symbol-table tests before real application loading.
+7. Collect at least one materially different Android/vendor/kernel sample before broad fastmem compatibility claims.
 
-7. Exercise fatal crash diagnostics deliberately only after a dedicated safe crash-test mode exists.
-   - Verify `A32CRASH|...` survives to file/stderr and Android still emits its native tombstone/backtrace.
-   - Do not induce crashes in normal runtime/probe modes merely to test logging.
+8. Exercise fatal crash diagnostics deliberately only after a dedicated safe crash-test mode exists.
 
-8. Decide the project's own open-source license before public release.
+9. Decide the project's own open-source license before public release.

@@ -32,6 +32,7 @@ FetchContent_MakeAvailable(dynarmic)
 
 add_library(liba32android SHARED
     src/cpu/dynarmic_cpu.cpp
+    src/elf/elf32_loader.cpp
     src/memory/guest_memory.cpp
 )
 
@@ -89,6 +90,10 @@ if(LIBA32ANDROID_BUILD_TESTS)
     target_include_directories(cpu_fastmem_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(cpu_fastmem_test PRIVATE liba32android)
 
+    add_executable(elf32_loader_test tests/elf32_loader.cpp)
+    target_include_directories(elf32_loader_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(elf32_loader_test PRIVATE liba32android)
+
     add_test(NAME guest_arm_return_42 COMMAND cpu_smoke arm)
     add_test(NAME guest_thumb_return_42 COMMAND cpu_smoke thumb)
     add_test(NAME guest_register_state COMMAND cpu_execution registers)
@@ -99,4 +104,10 @@ if(LIBA32ANDROID_BUILD_TESTS)
     add_test(NAME guest_memory_bounds COMMAND guest_memory_test)
     add_test(NAME mapped_guest_memory_lifecycle COMMAND mapped_guest_memory_test)
     add_test(NAME dynarmic_fastmem_and_fallback COMMAND cpu_fastmem_test)
+    add_test(NAME elf32_valid_dynamic_load COMMAND elf32_loader_test valid_dynamic)
+    add_test(NAME elf32_valid_exec_load COMMAND elf32_loader_test valid_exec)
+    add_test(NAME elf32_header_validation COMMAND elf32_loader_test headers)
+    add_test(NAME elf32_program_header_bounds COMMAND elf32_loader_test ph_bounds)
+    add_test(NAME elf32_segment_validation COMMAND elf32_loader_test segments)
+    add_test(NAME elf32_address_conflict COMMAND elf32_loader_test address_conflict)
 endif()
