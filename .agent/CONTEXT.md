@@ -10,7 +10,7 @@ Keep CPU execution, guest address space, ELF32 loading/linking, AAPCS32/AAPCS64 
 
 ## Current milestone
 
-M1/M2 foundation: expand verified A32 behavior while establishing a generic guest-memory/address-space seam. No ELF loader or Android API bridges yet.
+M2 guest address space: the generic memory seam now has both a callback-oriented linear implementation and a mapped 4 GiB implementation with optional Dynarmic fastmem. ELF loading and Android API bridges are not implemented yet.
 
 ## CPU dependency
 
@@ -18,7 +18,14 @@ Dynarmic is selected behind `src/cpu/`, pinned to azahar-emu/dynarmic commit `e7
 
 ## Current memory seam
 
-`memory::GuestMemory` is the engine-independent read/write contract. `LinearGuestMemory` is the initial contiguous implementation used by focused tests; it is not a decision in favor of low-VA mappings, page tables or fastmem.
+`memory::GuestMemory` is the engine-independent memory contract. Guest virtual addresses remain logical 32-bit values.
+
+- `LinearGuestMemory` is the deterministic callback/correctness implementation used by focused tests.
+- `MappedGuestMemory` owns a contiguous 4 GiB high-host-VA reservation, page mapping/permission metadata, and page-aligned map/protect/unmap lifecycle operations.
+- The mapped backend can expose its reservation base only through the internal `fastmem_base()` capability used by the CPU adapter; loader/ABI/runtime interfaces must not expose host pointers as guest pointers.
+- Callback access remains the mandatory correctness fallback when fastmem is absent or faults.
+
+D-0004 selects high-base contiguous fastmem as the preferred first Android acceleration path based on real Android/AArch64 evidence; direct low-VA pointer identity remains optional and outside the generic contract.
 
 ## Build/test entry points
 
@@ -30,7 +37,7 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-Android `arm64-v8a` is cross-built in GitHub Actions with NDK `27.3.13750724`.
+Android `arm64-v8a` is cross-built in GitHub Actions with NDK `27.3.13750724`. CI also publishes `android_runtime_smoke` bundled with `liba32android.so` and a Termux launcher for real-device A32 execution validation.
 
 ## Evidence labels
 
