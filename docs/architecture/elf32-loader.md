@@ -1,6 +1,6 @@
 # ELF32 loader architecture
 
-Status: first M3 PT_LOAD slice implemented and host-tested
+Status: first M3 PT_LOAD slice implemented and tested with synthetic images plus a reproducible real ARMv7/Android ET_DYN fixture
 
 ## Boundary
 
@@ -27,7 +27,7 @@ Dynamic linking will be a later layer above this mapping primitive rather than b
 
 ## Supported image policy
 
-The first slice accepts:
+The current slice accepts:
 
 - ELF32 class;
 - little-endian encoding;
@@ -39,7 +39,9 @@ The first slice accepts:
 
 `ET_EXEC` loads at its fixed guest virtual addresses with `load_bias == 0`.
 
-`ET_DYN` requires the caller to provide an explicit page-aligned `dynamic_base`. That value identifies where the lowest page-aligned `PT_LOAD` mapping begins. The loader computes `load_bias = dynamic_base - lowest_load_page` and returns guest metadata only; it does not choose addresses through an allocator yet.
+`ET_DYN` requires the caller to provide an explicit host-page-aligned `dynamic_base`. That value identifies where the lowest host-page-aligned `PT_LOAD` mapping begins. The loader computes `load_bias = dynamic_base - lowest_load_page` and also requires that the resulting load bias preserve every `PT_LOAD p_align` congruence requirement. It returns guest metadata only and does not choose addresses through an allocator yet.
+
+This additional load-bias rule is required even when an ELF segment alignment is larger than the current host page size. A real NDK-generated ARMv7 fixture with `p_align=0x4000` demonstrated that a 4 KiB-aligned base is not necessarily a valid 16 KiB-aligned load bias.
 
 The result exposes guest entry/load-bias/segment metadata. Host reservation pointers are not part of the loader API.
 
@@ -56,18 +58,20 @@ Before mapping any guest page, the loader validates:
 - 32-bit guest-address overflow;
 - ELF segment alignment constraints;
 - supported segment permission shapes;
-- ET_DYN base alignment/load-bias range;
+- ET_DYN host-page alignment, load-bias range, and every `PT_LOAD p_align` constraint;
 - entry-point overflow;
 - page-overlapping `PT_LOAD` ranges;
 - conflicts with pages already mapped in `MappedGuestMemory`.
 
-The first slice deliberately rejects page-overlapping `PT_LOAD` ranges. Handling shared boundary pages with merged permissions/content is deferred until a real compatibility requirement demonstrates the need; silent permission broadening is not allowed.
+The current slice deliberately rejects page-overlapping `PT_LOAD` ranges. Handling shared boundary pages with merged permissions/content is deferred until a concrete compatibility requirement demonstrates the need; silent permission broadening is not allowed.
+
+The current real fixture does not require shared-page handling. Its four `PT_LOAD` ranges are separate at both the observed 4 KiB host granularity and, by calculation from the program headers, at 16 KiB granularity. That 16 KiB statement is an inference from the headers, not a 16 KiB-host runtime test.
 
 ## Mapping lifecycle
 
 For each validated non-empty `PT_LOAD` segment:
 
-1. compute the page-aligned guest mapping range;
+1. compute the host-page-aligned guest mapping range;
 2. map the range temporarily `RW` for initialization;
 3. copy exactly `p_filesz` bytes from the image to the biased guest virtual address;
 4. explicitly zero `p_memsz - p_filesz` bytes for BSS;
@@ -94,19 +98,42 @@ Synthetic host tests cover:
 - page-overlapping load segments;
 - collisions with pre-existing guest mappings.
 
-Android CI cross-builds the same loader into `liba32android.so`; actual ELF32 loading on Android is not yet a separate device smoke.
+A reproducible real fixture is generated from `tests/fixtures/arm32_loader_fixture.c` using the project-pinned Android NDK r27d / API 26 compiler and `-z max-page-size=16384`. CI builds it twice and requires byte-identical output before testing it.
+
+Observed real fixture properties include:
+
+- ARM ELF32 `ET_DYN`;
+- four `PT_LOAD` segments;
+- all `PT_LOAD p_align=0x4000`;
+- R, RX and RW load segments;
+- BSS;
+- `PT_DYNAMIC`;
+- GNU RELRO and ARM EXIDX program headers.
+
+The real fixture integration test verifies PT_LOAD metadata, exact copied file bytes, BSS zero-fill, final guest permissions, a valid aligned load bias, and rejection of a load bias that is host-page-aligned but violates the fixture's 16 KiB `p_align`.
+
+Raw/current evidence is documented in `docs/research/evidence/arm32-loader-fixture-ndk-r27d-2026-09-16.md`.
+
+Android CI cross-builds the same loader into `liba32android.so`; actual ELF32 loading on an Android device and operation on an actual 16 KiB Android host page configuration remain NOT RUN.
+
+## Next M3 boundary
+
+The real fixture contains `PT_DYNAMIC` and real dynamic-table metadata. The next loader step may identify and return the loaded `PT_DYNAMIC` guest range/metadata location so a later linker layer can consume it.
+
+That step must remain metadata discovery only. Dynamic tags, DT_NEEDED dependencies, symbols and relocations must not be resolved as a side effect of PT_LOAD mapping.
 
 ## Not implemented in this slice
 
-- `PT_DYNAMIC` interpretation;
-- dynamic symbol/string tables;
+- `PT_DYNAMIC` interpretation beyond observing it in the fixture;
+- dynamic symbol/string tables as loader output;
 - DT_NEEDED dependency loading;
 - ARM relocations;
 - symbol lookup/interposition;
-- RELRO handling;
+- RELRO enforcement;
 - TLS segments;
-- GNU/Android-specific dynamic-linker metadata;
+- GNU/Android-specific dynamic-linker metadata processing;
 - automatic guest-VA allocation for `ET_DYN`;
-- loading a real Android ARM32 library and executing its entry/symbols.
+- loading this fixture through the runtime on a real Android device;
+- executing loaded ARM32 fixture symbols.
 
 Those items belong to later M3/M4 work and must preserve the loader/linker separation.
