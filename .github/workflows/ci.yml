@@ -84,6 +84,7 @@ jobs:
           strings build-android/android_runtime_smoke | grep -F 'a32.memory.fastmem_direct=%s'
           grep -F 'A32CRASH|component=android_runtime_smoke|signal=' tools/android_runtime_smoke.cpp
           grep -F 'A32ERR|component=android_runtime_smoke|' tools/android_runtime_smoke.cpp
+          grep -F 'signal(signal_number, SIG_DFL);' tools/android_runtime_smoke.cpp
           readelf -d build-android/android_runtime_smoke | grep -F 'Shared library: [liba32android.so]'
       - name: Upload Android runtime
         uses: actions/upload-artifact@v4
