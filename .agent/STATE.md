@@ -1,7 +1,7 @@
 # Current State
 
 Last updated: 2026-09-16
-Current milestone: M2 guest address space
+Current milestone: M3 ELF32 loading
 Integration branch: `bleeding`
 
 ## Working / proven
@@ -16,12 +16,11 @@ Integration branch: `bleeding`
 - Dynarmic fastmem integration is IMPLEMENTED behind the generic memory capability. When a backend exposes a reservation, the adapter sets `UserConfig::fastmem_pointer` and keeps `recompile_on_fastmem_failure=true`.
 - Linux tests prove callback-only and fastmem-capable backends produce the expected guest-visible A32 load/store behavior, including fastmem fault -> callback fallback for unmapped guest data.
 - `android_runtime_smoke` is IMPLEMENTED as an Android arm64 executable linked to the real `liba32android.so` and packaged with a Termux launcher.
-- Raw Android runtime-smoke evidence is stored in `docs/research/evidence/android-runtime-smoke-termux-arm64-2026-09-16.log`; the evidence classification is stored beside it in `.md` form.
 - On the observed Android 16 / runtime SDK 36 / AArch64 Termux environment, A32 `mov r0,#42` executed through `liba32android` / Dynarmic's AArch64 backend and returned 42.
-- On that same environment, mapped A32 `STR`/`LDR` completed with `r2=0x12345678` and stored `0x12345678`; both data callback counts were zero and `a32.memory.fastmem_direct=true`.
-- The Android runtime smoke reached `runtime_smoke.complete=true` without a crash marker.
+- On that same environment, mapped A32 `STR`/`LDR` completed with `r2=0x12345678` and stored `0x12345678`; both mapped data callback counts were zero and `a32.memory.fastmem_direct=true`.
+- On that same environment, the optional unmapped-data fault test reported `memory_fault=true`, `data_read_callbacks=1`, `a32.fastmem_fault.status=PASS`, and still reached `runtime_smoke.complete=true` without a fatal process crash.
 - The shared runtime produces exactly `liba32android.so`; CI rejects the former duplicated filename.
-- Raw first-device address-space evidence remains stored in `docs/research/evidence/android-termux-arm64-2026-09-16.log` with analysis beside it.
+- Raw Android runtime-smoke evidence is stored under `docs/research/evidence/`, including the normal direct-fastmem run and the fastmem fault/fallback run with separate evidence classification files.
 
 ## Validation / evidence status
 
@@ -34,16 +33,22 @@ Environment reported by the runtime smoke:
 - Architecture: `aarch64`
 - Host page size: 4096 bytes
 - Kernel release: `6.6.102-android15-8-abA566EXXSDCZHB-4k`
-- Fastmem reservation: PASS / available at high host VA `0x6c42255000`
+- High-base fastmem reservation: PASS
 - A32 return-42 through Dynarmic AArch64 backend: PASS
-- `a32.return42.r0=42`: PASS
 - A32 mapped `STR`/`LDR`: PASS
 - Direct fastmem data path (`data_read_callbacks=0`, `data_write_callbacks=0`): PASS
-- `a32.memory.fastmem_direct=true`: PASS
-- Runtime smoke completion: PASS
-- Optional fastmem fault -> callback fallback on Android: NOT RUN
-- `A32CRASH|...` fatal-signal emission: NOT RUN
+- Fastmem fault -> callback fallback on unmapped guest data: PASS
+- Fault surfaced as guest `memory_fault=true`: PASS
+- Fault fallback data-read callback count: observed 1
+- Runtime process survived the fallback test and reached `runtime_smoke.complete=true`: PASS
+- Fatal `A32CRASH|...` emission: NOT RUN because no fatal crash occurred
 - Android tombstone/backtrace coexistence: NOT RUN
+
+Normal direct-fastmem raw evidence:
+- `docs/research/evidence/android-runtime-smoke-termux-arm64-2026-09-16.log`
+
+Fault/fallback raw evidence:
+- `docs/research/evidence/android-runtime-smoke-fastmem-fallback-termux-arm64-2026-09-16.log`
 
 ### Real Android/AArch64 primitive evidence (2026-09-16)
 
@@ -58,50 +63,55 @@ Environment reported by the runtime smoke:
 - RW->RX transition: PASS
 - Generated AArch64 execution: PASS, result 42
 
-### Mapped-memory / fastmem GitHub validation
+### GitHub validation
 
-Final pre-evidence implementation head `686c06cf5fb4cd804bf039faf6f110bb2533ba24`: GitHub Actions run `35081829133` (#35) completed PASS.
+PR #7 was squash-merged to `bleeding` as `e703f1b72083513581c98a32e18328a6547a45cd`.
 
-- Linux configure/build: PASS
-- Linux shared-library filename check: PASS
+Post-merge GitHub Actions run `35083413111` (#41): PASS.
+
+- Linux configure/build/test: PASS
 - Linux CTest: 10/10 PASS
-  - existing 8 ARM/Thumb/memory tests: PASS
-  - `mapped_guest_memory_lifecycle`: PASS
-  - `dynarmic_fastmem_and_fallback`: PASS
-- Linux callback-only A32 load/store baseline: PASS
-- Linux mapped A32 fastmem load/store with zero data callbacks: PASS
-- Linux unmapped fastmem access -> callback fallback -> `memory_fault`: PASS
+- `mapped_guest_memory_lifecycle`: PASS
+- `dynarmic_fastmem_and_fallback`: PASS
 - Android `arm64-v8a` runtime + address-space probe + runtime-smoke configure/build/link: PASS
-- Android shared-library filename check: PASS
-- Android runtime-smoke diagnostic marker verification: PASS
-- Android runtime-smoke `DT_NEEDED` reference to `liba32android.so`: PASS
+- Android shared-library filename and diagnostic checks: PASS
 - Android runtime, probe, and runtime-smoke artifact publication: PASS
 
-Earlier implementation checkpoint run `35080732804` (#27) also passed Linux 10/10 and Android compile/link/package. Run #25 (`35080280754`) failed only a CI assertion requiring `$ORIGIN` RPATH; packaging was corrected to an explicit `LD_LIBRARY_PATH` launcher. Run #26 was superseded/cancelled.
+## Milestone status
+
+### M2 guest address space — COMPLETE for current scope
+
+The current M2 design now has:
+
+- logical 32-bit guest-VA abstraction independent from host pointer identity;
+- callback correctness implementation;
+- mapped 4 GiB guest address-space implementation;
+- page map/protect/unmap lifecycle and permission metadata;
+- Dynarmic fastmem capability integration;
+- Linux regression proof for direct fastmem and callback fallback;
+- direct Android/AArch64 proof for A32 execution, direct mapped fastmem data access, and fastmem fault -> callback fallback on the known environment.
+
+This completion does not imply broad Android compatibility or broad ISA completeness. Additional devices remain compatibility evidence work rather than a prerequisite for beginning M3.
 
 ## Evidence boundary
 
-The Android runtime-smoke result directly proves the tested A32 return-42 and mapped STR/LDR paths execute through the pinned Dynarmic AArch64 backend on one Android 16 / SDK 36 Termux environment. The zero data-callback counts plus correct memory result directly support the tested direct-fastmem data path on that environment.
-
-This does not establish broad Android compatibility, broad ISA correctness, ELF/application compatibility, or Android fastmem-fault recovery. The optional device fault/fallback test remains NOT RUN even though that behavior is TESTED/PASS on Linux.
+The Android evidence proves the tested paths on one Android 16 / SDK 36 AArch64 Termux environment. It does not establish broad vendor/kernel compatibility, broad A32/Thumb/VFP/NEON correctness, ELF/application compatibility, or public runtime API completeness.
 
 Low-VA identity remains optional even though sampled low addresses succeeded in one process. The generic loader/ABI/runtime continues to use logical guest VAs.
 
 ## Partially working / not implemented
 
-- M1 instruction coverage is PARTIAL: basic integer register state, ARM branch/call, stack and load/store paths are tested; broader Thumb/Thumb-2, VFP/NEON, exception and edge-case coverage remains future work.
-- M2 guest address space is substantially advanced but still PARTIAL: mapped lifecycle and fastmem seam are implemented; tested execution is proven on Linux and one Android/AArch64 environment; wider-device compatibility and Android fastmem-fault fallback remain unproven.
-- Callback memory: IMPLEMENTED / TESTED as correctness path.
-- High-base 4 GiB fastmem strategy: IMPLEMENTED; primitive feasibility and tested A32 direct-fastmem execution PROVEN on one Android environment.
-- Dynarmic page-table integration: NOT IMPLEMENTED; retained as a possible secondary acceleration path if later evidence requires it.
-- Direct low-VA pointer identity: sampled on one device process but remains experimental and outside the correctness contract.
-- ELF32 loader/linker and ARM relocations: NOT IMPLEMENTED.
+- M1 instruction coverage remains PARTIAL: basic integer register state, ARM branch/call, stack and load/store paths are tested; broader Thumb/Thumb-2, VFP/NEON, exception and edge-case coverage remains future work.
+- M3 ELF32 loader: NOT IMPLEMENTED; now the active milestone.
+- ARM relocations and dynamic linking: NOT IMPLEMENTED.
 - Guest AAPCS32 <-> host AAPCS64 ABI bridge and `host_add(20,22)` proof: NOT IMPLEMENTED.
 - libc/libm/libdl/pthread/TLS/signals/JNI/EGL/GLES/OpenSL bridges: NOT IMPLEMENTED.
+- Dynarmic page-table integration: NOT IMPLEMENTED; retained only as a possible secondary acceleration path if later compatibility evidence requires it.
+- Direct low-VA pointer identity remains experimental and outside the correctness contract.
 - Public/app-integrated runtime logging API: NOT IMPLEMENTED; current `A32ERR`/`A32CRASH` behavior is scoped to diagnostics executables.
 - Application profiles and Minecraft-specific compatibility work: NOT IMPLEMENTED.
 - Project-level open-source license selection: NOT IMPLEMENTED.
 
 ## Current blocker
 
-No external blocker remains for normal A32 execution or mapped direct-fastmem proof on the known Android environment. The next device-only validation is the optional fastmem fault -> callback fallback smoke mode. Broader compatibility still requires additional Android/vendor/kernel samples.
+No blocker prevents beginning M3 ELF32 loading. Broad Android compatibility still requires additional device/vendor/kernel samples, but that work can proceed independently of the first ELF32 loader slice.
