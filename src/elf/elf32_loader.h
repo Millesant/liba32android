@@ -32,6 +32,13 @@ enum class Elf32LoadError : std::uint8_t {
     DynamicBaseUnaligned,
     LoadBiasOverflow,
     EntryAddressOverflow,
+    MultipleDynamicSegments,
+    DynamicSegmentEmpty,
+    DynamicSegmentFileszExceedsMemsz,
+    DynamicSegmentFileOutOfBounds,
+    DynamicSegmentAddressOverflow,
+    DynamicSegmentOutsideLoad,
+    DynamicSegmentNotReadable,
     SegmentPageOverlap,
     AddressConflict,
     MapFailed,
@@ -56,11 +63,21 @@ struct Elf32LoadedSegment {
     memory::MemoryPermission permissions{memory::MemoryPermission::None};
 };
 
+struct Elf32DynamicSegment {
+    // Guest VA after applying load_bias. No host pointer crosses this boundary.
+    std::uint32_t guest_address{};
+    std::uint32_t file_size{};
+    std::uint32_t memory_size{};
+};
+
 struct Elf32LoadResult {
     Elf32LoadError error{Elf32LoadError::None};
     std::uint32_t load_bias{};
     std::uint32_t entry{};
     std::vector<Elf32LoadedSegment> segments;
+    // Missing PT_DYNAMIC is valid and leaves this empty. A present PT_DYNAMIC
+    // is validated as one unique, non-empty range inside a readable PT_LOAD.
+    std::optional<Elf32DynamicSegment> dynamic_segment;
 
     [[nodiscard]] explicit operator bool() const noexcept {
         return error == Elf32LoadError::None;
