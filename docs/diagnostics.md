@@ -125,7 +125,9 @@ It also installs minimal async-signal-safe markers for `SIGABRT`, `SIGBUS`, `SIG
 A32CRASH|component=android_runtime_smoke|signal=11|pid=12345|addr=0xdeadbeef
 ```
 
-If the runtime smoke crashes, send the complete log plus that marker and any Android tombstone/native backtrace. The crash marker supplements Android's normal crash handling; it does not replace a tombstone.
+Dynarmic itself owns the active POSIX `SIGSEGV` handler while a JIT exists so it can recover fastmem page faults. Recoverable faults whose PC belongs to Dynarmic-generated code are consumed by Dynarmic and do not reach the smoke crash marker. For a fault Dynarmic does not recognize, its handler chains to the previously installed smoke handler by calling that function directly. The smoke therefore restores `SIG_DFL` explicitly after writing `A32CRASH`; relying only on `SA_RESETHAND` would be insufficient in that direct-call chaining path.
+
+If the runtime smoke crashes, send the complete log plus that marker and any Android tombstone/native backtrace. The crash marker supplements Android's normal crash handling; it does not replace a tombstone. Actual fatal-signal/tombstone coexistence remains **NOT RUN** until a dedicated safe crash-test mode is added.
 
 ## Android address-space probe
 
