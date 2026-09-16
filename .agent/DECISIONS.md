@@ -92,3 +92,34 @@ The pinned Dynarmic API accepts an arbitrary host `uintptr_t` as the beginning o
 ### Supersedes / Superseded by
 
 None.
+
+## D-0004 — Prefer high-base 4 GiB reservation for the first Android fastmem backend
+
+Status: Accepted
+Date: 2026-09-16
+
+### Context
+
+The first real Android/AArch64 probe execution produced device evidence rather than cross-build evidence. In a Termux process, a contiguous 4 GiB `PROT_NONE` reservation succeeded at a host address above 4 GiB, a page inside that reservation could be committed read/write, RW-to-RX transition and generated AArch64 execution succeeded, and sampled low-VA `MAP_FIXED_NOREPLACE` mappings also worked. Dynarmic's pinned A32 configuration accepts an arbitrary host `fastmem_pointer` base and falls back to callbacks after fastmem faults.
+
+### Decision
+
+Use a contiguous high-base 4 GiB reservation as the preferred first Android fastmem acceleration path when the reservation is available. Keep callback-backed `GuestMemory` as the mandatory correctness fallback and preserve logical 32-bit guest addresses.
+
+Do not require direct low-VA guest-pointer identity. Low-VA mappings remain optional/experimental and must not leak into ELF, ABI, bridge, or public-runtime contracts.
+
+### Rationale
+
+The observed Android process demonstrated the exact primitive needed by Dynarmic fastmem without requiring the stronger low-VA identity assumption. The high-base approach keeps guest address translation explicit, matches Dynarmic's API, and provides a safe architectural fallback when a reservation or page access cannot use fastmem.
+
+### Consequences
+
+- The next M2 implementation should add a mapped guest-address-space backend that can reserve 4 GiB, commit/protect/unmap guest pages, and expose its host base to the internal CPU adapter.
+- Dynarmic fastmem must retain `recompile_on_fastmem_failure`/callback fallback behavior rather than treating host faults as unrecoverable runtime crashes.
+- Permissions and unmapped pages must remain represented by host page protection plus guest-memory metadata/callback validation.
+- More Android/vendor/kernel samples are still required before claiming broad compatibility.
+- Direct low-VA identity remains outside the correctness contract even though the sampled addresses succeeded on the first observed device.
+
+### Supersedes / Superseded by
+
+Refines D-0003; does not supersede it.
