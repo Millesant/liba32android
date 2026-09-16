@@ -3,9 +3,9 @@
 Last updated: 2026-09-16
 Current milestone: M3 ELF32 loading
 Integration branch: `bleeding`
-Last merged PR: #8
-Merged integration commit: `8059c07b989f845b5b48e306e39cdca6c66d502b`
-Active work: PR #9 (`m3-real-arm32-fixture`)
+Last merged PR: #9
+Merged integration commit: `7357a4dee2c10724630353d6e5a0fd2634115348`
+Active work: none
 
 ## Working / proven
 
@@ -22,19 +22,23 @@ Active work: PR #9 (`m3-real-arm32-fixture`)
   - `PT_LOAD` map/copy/BSS zero-fill/final-protection lifecycle;
   - rollback of loader-owned mappings after map/write/protect failure;
   - guest-only result metadata; no host pointers in loader results.
-- PR #9 adds a reproducible real ARMv7/Android ELF fixture generated from source with the project-pinned NDK r27d / API 26 toolchain.
+- PR #9 is merged and adds a reproducible real ARMv7/Android ELF fixture generated from source with the project-pinned NDK r27d / API 26 toolchain.
 - CI builds the real fixture twice and requires byte-identical output before loader testing.
 - The observed real fixture is ARM ELF32 `ET_DYN`, contains four `PT_LOAD` segments, `PT_DYNAMIC`, executable and writable content, and BSS. All four PT_LOAD segments have `p_align=0x4000` (16 KiB).
-- Real-fixture evidence exposed and PR #9 fixes an ET_DYN alignment requirement: load bias must preserve each PT_LOAD `p_align`, not merely the current host page size.
+- Real-fixture evidence exposed and the merged loader fixes an ET_DYN alignment requirement: load bias must preserve each PT_LOAD `p_align`, not merely the current host page size.
 - The real fixture loader test validates exact PT_LOAD file bytes, BSS zero-fill, mapping metadata, final permissions, aligned load bias, and rejection of a 4 KiB-aligned load bias that violates the real fixture's 16 KiB `p_align`.
 - The current loader still deliberately rejects page-overlapping `PT_LOAD` mappings and RWX segments rather than silently broadening permissions. The current real fixture does not demonstrate a need for shared-page handling.
 - Loader architecture and real-fixture evidence are documented in `docs/architecture/elf32-loader.md` and `docs/research/evidence/arm32-loader-fixture-ndk-r27d-2026-09-16.md`.
 
 ## Validation
 
-### PR #9 current implementation checkpoint
+### Final PR head
 
-GitHub Actions run `35109819830` (#58) on PR #9 head `c517867fb355c22ae0ee2992dd0771d711dc2ceb`: PASS.
+GitHub Actions run `35110599653` (#62) on PR #9 head `c653c7236625476a80eb63c9ec1c2f3ae067d2ca`: PASS.
+
+### Post-merge `bleeding`
+
+GitHub Actions run `35111139535` (#63) on merge commit `7357a4dee2c10724630353d6e5a0fd2634115348`: PASS.
 
 Linux:
 
@@ -50,17 +54,15 @@ Linux:
 - host page size: observed 4096
 - misaligned ET_DYN load bias rejection: PASS / `fixture.misaligned_bias_rejected=true`
 - fixture load with `load_bias=0x02000000`: PASS
-- loader evidence artifact upload: PASS
-- artifact ID: `10452280814`
-- artifact ZIP digest: `sha256:45011484cca2274066b96389979c68261339ffebdb6b579a44692af10fd19e56`
+- fixture evidence artifact upload: PASS
+- post-merge fixture artifact ID: `10452746414`
+- post-merge fixture artifact digest: `sha256:4d83f38b35fe90471d9a806f2f763717ca204c33b0f6c52c1ce6fcb508d971a6`
 
 Android arm64-v8a:
 
 - runtime + diagnostics configure/build/link: PASS
 - shared-library/diagnostic checks: PASS
 - Android runtime/probe/runtime-smoke artifact uploads: PASS
-
-Run #55 (`35109127963`) was an earlier implementation checkpoint and also passed 17/17 plus Android cross-build. Run #58 supersedes it as the current code checkpoint because it includes the PT_LOAD load-bias alignment fix.
 
 ## Observed real fixture layout
 
