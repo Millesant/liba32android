@@ -56,11 +56,19 @@ if(LIBA32ANDROID_BUILD_ANDROID_PROBES)
         message(FATAL_ERROR "LIBA32ANDROID_BUILD_ANDROID_PROBES requires an Android toolchain")
     endif()
     if(NOT CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
-        message(FATAL_ERROR "Android address-space probes currently require arm64-v8a")
+        message(FATAL_ERROR "Android probes currently require arm64-v8a")
     endif()
 
     add_executable(android_address_space_probe tools/android_address_space_probe.cpp)
     target_compile_features(android_address_space_probe PRIVATE cxx_std_20)
+
+    add_executable(android_runtime_smoke tools/android_runtime_smoke.cpp)
+    target_include_directories(android_runtime_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(android_runtime_smoke PRIVATE liba32android)
+    target_compile_features(android_runtime_smoke PRIVATE cxx_std_20)
+    # Keep the executable and shared runtime side-by-side in the downloadable
+    # artifact so Termux can run it without installing the library globally.
+    set_target_properties(android_runtime_smoke PROPERTIES BUILD_RPATH "$ORIGIN")
 endif()
 
 if(LIBA32ANDROID_BUILD_TESTS)
@@ -76,6 +84,14 @@ if(LIBA32ANDROID_BUILD_TESTS)
     target_include_directories(guest_memory_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(guest_memory_test PRIVATE liba32android)
 
+    add_executable(mapped_guest_memory_test tests/mapped_guest_memory.cpp)
+    target_include_directories(mapped_guest_memory_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(mapped_guest_memory_test PRIVATE liba32android)
+
+    add_executable(cpu_fastmem_test tests/cpu_fastmem.cpp)
+    target_include_directories(cpu_fastmem_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(cpu_fastmem_test PRIVATE liba32android)
+
     add_test(NAME guest_arm_return_42 COMMAND cpu_smoke arm)
     add_test(NAME guest_thumb_return_42 COMMAND cpu_smoke thumb)
     add_test(NAME guest_register_state COMMAND cpu_execution registers)
@@ -84,4 +100,6 @@ if(LIBA32ANDROID_BUILD_TESTS)
     add_test(NAME guest_memory_load_store COMMAND cpu_execution memory)
     add_test(NAME guest_stack COMMAND cpu_execution stack)
     add_test(NAME guest_memory_bounds COMMAND guest_memory_test)
+    add_test(NAME mapped_guest_memory_lifecycle COMMAND mapped_guest_memory_test)
+    add_test(NAME dynarmic_fastmem_and_fallback COMMAND cpu_fastmem_test)
 endif()
