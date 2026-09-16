@@ -72,24 +72,33 @@ Linux regression coverage proves both sides of this seam:
 - `MappedGuestMemory` executes the same mapped A32 load/store with fastmem enabled and no data callbacks;
 - an A32 load from an unmapped fastmem page falls back to the callback path and surfaces `memory_fault`.
 
-This Linux proof uses Dynarmic's x86-64 backend. Android CI currently proves that the same source and the AArch64 Dynarmic backend compile/link, but actual A32 execution through the Android/AArch64 backend remains a separate device validation step.
+Real Android/AArch64 runtime-smoke evidence from 2026-09-16 additionally proves the tested direct path on one Android 16 / runtime SDK 36 Termux environment:
+
+- A32 `mov r0,#42` executed through the pinned Dynarmic AArch64 backend and returned 42;
+- mapped A32 `STR`/`LDR` produced the expected `0x12345678` value;
+- both data callback counters were zero and `a32.memory.fastmem_direct=true`, directly supporting use of the configured fastmem data path on that environment.
+
+The optional Android fastmem fault -> callback fallback mode remains NOT RUN. That behavior is TESTED/PASS on Linux but must not yet be claimed as proven on Android.
 
 ## Android runtime smoke
 
 `android_runtime_smoke` is an Android arm64 diagnostic executable linked to the real `liba32android.so`. It is packaged with the shared library and a Termux-oriented launcher that sets `LD_LIBRARY_PATH` to the bundle directory.
 
-The smoke is designed to prove on-device:
+The normal device smoke has now demonstrated on one real Android/AArch64 environment:
 
 1. creation of `MappedGuestMemory` and its 4 GiB reservation;
 2. A32 `mov r0,#42` execution through Dynarmic's AArch64 backend;
-3. A32 `STR`/`LDR` through mapped fastmem with zero data callbacks;
-4. optionally, fastmem fault -> callback fallback via `--exercise-fastmem-fault`.
+3. A32 `STR`/`LDR` through mapped fastmem with zero data callbacks.
 
-Until this executable is run on a real Android arm64 environment, those Android execution claims remain **NOT RUN** even though Android cross-build/link/package validation passes.
+The optional fourth check, fastmem fault -> callback fallback via `--exercise-fastmem-fault`, remains NOT RUN on Android.
+
+Raw evidence and the Observed/Inferred/Not-demonstrated classification live under `docs/research/evidence/android-runtime-smoke-termux-arm64-2026-09-16.*`.
 
 ## Correctness policy
 
 Dynarmic documents known accuracy tradeoffs and is not treated as a formal ARM reference implementation. Tiny regression binaries and, where practical, a slower reference path will be used to verify runtime behavior. Unsupported behavior must be surfaced rather than silently declared compatible.
+
+The current device evidence is deliberately environment-specific. It proves these tested paths on one Android 16 / SDK 36 AArch64 Termux process; it does not establish broad device compatibility or broad A32 ISA completeness.
 
 ## Sources
 
