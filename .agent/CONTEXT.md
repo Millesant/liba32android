@@ -2,34 +2,60 @@
 
 ## Mission
 
-Build a reusable, game-agnostic AArch32 compatibility runtime for AArch64 Android. The intended stack is ARM32 Android ELF -> ELF32 loader/linker -> guest runtime -> A32 execution engine -> AArch64 Android host.
+Build a reusable, game-agnostic AArch32 compatibility runtime for AArch64 Android. The intended stack is ARM32 Android ELF -> ELF32 loader -> dynamic-linker metadata/semantics -> guest runtime/ABI/compatibility layers -> A32 execution engine -> AArch64 Android host.
 
-## Architectural boundaries
+Minecraft PE 0.15.x is a future stress target, not the architecture.
 
-Keep CPU execution, guest address space, ELF32 loading/linking, AAPCS32/AAPCS64 bridging, compatibility libraries, pthread/TLS, signals, JNI, graphics/audio, instrumentation and application profiles separate. Application-specific work belongs under `profiles/` and must never leak into the generic core.
+## Non-goals
 
-## Current milestone
+Do not hard-code one game into the generic runtime. Application-specific work belongs under `profiles/` and must not leak into CPU, memory, ELF, ABI, compatibility-library, or platform contracts.
 
-M3 ELF32 loading. M2 guest address space is complete for its current scope: the generic memory seam has callback and mapped 4 GiB implementations, Dynarmic fastmem integration, and direct Android/AArch64 evidence for both mapped fastmem data access and fastmem fault -> callback fallback on the known Android 16 / SDK 36 Termux environment. Broader device compatibility remains separate evidence work.
+Do not equate guest pointer values with host pointer identity, and do not treat a successful cross-build or one device sample as proof of broad Android compatibility.
 
-M3 begins with ELF32 validation, `PT_LOAD` mapping, BSS zero-fill, page permissions, and load bias. Dynamic symbol resolution/linking remains later work.
+## Architecture boundaries
 
-## CPU dependency
+Keep CPU execution, guest address space, ELF32 mapping, structural dynamic metadata, dynamic linking, AAPCS32/AAPCS64 bridging, compatibility libraries, pthread/TLS, signals, JNI, graphics/audio, instrumentation and application profiles separate.
 
-Dynarmic is selected behind `src/cpu/`, pinned to azahar-emu/dynarmic commit `e77b1ba0b7da7cbe93021b01a663acfe7c4dd516`.
+Current dependency direction is intentionally one-way:
 
-## Current memory seam
+```text
+ELF image -> ELF32 loader -> GuestMemory
+                          -> structural Elf32_Dyn metadata -> future linker
+GuestMemory -> CPU adapter -> Dynarmic
+```
 
-`memory::GuestMemory` is the engine-independent memory contract. Guest virtual addresses remain logical 32-bit values.
+ELF/ABI/runtime APIs operate on logical 32-bit guest VAs and must not expose host pointers as guest pointers.
 
-- `LinearGuestMemory` is the deterministic callback/correctness implementation used by focused tests.
-- `MappedGuestMemory` owns a contiguous 4 GiB high-host-VA reservation, page mapping/permission metadata, and page-aligned map/protect/unmap lifecycle operations.
-- The mapped backend can expose its reservation base only through the internal `fastmem_base()` capability used by the CPU adapter; loader/ABI/runtime interfaces must not expose host pointers as guest pointers.
-- Callback access remains the mandatory correctness fallback when fastmem is absent or faults.
+## Current phase
 
-D-0004 selects high-base contiguous fastmem as the preferred first Android acceleration path based on real Android/AArch64 evidence; direct low-VA pointer identity remains optional and outside the generic contract.
+The M2 guest-address-space scope is implemented. M3 ELF32 mapping plus structural dynamic-array metadata is implemented and green through PR #11. The next feature-scale boundary is M4-style linker metadata/semantics; dependency loading, symbol resolution and relocations are not implemented.
 
-## Build/test entry points
+## Current stack
+
+- Language/build: C++20 + CMake/Ninja.
+- CPU engine: Dynarmic behind `src/cpu/`, pinned to `azahar-emu/dynarmic` commit `e77b1ba0b7da7cbe93021b01a663acfe7c4dd516`.
+- Generic memory seam: `memory::GuestMemory`.
+- Correctness memory: `LinearGuestMemory`.
+- Mapped memory: `MappedGuestMemory`, logical 32-bit guest VAs, contiguous high-host-VA 4 GiB reservation, page map/protect/unmap lifecycle.
+- CPU acceleration: internal mapped-memory `fastmem_base()` capability plus Dynarmic fastmem; callbacks remain the mandatory correctness fallback.
+- ELF: `src/elf/elf32_loader.*` for validated mapping and `src/elf/elf32_dynamic.*` for structural raw dynamic entries.
+- Android cross-build: `arm64-v8a`, NDK `27.3.13750724`.
+
+D-0003 and D-0004 remain central: guest VAs are independent from host pointer identity, and high-base contiguous fastmem is the preferred first Android acceleration path when available.
+
+## Repository map
+
+- `src/cpu/`: engine adapter only.
+- `src/memory/`: guest-memory contracts/backends.
+- `src/elf/`: ELF mapping and structural metadata layers.
+- `tests/`: host regression and real-fixture integration tests.
+- `tools/`: Android probes/runtime-smoke and fixture tooling.
+- `docs/architecture/`: subsystem boundaries and current design detail.
+- `docs/research/`: research/evidence records.
+- `specs/`: feature-scale requirements/design/tasks packages.
+- `.agent/`: durable continuation state and decisions.
+
+## Build / test entry points
 
 Host tests:
 
@@ -39,8 +65,19 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-Android `arm64-v8a` is cross-built in GitHub Actions with NDK `27.3.13750724`. CI also publishes `android_runtime_smoke` bundled with `liba32android.so` and a Termux launcher for real-device A32 execution validation.
+GitHub Actions also builds the reproducible ARM32 Android fixture, cross-builds `liba32android.so` plus diagnostics for Android `arm64-v8a`, and publishes the relevant artifacts.
+
+## Canonical specs / docs
+
+- Repository workflow: `AGENTS.md`.
+- Converted implemented baseline: `specs/000-current-baseline/`.
+- Current observed state: `.agent/STATE.md`.
+- Dependency-ordered next work: `.agent/NEXT.md`.
+- Durable architecture decisions: `.agent/DECISIONS.md`.
+- Detailed subsystem design/evidence: `docs/architecture/` and `docs/research/`.
+
+For new feature-scale work, create a focused `specs/<id>-<feature>/requirements.md`, `design.md`, and `tasks.md` package before substantial implementation. Tiny/routine changes should not receive unnecessary spec ceremony.
 
 ## Evidence labels
 
-Use PROVEN, IMPLEMENTED, TESTED, PARTIAL, HYPOTHESIS, NOT IMPLEMENTED and BLOCKED. Never turn an unexecuted test into PASS.
+Use `PASS`, `FAIL`, `BLOCKED`, and `NOT RUN` for execution status. Architecture/research prose may additionally distinguish observed facts from inference/hypothesis. Never turn inspection, inference, or an unexecuted test into PASS.
