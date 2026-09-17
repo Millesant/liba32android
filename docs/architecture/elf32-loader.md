@@ -60,7 +60,8 @@ When `PT_DYNAMIC` is present, the loader validates it before guest mappings are 
 - its file-backed range must be within the input ELF image;
 - its un-biased and biased guest ranges must fit the 32-bit guest address space;
 - its complete `p_memsz` range must be contained inside a `PT_LOAD` memory range;
-- the containing `PT_LOAD` must be readable.
+- the containing `PT_LOAD` must be readable;
+- when `p_filesz` is non-zero, the `PT_DYNAMIC p_offset`/`p_filesz` range must be exactly the file bytes that the containing `PT_LOAD` maps at the `PT_DYNAMIC p_vaddr`; it may not point at unrelated file bytes or into the load segment's BSS-only tail.
 
 On success, `Elf32LoadResult::dynamic_segment` reports only:
 
@@ -113,7 +114,8 @@ Synthetic host tests cover:
 - valid fixed-address `ET_EXEC` loading;
 - missing `PT_DYNAMIC` as a valid case;
 - valid biased `PT_DYNAMIC` result metadata;
-- rejection of multiple, empty, file-out-of-bounds, address-overflowing, outside-PT_LOAD, and non-readable `PT_DYNAMIC` ranges;
+- rejection of multiple, empty, file-out-of-bounds, address-overflowing, outside-PT_LOAD, non-readable, and file-to-load-mismatched `PT_DYNAMIC` ranges;
+- proof that malformed PT_DYNAMIC metadata is rejected before guest mappings are created;
 - file-byte copy;
 - BSS zero-fill;
 - final RX/RW permission behavior;
@@ -139,7 +141,7 @@ Observed real fixture properties include:
 - one `PT_DYNAMIC` range at pre-bias guest VA `0x826c`, file/memory size `0x60`;
 - GNU RELRO and ARM EXIDX program headers.
 
-The real fixture integration test verifies PT_LOAD metadata, exact copied file bytes, BSS zero-fill, final guest permissions, a valid aligned load bias, rejection of a load bias that is host-page-aligned but violates the fixture's 16 KiB `p_align`, and exact biased `PT_DYNAMIC` result metadata.
+The real fixture integration test verifies PT_LOAD metadata, exact copied file bytes, BSS zero-fill, final guest permissions, a valid aligned load bias, rejection of a load bias that is host-page-aligned but violates the fixture's 16 KiB `p_align`, and exact biased `PT_DYNAMIC` result metadata. The loader also verifies that the real fixture's PT_DYNAMIC file range is the same file-backed range exposed through its containing PT_LOAD.
 
 Raw/current evidence is documented in `docs/research/evidence/arm32-loader-fixture-ndk-r27d-2026-09-16.md`.
 
