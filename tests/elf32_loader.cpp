@@ -264,6 +264,19 @@ int test_dynamic_metadata() {
             return fail("PT_DYNAMIC inside non-readable PT_LOAD was not rejected");
         }
     }
+    {
+        auto image = make_image(3, 0);
+        add_dynamic_segment(image, 0);
+        write_u32(image, kThirdProgramHeader + 4, 0xd0);  // VA still maps file offset 0xc0.
+        MappedGuestMemory memory;
+        if (load_elf32(memory, image, options).error !=
+            Elf32LoadError::DynamicSegmentFileMappingMismatch) {
+            return fail("PT_DYNAMIC file range inconsistent with PT_LOAD mapping was not rejected");
+        }
+        if (memory.is_mapped(options.dynamic_base.value())) {
+            return fail("malformed PT_DYNAMIC mutated guest mappings before rejection");
+        }
+    }
 
     return 0;
 }
