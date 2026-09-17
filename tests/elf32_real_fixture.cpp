@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <optional>
 #include <span>
 #include <string>
 #include <vector>
@@ -42,6 +43,13 @@ struct LoadSegment {
     std::uint32_t memory_size{};
     std::uint32_t flags{};
     std::uint32_t alignment{};
+};
+
+struct DynamicSegment {
+    std::uint32_t offset{};
+    std::uint32_t virtual_address{};
+    std::uint32_t file_size{};
+    std::uint32_t memory_size{};
 };
 
 int fail(const std::string& message) {
@@ -135,7 +143,7 @@ int main(int argc, char** argv) {
     }
 
     std::vector<LoadSegment> loads;
-    bool has_dynamic = false;
+    std::optional<DynamicSegment> dynamic_segment;
     bool has_executable = false;
     bool has_writable = false;
     bool has_bss = false;
@@ -146,7 +154,15 @@ int main(int argc, char** argv) {
                                    static_cast<std::size_t>(index) * kElf32ProgramHeaderSize;
         const std::uint32_t type = read_u32(image, offset);
         if (type == kProgramTypeDynamic) {
-            has_dynamic = true;
+            if (dynamic_segment.has_value()) {
+                return fail("generated fixture unexpectedly contains multiple PT_DYNAMIC segments");
+            }
+            dynamic_segment = DynamicSegment{
+                .offset = read_u32(image, offset + 4),
+                .virtual_address = read_u32(image, offset + 8),
+                .file_size = read_u32(image, offset + 16),
+                .memory_size = read_u32(image, offset + 20),
+            };
         }
         if (type != kProgramTypeLoad) {
             continue;
@@ -167,7 +183,7 @@ int main(int argc, char** argv) {
         maximum_alignment = std::max(maximum_alignment, segment.alignment);
     }
 
-    if (loads.size() < 2 || !has_dynamic || !has_executable || !has_writable || !has_bss) {
+    if (loads.size() < 2 || !dynamic_segment.has_value() || !has_executable || !has_writable || !has_bss) {
         return fail("generated fixture does not contain the intended text/data/BSS dynamic-library layout");
     }
     if (maximum_alignment < kExpectedFixtureAlignment) {
@@ -217,6 +233,19 @@ int main(int argc, char** argv) {
     }
     if (result.load_bias != kFixtureLoadBias || result.segments.size() != loads.size()) {
         return fail("real ARM32 fixture returned unexpected load-bias/segment metadata");
+    }
+
+    const DynamicSegment& raw_dynamic = *dynamic_segment;
+    if (!result.dynamic_segment.has_value()) {
+        return fail("real ARM32 fixture PT_DYNAMIC metadata was not reported");
+    }
+    const std::uint64_t expected_dynamic_guest =
+        static_cast<std::uint64_t>(raw_dynamic.virtual_address) + result.load_bias;
+    if (expected_dynamic_guest > std::numeric_limits<std::uint32_t>::max() ||
+        result.dynamic_segment->guest_address != expected_dynamic_guest ||
+        result.dynamic_segment->file_size != raw_dynamic.file_size ||
+        result.dynamic_segment->memory_size != raw_dynamic.memory_size) {
+        return fail("loader PT_DYNAMIC result metadata does not match the real fixture program header");
     }
 
     for (std::size_t index = 0; index < loads.size(); ++index) {
@@ -288,6 +317,10 @@ int main(int argc, char** argv) {
               << "fixture.size=" << image.size() << '\n'
               << "fixture.pt_load.count=" << loads.size() << '\n'
               << "fixture.pt_dynamic=true\n"
+              << "fixture.pt_dynamic.guest_address=0x" << std::hex
+              << result.dynamic_segment->guest_address << '\n'
+              << "fixture.pt_dynamic.filesz=0x" << result.dynamic_segment->file_size << '\n'
+              << "fixture.pt_dynamic.memsz=0x" << result.dynamic_segment->memory_size << std::dec << '\n'
               << "fixture.has_bss=true\n"
               << "fixture.max_p_align=" << maximum_alignment << '\n'
               << "fixture.host_page_size=" << host_page_size << '\n'

@@ -21,6 +21,8 @@ constexpr std::size_t kProgramHeaderSize = 32;
 constexpr std::size_t kProgramHeaderOffset = kHeaderSize;
 constexpr std::size_t kFirstProgramHeader = kProgramHeaderOffset;
 constexpr std::size_t kSecondProgramHeader = kProgramHeaderOffset + kProgramHeaderSize;
+constexpr std::size_t kThirdProgramHeader = kProgramHeaderOffset + 2 * kProgramHeaderSize;
+constexpr std::size_t kFourthProgramHeader = kProgramHeaderOffset + 3 * kProgramHeaderSize;
 
 int fail(const char* message) {
     std::cerr << message << '\n';
@@ -40,7 +42,7 @@ void write_u32(std::vector<std::uint8_t>& image, std::size_t offset, std::uint32
 }
 
 std::vector<std::uint8_t> make_image(std::uint16_t type, std::uint32_t virtual_base) {
-    std::vector<std::uint8_t> image(0x1004, 0);
+    std::vector<std::uint8_t> image(0x1010, 0);
     image[0] = 0x7f;
     image[1] = 'E';
     image[2] = 'L';
@@ -83,6 +85,21 @@ std::vector<std::uint8_t> make_image(std::uint16_t type, std::uint32_t virtual_b
     return image;
 }
 
+void add_dynamic_segment(std::vector<std::uint8_t>& image, std::uint32_t virtual_base) {
+    write_u16(image, 44, 3);
+    write_u32(image, kThirdProgramHeader + 0, 2);  // PT_DYNAMIC
+    write_u32(image, kThirdProgramHeader + 4, 0xc0);
+    write_u32(image, kThirdProgramHeader + 8, virtual_base + 0xc0);
+    write_u32(image, kThirdProgramHeader + 16, 0x10);
+    write_u32(image, kThirdProgramHeader + 20, 0x10);
+    write_u32(image, kThirdProgramHeader + 24, 4);  // PF_R
+    write_u32(image, kThirdProgramHeader + 28, 4);
+
+    for (std::size_t i = 0; i < 0x10; ++i) {
+        image[0xc0 + i] = static_cast<std::uint8_t>(0xa0 + i);
+    }
+}
+
 bool all_zero(std::span<const std::uint8_t> bytes) {
     for (const std::uint8_t byte : bytes) {
         if (byte != 0) {
@@ -103,6 +120,9 @@ int test_valid_dynamic() {
     if (!result || result.load_bias != dynamic_base || result.entry != dynamic_base + 0x80 ||
         result.segments.size() != 2) {
         return fail("valid ET_DYN image did not load with the expected metadata");
+    }
+    if (result.dynamic_segment.has_value()) {
+        return fail("missing PT_DYNAMIC unexpectedly produced dynamic metadata");
     }
 
     const auto rx = MemoryPermission::Read | MemoryPermission::Execute;
@@ -153,6 +173,111 @@ int test_valid_exec() {
     if (!memory.is_mapped(fixed_base) || !memory.is_mapped(fixed_base + 0x2000)) {
         return fail("ET_EXEC PT_LOAD pages were not mapped at fixed guest addresses");
     }
+    return 0;
+}
+
+int test_dynamic_metadata() {
+    Elf32LoadOptions options;
+    options.dynamic_base = 0x200000;
+
+    {
+        auto image = make_image(3, 0);
+        add_dynamic_segment(image, 0);
+        MappedGuestMemory memory;
+        const auto result = load_elf32(memory, image, options);
+        if (!result || !result.dynamic_segment.has_value()) {
+            return fail("valid PT_DYNAMIC metadata was not reported");
+        }
+        const auto& dynamic = *result.dynamic_segment;
+        if (dynamic.guest_address != options.dynamic_base.value() + 0xc0 ||
+            dynamic.file_size != 0x10 || dynamic.memory_size != 0x10) {
+            return fail("PT_DYNAMIC metadata did not preserve biased guest VA/range");
+        }
+    }
+    {
+        auto image = make_image(3, 0);
+        add_dynamic_segment(image, 0);
+        write_u16(image, 44, 4);
+        for (std::size_t i = 0; i < kProgramHeaderSize; ++i) {
+            image[kFourthProgramHeader + i] = image[kThirdProgramHeader + i];
+        }
+        MappedGuestMemory memory;
+        if (load_elf32(memory, image, options).error != Elf32LoadError::MultipleDynamicSegments) {
+            return fail("multiple PT_DYNAMIC segments were not rejected");
+        }
+    }
+    {
+        auto image = make_image(3, 0);
+        add_dynamic_segment(image, 0);
+        write_u32(image, kThirdProgramHeader + 20, 0);
+        MappedGuestMemory memory;
+        if (load_elf32(memory, image, options).error != Elf32LoadError::DynamicSegmentEmpty) {
+            return fail("empty PT_DYNAMIC was not rejected");
+        }
+    }
+    {
+        auto image = make_image(3, 0);
+        add_dynamic_segment(image, 0);
+        write_u32(image, kThirdProgramHeader + 16, 0x20);
+        write_u32(image, kThirdProgramHeader + 20, 0x10);
+        MappedGuestMemory memory;
+        if (load_elf32(memory, image, options).error !=
+            Elf32LoadError::DynamicSegmentFileszExceedsMemsz) {
+            return fail("PT_DYNAMIC p_filesz > p_memsz was not rejected");
+        }
+    }
+    {
+        auto image = make_image(3, 0);
+        add_dynamic_segment(image, 0);
+        write_u32(image, kThirdProgramHeader + 4, static_cast<std::uint32_t>(image.size()));
+        MappedGuestMemory memory;
+        if (load_elf32(memory, image, options).error !=
+            Elf32LoadError::DynamicSegmentFileOutOfBounds) {
+            return fail("out-of-bounds PT_DYNAMIC file range was not rejected");
+        }
+    }
+    {
+        auto image = make_image(2, 0);
+        add_dynamic_segment(image, 0);
+        write_u32(image, kThirdProgramHeader + 8, 0xfffffff8U);
+        write_u32(image, kThirdProgramHeader + 20, 0x10);
+        MappedGuestMemory memory;
+        if (load_elf32(memory, image).error != Elf32LoadError::DynamicSegmentAddressOverflow) {
+            return fail("PT_DYNAMIC guest-address overflow was not rejected");
+        }
+    }
+    {
+        auto image = make_image(3, 0);
+        add_dynamic_segment(image, 0);
+        write_u32(image, kThirdProgramHeader + 8, 0x1000);
+        MappedGuestMemory memory;
+        if (load_elf32(memory, image, options).error != Elf32LoadError::DynamicSegmentOutsideLoad) {
+            return fail("PT_DYNAMIC outside PT_LOAD memory was not rejected");
+        }
+    }
+    {
+        auto image = make_image(3, 0);
+        add_dynamic_segment(image, 0);
+        write_u32(image, kFirstProgramHeader + 24, 0);  // Supported but not readable.
+        MappedGuestMemory memory;
+        if (load_elf32(memory, image, options).error != Elf32LoadError::DynamicSegmentNotReadable) {
+            return fail("PT_DYNAMIC inside non-readable PT_LOAD was not rejected");
+        }
+    }
+    {
+        auto image = make_image(3, 0);
+        add_dynamic_segment(image, 0);
+        write_u32(image, kThirdProgramHeader + 4, 0xd0);  // VA still maps file offset 0xc0.
+        MappedGuestMemory memory;
+        if (load_elf32(memory, image, options).error !=
+            Elf32LoadError::DynamicSegmentFileMappingMismatch) {
+            return fail("PT_DYNAMIC file range inconsistent with PT_LOAD mapping was not rejected");
+        }
+        if (memory.is_mapped(options.dynamic_base.value())) {
+            return fail("malformed PT_DYNAMIC mutated guest mappings before rejection");
+        }
+    }
+
     return 0;
 }
 
@@ -320,6 +445,7 @@ int main(int argc, char** argv) {
     const std::string_view mode = argv[1];
     if (mode == "valid_dynamic") return test_valid_dynamic();
     if (mode == "valid_exec") return test_valid_exec();
+    if (mode == "dynamic_metadata") return test_dynamic_metadata();
     if (mode == "headers") return test_header_validation();
     if (mode == "ph_bounds") return test_program_header_bounds();
     if (mode == "segments") return test_segment_validation();

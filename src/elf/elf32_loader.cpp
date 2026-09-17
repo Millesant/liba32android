@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -22,6 +23,7 @@ constexpr std::uint16_t kElfTypeExec = 2;
 constexpr std::uint16_t kElfTypeDyn = 3;
 constexpr std::uint16_t kElfMachineArm = 40;
 constexpr std::uint32_t kProgramTypeLoad = 1;
+constexpr std::uint32_t kProgramTypeDynamic = 2;
 constexpr std::uint32_t kFlagExecute = 1U << 0;
 constexpr std::uint32_t kFlagWrite = 1U << 1;
 constexpr std::uint32_t kFlagRead = 1U << 2;
@@ -33,6 +35,13 @@ struct RawLoadSegment {
     std::uint32_t memory_size{};
     std::uint32_t alignment{};
     memory::MemoryPermission permissions{memory::MemoryPermission::None};
+};
+
+struct RawDynamicSegment {
+    std::uint32_t offset{};
+    std::uint32_t virtual_address{};
+    std::uint32_t file_size{};
+    std::uint32_t memory_size{};
 };
 
 struct PlannedSegment {
@@ -166,13 +175,45 @@ Elf32LoadResult load_elf32(memory::MappedGuestMemory& memory,
 
     const std::uint64_t page_size = memory.page_size();
     std::vector<RawLoadSegment> raw_segments;
+    std::optional<RawDynamicSegment> raw_dynamic_segment;
     std::uint64_t minimum_page = kGuestAddressSpaceSize;
     std::uint64_t maximum_page_end = 0;
 
     for (std::uint16_t index = 0; index < program_header_count; ++index) {
         const std::size_t offset = static_cast<std::size_t>(program_header_offset) +
                                    static_cast<std::size_t>(index) * kElf32ProgramHeaderSize;
-        if (read_u32(image, offset) != kProgramTypeLoad) {
+        const std::uint32_t program_type = read_u32(image, offset);
+
+        if (program_type == kProgramTypeDynamic) {
+            if (raw_dynamic_segment.has_value()) {
+                return failure(Elf32LoadError::MultipleDynamicSegments);
+            }
+
+            RawDynamicSegment dynamic;
+            dynamic.offset = read_u32(image, offset + 4);
+            dynamic.virtual_address = read_u32(image, offset + 8);
+            dynamic.file_size = read_u32(image, offset + 16);
+            dynamic.memory_size = read_u32(image, offset + 20);
+
+            if (dynamic.memory_size == 0) {
+                return failure(Elf32LoadError::DynamicSegmentEmpty);
+            }
+            if (dynamic.file_size > dynamic.memory_size) {
+                return failure(Elf32LoadError::DynamicSegmentFileszExceedsMemsz);
+            }
+            if (static_cast<std::uint64_t>(dynamic.offset) + dynamic.file_size > image.size()) {
+                return failure(Elf32LoadError::DynamicSegmentFileOutOfBounds);
+            }
+            if (static_cast<std::uint64_t>(dynamic.virtual_address) + dynamic.memory_size >
+                kGuestAddressSpaceSize) {
+                return failure(Elf32LoadError::DynamicSegmentAddressOverflow);
+            }
+
+            raw_dynamic_segment = dynamic;
+            continue;
+        }
+
+        if (program_type != kProgramTypeLoad) {
             continue;
         }
 
@@ -255,6 +296,59 @@ Elf32LoadResult load_elf32(memory::MappedGuestMemory& memory,
             return failure(Elf32LoadError::EntryAddressOverflow);
         }
         loaded_entry = static_cast<std::uint32_t>(biased_entry);
+    }
+
+    std::optional<Elf32DynamicSegment> loaded_dynamic_segment;
+    if (raw_dynamic_segment.has_value()) {
+        const RawDynamicSegment& dynamic = *raw_dynamic_segment;
+        const std::uint64_t dynamic_start = dynamic.virtual_address;
+        const std::uint64_t dynamic_end = dynamic_start + dynamic.memory_size;
+        bool contained_in_load = false;
+        const RawLoadSegment* readable_load = nullptr;
+
+        for (const RawLoadSegment& segment : raw_segments) {
+            if (segment.memory_size == 0) {
+                continue;
+            }
+            const std::uint64_t load_start = segment.virtual_address;
+            const std::uint64_t load_end = load_start + segment.memory_size;
+            if (dynamic_start >= load_start && dynamic_end <= load_end) {
+                contained_in_load = true;
+                if (memory::has_permission(segment.permissions, memory::MemoryPermission::Read)) {
+                    readable_load = &segment;
+                    break;
+                }
+            }
+        }
+
+        if (!contained_in_load) {
+            return failure(Elf32LoadError::DynamicSegmentOutsideLoad);
+        }
+        if (readable_load == nullptr) {
+            return failure(Elf32LoadError::DynamicSegmentNotReadable);
+        }
+
+        if (dynamic.file_size != 0) {
+            const std::uint64_t load_delta = dynamic_start - readable_load->virtual_address;
+            if (load_delta > readable_load->file_size ||
+                dynamic.file_size > static_cast<std::uint64_t>(readable_load->file_size) - load_delta ||
+                static_cast<std::uint64_t>(readable_load->offset) + load_delta != dynamic.offset) {
+                return failure(Elf32LoadError::DynamicSegmentFileMappingMismatch);
+            }
+        }
+
+        const std::uint64_t biased_dynamic_start = dynamic_start + load_bias;
+        const std::uint64_t biased_dynamic_end = dynamic_end + load_bias;
+        if (biased_dynamic_start > std::numeric_limits<std::uint32_t>::max() ||
+            biased_dynamic_end > kGuestAddressSpaceSize) {
+            return failure(Elf32LoadError::DynamicSegmentAddressOverflow);
+        }
+
+        loaded_dynamic_segment = Elf32DynamicSegment{
+            .guest_address = static_cast<std::uint32_t>(biased_dynamic_start),
+            .file_size = dynamic.file_size,
+            .memory_size = dynamic.memory_size,
+        };
     }
 
     std::vector<PlannedSegment> planned_segments;
@@ -368,6 +462,7 @@ Elf32LoadResult load_elf32(memory::MappedGuestMemory& memory,
     Elf32LoadResult result;
     result.load_bias = load_bias;
     result.entry = loaded_entry;
+    result.dynamic_segment = loaded_dynamic_segment;
     result.segments.reserve(planned_segments.size());
     for (const PlannedSegment& planned : planned_segments) {
         result.segments.push_back({
@@ -406,6 +501,14 @@ const char* to_string(Elf32LoadError error) noexcept {
     case Elf32LoadError::DynamicBaseUnaligned: return "dynamic_base_unaligned";
     case Elf32LoadError::LoadBiasOverflow: return "load_bias_overflow";
     case Elf32LoadError::EntryAddressOverflow: return "entry_address_overflow";
+    case Elf32LoadError::MultipleDynamicSegments: return "multiple_dynamic_segments";
+    case Elf32LoadError::DynamicSegmentEmpty: return "dynamic_segment_empty";
+    case Elf32LoadError::DynamicSegmentFileszExceedsMemsz: return "dynamic_segment_filesz_exceeds_memsz";
+    case Elf32LoadError::DynamicSegmentFileOutOfBounds: return "dynamic_segment_file_out_of_bounds";
+    case Elf32LoadError::DynamicSegmentAddressOverflow: return "dynamic_segment_address_overflow";
+    case Elf32LoadError::DynamicSegmentOutsideLoad: return "dynamic_segment_outside_load";
+    case Elf32LoadError::DynamicSegmentNotReadable: return "dynamic_segment_not_readable";
+    case Elf32LoadError::DynamicSegmentFileMappingMismatch: return "dynamic_segment_file_mapping_mismatch";
     case Elf32LoadError::SegmentPageOverlap: return "segment_page_overlap";
     case Elf32LoadError::AddressConflict: return "address_conflict";
     case Elf32LoadError::MapFailed: return "map_failed";
