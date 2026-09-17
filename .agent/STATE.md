@@ -4,8 +4,8 @@ Last updated: 2026-09-17
 Current phase: M3 mapping/structural metadata converged; M4 linker metadata/semantics next
 Integration branch: `bleeding`
 Last merged runtime PR: #11
-Merged integration commit: `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`
-Active work: migrate repository workflow/state/spec docs to the current requirements -> design -> tasks stack; no runtime behavior change
+Runtime baseline commit: `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`
+Active runtime work: none
 
 ## Working
 
@@ -31,7 +31,7 @@ Active work: migrate repository workflow/state/spec docs to the current requirem
   - rejects invalid ranges, non-8-byte file-backed sizes, unreadable guest bytes and unterminated arrays;
   - does not rebase/dereference pointer-like values or begin dynamic linking.
 - The reproducible real ARMv7/Android fixture remains generated with pinned NDK r27d / API 26 inputs. It has four `PT_LOAD` segments with `p_align=0x4000`, BSS, one `PT_DYNAMIC`, and observed SONAME/REL/SYMTAB/STRTAB/GNU_HASH-related tags with no `DT_NEEDED`.
-- The repository workflow is being migrated to root `AGENTS.md`, durable `.agent/` state, and `specs/<id>-<feature>/{requirements,design,tasks}.md`. `specs/000-current-baseline/` converts the already implemented work through PR #11 into that structure.
+- Repository workflow state uses root `AGENTS.md`, durable `.agent/` files, and `specs/<id>-<feature>/{requirements,design,tasks}.md` for feature-scale work. `specs/000-current-baseline/` converts the already implemented work through PR #11 into that structure.
 
 ## Partial / not implemented
 
@@ -90,5 +90,5 @@ No blocker prevents beginning the next linker-metadata feature package. Actual 1
 
 ## Important temporary facts
 
-- The current repository-workflow migration is documentation/state/spec-only; the runtime baseline above remains the source of behavioral evidence until a new code-changing feature runs its own validation.
+- `specs/000-current-baseline/` is a documentation conversion of already implemented behavior; the runtime evidence above remains its validation basis.
 - The next feature-scale implementation must get a new `specs/<id>-<feature>/` requirements/design/tasks chain instead of extending `specs/000-current-baseline/`.
