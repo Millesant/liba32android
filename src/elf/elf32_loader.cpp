@@ -304,7 +304,7 @@ Elf32LoadResult load_elf32(memory::MappedGuestMemory& memory,
         const std::uint64_t dynamic_start = dynamic.virtual_address;
         const std::uint64_t dynamic_end = dynamic_start + dynamic.memory_size;
         bool contained_in_load = false;
-        bool contained_in_readable_load = false;
+        const RawLoadSegment* readable_load = nullptr;
 
         for (const RawLoadSegment& segment : raw_segments) {
             if (segment.memory_size == 0) {
@@ -315,7 +315,7 @@ Elf32LoadResult load_elf32(memory::MappedGuestMemory& memory,
             if (dynamic_start >= load_start && dynamic_end <= load_end) {
                 contained_in_load = true;
                 if (memory::has_permission(segment.permissions, memory::MemoryPermission::Read)) {
-                    contained_in_readable_load = true;
+                    readable_load = &segment;
                     break;
                 }
             }
@@ -324,8 +324,17 @@ Elf32LoadResult load_elf32(memory::MappedGuestMemory& memory,
         if (!contained_in_load) {
             return failure(Elf32LoadError::DynamicSegmentOutsideLoad);
         }
-        if (!contained_in_readable_load) {
+        if (readable_load == nullptr) {
             return failure(Elf32LoadError::DynamicSegmentNotReadable);
+        }
+
+        if (dynamic.file_size != 0) {
+            const std::uint64_t load_delta = dynamic_start - readable_load->virtual_address;
+            if (load_delta > readable_load->file_size ||
+                dynamic.file_size > static_cast<std::uint64_t>(readable_load->file_size) - load_delta ||
+                static_cast<std::uint64_t>(readable_load->offset) + load_delta != dynamic.offset) {
+                return failure(Elf32LoadError::DynamicSegmentFileMappingMismatch);
+            }
         }
 
         const std::uint64_t biased_dynamic_start = dynamic_start + load_bias;
@@ -499,6 +508,7 @@ const char* to_string(Elf32LoadError error) noexcept {
     case Elf32LoadError::DynamicSegmentAddressOverflow: return "dynamic_segment_address_overflow";
     case Elf32LoadError::DynamicSegmentOutsideLoad: return "dynamic_segment_outside_load";
     case Elf32LoadError::DynamicSegmentNotReadable: return "dynamic_segment_not_readable";
+    case Elf32LoadError::DynamicSegmentFileMappingMismatch: return "dynamic_segment_file_mapping_mismatch";
     case Elf32LoadError::SegmentPageOverlap: return "segment_page_overlap";
     case Elf32LoadError::AddressConflict: return "address_conflict";
     case Elf32LoadError::MapFailed: return "map_failed";
