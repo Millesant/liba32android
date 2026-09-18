@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-18
-Current phase: M4 dependency-resolution package specified; implementation pending
+Current phase: M4 dependency-resolution implementation/docs complete; final exact-head CI pending
 Integration branch: `bleeding`
 Last merged runtime PR: #15
 Runtime baseline commit: `dbc329e2205828c97267a2de60ce0771c4173cb6`
-Active runtime work: `003-elf32-dependency-resolution` T003 real-fixture zero-dependency integration implemented on `m4-elf32-dependency-resolution`; fresh CI NOT RUN
+Active runtime work: `003-elf32-dependency-resolution` through T004 on `m4-elf32-dependency-resolution`; final exact-head CI NOT RUN
 
 ## Working
 
@@ -32,12 +32,13 @@ Active runtime work: `003-elf32-dependency-resolution` T003 real-fixture zero-de
   - does not rebase/dereference pointer-like values or begin dynamic linking.
 - `src/elf/elf32_linker_metadata.*` now validates the first linker-facing metadata set: STRTAB/STRSZ, SYMTAB/SYMENT, REL/RELSZ/RELENT, SONAME, and ordered NEEDED offsets. Pointer-like STRTAB/SYMTAB/REL values are rebased exactly once with checked 32-bit arithmetic; declared guest ranges are validated read-only through `GuestMemory`; malformed duplicates/groups, entry sizes, REL sizes, offsets, overflows, and unreadable ranges are rejected.
 - `src/elf/elf32_linker_strings.*` now materializes bounded STRTAB entries plus optional SONAME and ordered/repeated NEEDED names. Every call requires an explicit caller-selected payload ceiling; reads remain through `GuestMemory`, use checked guest-address arithmetic, preserve raw bytes, and never mutate guest memory. Aggregate failure is all-or-nothing.
+- `src/elf/elf32_dependency_resolver.*` now acquires host-owned dependency image inputs through a caller-owned provider. It preserves ordered/repeated `DT_NEEDED` occurrences, forwards non-empty name bytes unchanged, distinguishes not-found from provider failure, validates non-empty provider identity/image, enforces explicit dependency-count/per-image/total-image ceilings, and returns no partial successful aggregate on failure. It deliberately does not choose guest bases or map dependency ELF images.
 - The reproducible real ARMv7/Android fixture remains generated with pinned NDK r27d / API 26 inputs. It has four `PT_LOAD` segments with `p_align=0x4000`, BSS, one `PT_DYNAMIC`, and observed SONAME/REL/SYMTAB/STRTAB/GNU_HASH-related tags with no `DT_NEEDED`; the linker-string integration validates SONAME `liba32android_loader_fixture.so` with an explicit 64-byte ceiling and zero NEEDED names.
 - Repository workflow state uses root `AGENTS.md`, durable `.agent/` files, and `specs/<id>-<feature>/{requirements,design,tasks}.md` for feature-scale work. `specs/000-current-baseline/` converts the already implemented work through PR #11 into that structure.
 
 ## Partial / not implemented
 
-- `DT_NEEDED` dependency image resolution/loading beyond the new spec, search-path/namespace policy, pathname semantics, and full dynamic symbol-table semantics: NOT IMPLEMENTED.
+- Dependency guest mapping/loading beyond bounded image acquisition, recursive graph/link-map/cycle/dedup semantics, Android search-path/namespace/pathname policy, and full dynamic symbol-table semantics: NOT IMPLEMENTED.
 - ARM relocations: NOT IMPLEMENTED.
 - Symbol lookup/interposition: NOT IMPLEMENTED.
 - RELRO/TLS processing: NOT IMPLEMENTED.
@@ -47,6 +48,10 @@ Active runtime work: `003-elf32-dependency-resolution` T003 real-fixture zero-de
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### M4 dependency-resolution feature
+
+PR #17 is open on `m4-elf32-dependency-resolution`. T001 provider boundary is PASS on GitHub Actions run `35405652527` (#112). T002 provider-error/resource hardening is PASS on `35405978520` (#116). T003 real-fixture zero-dependency integration is PASS on `35406297624` (#118): Linux CTest reported 26/26 PASS including `elf32_dependency_resolution` and `elf32_real_dependency_resolution`; Android arm64-v8a cross-build PASS. T004 architecture/README/state convergence is complete. Final exact-head T005 CI is NOT RUN yet.
 
 ### M4 linker-string feature
 
@@ -96,14 +101,14 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 
 ## Current blocker
 
-No blocker prevents CI-gating `003-elf32-dependency-resolution` T003. Actual 16 KiB Android host-page behavior remains an independent evidence gap rather than a blocker for this linker work.
+No implementation blocker remains for `003-elf32-dependency-resolution`. The only feature-completion gate is final exact-head CI after T004 convergence. Actual 16 KiB Android host-page behavior remains an independent evidence gap rather than a blocker for this linker work.
 
 ## Important temporary facts
 
 - `specs/002-elf32-linker-strings/` is merged through PR #15 as `dbc329e2205828c97267a2de60ce0771c4173cb6`. T001 PASS #97, T002 PASS #99, T003 PASS #102, T005 feature gate PASS #106, and persistence-only closeout PASS #108.
 - Dependency loading/search-path policy remains deliberately deferred by merged `002`; `003-elf32-dependency-resolution` is now readiness-checked on `m4-elf32-dependency-resolution`.
 - `003` assigns filesystem/search-path/namespace lookup policy to an injected provider, preserves one request/result occurrence per ordered `DT_NEEDED`, requires explicit dependency-count/per-image/total-image byte limits, and stops before guest mapping because `ET_DYN` placement remains explicit.
-- T001 provider boundary is PASS on GitHub Actions run `35405652527` (#112). T002 provider-error/resource hardening is PASS on `35405978520` (#116): Linux CTest reported 25/25 PASS including `elf32_dependency_resolution`, and Android arm64-v8a cross-build PASS. T003 real-fixture zero-dependency integration is implemented; fresh CI is NOT RUN.
+- `003-elf32-dependency-resolution` is complete through T004: T001 PASS #112, T002 PASS #116, T003 PASS #118, T004 DONE. T005 final exact-head CI is NOT RUN.
 
 - `specs/000-current-baseline/` is a documentation conversion of already implemented behavior; the runtime evidence above remains its validation basis.
 - The next feature-scale implementation must get a new `specs/<id>-<feature>/` requirements/design/tasks chain instead of extending `specs/000-current-baseline/`.
