@@ -5,7 +5,7 @@ Current phase: M3 mapping/structural metadata converged; M4 linker metadata/sema
 Integration branch: `bleeding`
 Last merged runtime PR: #11
 Runtime baseline commit: `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`
-Active runtime work: none
+Active runtime work: M4 T001 linker-metadata semantic collection on `m4-elf32-linker-metadata`; implementation complete, CI NOT RUN
 
 ## Working
 
@@ -46,6 +46,11 @@ Active runtime work: none
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### Active M4 feature branch
+
+T001 semantic collection is implemented on `m4-elf32-linker-metadata` with a focused synthetic test and CMake registration. CI for this feature head is NOT RUN at this checkpoint.
+
 
 ### Current runtime baseline on `bleeding`
 
