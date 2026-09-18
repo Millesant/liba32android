@@ -5,14 +5,14 @@
 - Depends on: merged `002-elf32-linker-strings`
 - Scope: add `src/elf/elf32_dependency_resolver.{h,cpp}`; define provider/result/source/options types; implement empty-set success, dependency-count precheck, empty-name rejection, exact byte forwarding, one provider call per ordered occurrence, duplicate preservation, and host-owned successful results.
 - Validation: deterministic fake-provider tests for ordered success, repeated names/calls, zero dependencies/zero calls, empty-name rejection before provider invocation, non-UTF-8 bytes, slash-containing names, and owned result bytes.
-- Status: IMPLEMENTED — CI NOT RUN
+- Status: DONE — CI #112 PASS
 
 ## T002 — Enforce provider failures and resource budgets
 - Requirements: R5-R9; AC6-AC10
 - Depends on: T001
 - Scope: translate provider not-found vs provider-failure distinctly; reject empty identity/image; enforce per-image and total-byte ceilings with checked 64-bit arithmetic; pass the bounded request ceiling to the provider; defensively reject oversized provider results; keep aggregate failure all-or-nothing.
 - Validation: synthetic provider cases for NotFound, Failed, empty identity, empty image, zero/limited per-image budget, limited total budget, provider contract violation, checked total accounting, and a later-occurrence failure with no successful partial aggregate.
-- Status: TODO
+- Status: IMPLEMENTED — CI NOT RUN
 
 ## T003 — Integrate the real ARM32 fixture zero-dependency path
 - Requirements: R10-R11; AC11-AC12
