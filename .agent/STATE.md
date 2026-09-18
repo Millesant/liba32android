@@ -5,7 +5,7 @@ Current phase: first M4 linker-metadata slice merged; next linker feature packag
 Integration branch: `bleeding`
 Last merged runtime PR: #13
 Runtime baseline commit: `1169f4eff1fb4ba35a74f55167b3904f12ff2425`
-Active runtime work: `002-elf32-linker-strings` T001 bounded STRTAB reader implemented on `m4-elf32-dynamic-strings`; CI NOT RUN
+Active runtime work: `002-elf32-linker-strings` T002 aggregate SONAME/NEEDED materialization implemented on `m4-elf32-dynamic-strings`; fresh CI NOT RUN
 
 ## Working
 
@@ -97,7 +97,7 @@ No blocker prevents starting the next linker feature package. Actual 16 KiB Andr
 ## Important temporary facts
 
 - `specs/002-elf32-linker-strings/` is readiness-checked for bounded STRTAB string consumption. It requires an explicit caller-selected maximum payload length and defers dependency loading/path policy.
-- T001 bounded single-entry STRTAB reader, focused synthetic tests, and CMake registration are implemented. CI for this feature head is NOT RUN.
+- T001 bounded single-entry STRTAB reader is PASS on GitHub Actions run `35387506251` (#97), including Linux tests and Android arm64-v8a cross-build. T002 aggregate SONAME/NEEDED materialization and synthetic coverage are committed; its current head requires fresh CI.
 
 - `specs/000-current-baseline/` is a documentation conversion of already implemented behavior; the runtime evidence above remains its validation basis.
 - The next feature-scale implementation must get a new `specs/<id>-<feature>/` requirements/design/tasks chain instead of extending `specs/000-current-baseline/`.
