@@ -1,6 +1,6 @@
 # Requirements — ELF32 Dependency Resolution
 
-Status: proposed M4 slice
+Status: implemented through T004; final exact-head CI pending
 
 ## Goal
 
