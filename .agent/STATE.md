@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-18
-Current phase: M4 linker-string slice merged; next linker feature package pending
+Current phase: M4 dependency-resolution package specified; implementation pending
 Integration branch: `bleeding`
 Last merged runtime PR: #15
 Runtime baseline commit: `dbc329e2205828c97267a2de60ce0771c4173cb6`
-Active runtime work: none
+Active runtime work: `003-elf32-dependency-resolution` spec ready on `m4-elf32-dependency-resolution`; implementation NOT RUN
 
 ## Working
 
@@ -37,8 +37,7 @@ Active runtime work: none
 
 ## Partial / not implemented
 
-- `DT_NEEDED` dependency loading, search-path/namespace policy, pathname semantics, and full dynamic symbol-table semantics: NOT IMPLEMENTED.
-- `DT_NEEDED` dependency loading: NOT IMPLEMENTED.
+- `DT_NEEDED` dependency image resolution/loading beyond the new spec, search-path/namespace policy, pathname semantics, and full dynamic symbol-table semantics: NOT IMPLEMENTED.
 - ARM relocations: NOT IMPLEMENTED.
 - Symbol lookup/interposition: NOT IMPLEMENTED.
 - RELRO/TLS processing: NOT IMPLEMENTED.
@@ -97,12 +96,14 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 
 ## Current blocker
 
-No blocker prevents starting the next linker feature package. Actual 16 KiB Android host-page behavior remains an independent evidence gap rather than a blocker for linker work.
+No blocker prevents implementing `003-elf32-dependency-resolution` T001. Actual 16 KiB Android host-page behavior remains an independent evidence gap rather than a blocker for this linker work.
 
 ## Important temporary facts
 
 - `specs/002-elf32-linker-strings/` is merged through PR #15 as `dbc329e2205828c97267a2de60ce0771c4173cb6`. T001 PASS #97, T002 PASS #99, T003 PASS #102, T005 feature gate PASS #106, and persistence-only closeout PASS #108.
-- Dependency loading/search-path policy remains deliberately deferred; this feature only materializes bounded byte strings.
+- Dependency loading/search-path policy remains deliberately deferred by merged `002`; `003-elf32-dependency-resolution` is now readiness-checked on `m4-elf32-dependency-resolution`.
+- `003` assigns filesystem/search-path/namespace lookup policy to an injected provider, preserves one request/result occurrence per ordered `DT_NEEDED`, requires explicit dependency-count/per-image/total-image byte limits, and stops before guest mapping because `ET_DYN` placement remains explicit.
+- The next implementation slice is T001 only: provider boundary plus ordered dependency acquisition. No build/test/CI has run for `003` yet.
 
 - `specs/000-current-baseline/` is a documentation conversion of already implemented behavior; the runtime evidence above remains its validation basis.
 - The next feature-scale implementation must get a new `specs/<id>-<feature>/` requirements/design/tasks chain instead of extending `specs/000-current-baseline/`.
