@@ -5,7 +5,7 @@
 - Depends on: merged `002-elf32-linker-strings`
 - Scope: add `src/elf/elf32_dependency_resolver.{h,cpp}`; define provider/result/source/options types; implement empty-set success, dependency-count precheck, empty-name rejection, exact byte forwarding, one provider call per ordered occurrence, duplicate preservation, and host-owned successful results.
 - Validation: deterministic fake-provider tests for ordered success, repeated names/calls, zero dependencies/zero calls, empty-name rejection before provider invocation, non-UTF-8 bytes, slash-containing names, and owned result bytes.
-- Status: TODO
+- Status: IMPLEMENTED — CI NOT RUN
 
 ## T002 — Enforce provider failures and resource budgets
 - Requirements: R5-R9; AC6-AC10
