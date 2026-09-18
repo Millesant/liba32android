@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "elf/elf32_dynamic.h"
+#include "memory/guest_memory.h"
 
 namespace liba32android::elf {
 
@@ -15,31 +16,68 @@ enum class Elf32LinkerMetadataError : std::uint8_t {
     IncompleteStringTable,
     IncompleteSymbolTable,
     IncompleteRelTable,
+    AddressOverflow,
+    RangeOverflow,
+    ReadFailed,
+    InvalidSymbolEntrySize,
+    InvalidRelEntrySize,
+    InvalidRelSize,
+    StringOffsetOutOfRange,
 };
 
-struct Elf32DynamicStringTableMetadata {
-    // Raw DT_STRTAB value. T002 will rebase and validate this as a guest VA.
+struct Elf32CollectedStringTableMetadata {
     std::uint32_t address_value{};
     std::uint32_t size{};
 };
 
-struct Elf32DynamicSymbolTableMetadata {
-    // Raw DT_SYMTAB value. T002 will rebase and validate this as a guest VA.
+struct Elf32CollectedSymbolTableMetadata {
     std::uint32_t address_value{};
     std::uint32_t entry_size{};
 };
 
-struct Elf32DynamicRelTableMetadata {
-    // Raw DT_REL value. T002 will rebase and validate this as a guest VA.
+struct Elf32CollectedRelTableMetadata {
     std::uint32_t address_value{};
+    std::uint32_t size{};
+    std::uint32_t entry_size{};
+};
+
+struct Elf32CollectedLinkerMetadata {
+    std::optional<Elf32CollectedStringTableMetadata> string_table;
+    std::optional<Elf32CollectedSymbolTableMetadata> symbol_table;
+    std::optional<Elf32CollectedRelTableMetadata> rel_table;
+    std::optional<std::uint32_t> soname_offset;
+    std::vector<std::uint32_t> needed_offsets;
+};
+
+struct Elf32CollectedLinkerMetadataResult {
+    Elf32LinkerMetadataError error{Elf32LinkerMetadataError::None};
+    Elf32CollectedLinkerMetadata metadata;
+
+    [[nodiscard]] explicit operator bool() const noexcept {
+        return error == Elf32LinkerMetadataError::None;
+    }
+};
+
+struct Elf32StringTableMetadata {
+    std::uint32_t guest_address{};
+    std::uint32_t size{};
+};
+
+struct Elf32SymbolTableMetadata {
+    std::uint32_t guest_address{};
+    std::uint32_t entry_size{};
+};
+
+struct Elf32RelTableMetadata {
+    std::uint32_t guest_address{};
     std::uint32_t size{};
     std::uint32_t entry_size{};
 };
 
 struct Elf32LinkerMetadata {
-    std::optional<Elf32DynamicStringTableMetadata> string_table;
-    std::optional<Elf32DynamicSymbolTableMetadata> symbol_table;
-    std::optional<Elf32DynamicRelTableMetadata> rel_table;
+    std::optional<Elf32StringTableMetadata> string_table;
+    std::optional<Elf32SymbolTableMetadata> symbol_table;
+    std::optional<Elf32RelTableMetadata> rel_table;
     std::optional<std::uint32_t> soname_offset;
     std::vector<std::uint32_t> needed_offsets;
 };
@@ -53,10 +91,18 @@ struct Elf32LinkerMetadataResult {
     }
 };
 
-// Collect the first supported dynamic-linker tag set from structurally parsed
-// Elf32_Dyn entries. Pointer-like values remain raw in this T001 layer; checked
-// load-bias rebasing and GuestMemory range validation are added by T002.
-[[nodiscard]] Elf32LinkerMetadataResult collect_elf32_linker_metadata(
+// T001 semantic collection: classify the first supported dynamic-linker tag set
+// while preserving pointer-like fields as raw dynamic values.
+[[nodiscard]] Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
+    std::span<const Elf32DynamicEntry> entries);
+
+// T002 validated metadata: rebase pointer-like fields exactly once with the
+// loader-provided load bias, validate declared guest ranges through GuestMemory,
+// and enforce the first ELF32 entry-size/string-offset invariants. This function
+// is read-only and never changes mappings, permissions, or guest bytes.
+[[nodiscard]] Elf32LinkerMetadataResult build_elf32_linker_metadata(
+    const memory::GuestMemory& memory,
+    std::uint32_t load_bias,
     std::span<const Elf32DynamicEntry> entries);
 
 [[nodiscard]] const char* to_string(Elf32LinkerMetadataError error) noexcept;
