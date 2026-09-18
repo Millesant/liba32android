@@ -19,14 +19,14 @@
 - Depends on: T001, T002
 - Scope: load the real fixture, structurally parse its dynamic array, build linker metadata with the loader's load bias, and assert valid STRTAB/SYMTAB/REL/SONAME descriptors plus no NEEDED entries.
 - Validation: real-fixture linker-metadata integration test in CTest.
-- Status: IMPLEMENTED — CI NOT RUN
+- Status: DONE — CI #87 PASS
 
 ## T004 — Converge architecture and durable state
 - Requirements: R1, R8, R10; AC10
 - Depends on: T001-T003
 - Scope: document the new linker-metadata boundary, keep deferred linker semantics explicit, update `.agent/STATE.md` / `.agent/NEXT.md`, and ensure README wording remains accurate.
 - Validation: consistency pass across requirements/design/tasks/code/tests/docs/state.
-- Status: TODO
+- Status: DONE — architecture/README/state converged
 
 ## T005 — CI gate
 - Requirements: R10; AC10
@@ -38,7 +38,7 @@
   - reproducible ARM32 fixture generation remains PASS;
   - exact `liba32android.so` output-name check remains PASS;
   - Android `arm64-v8a` cross-build and diagnostics remain PASS.
-- Status: TODO
+- Status: IN PROGRESS — final exact-head CI NOT RUN
 
 ## Readiness Check
 
