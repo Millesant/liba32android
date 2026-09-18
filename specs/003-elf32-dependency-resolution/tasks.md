@@ -19,14 +19,14 @@
 - Depends on: T001, T002
 - Scope: extend/add fixture-backed integration through loader → dynamic → linker metadata → linker strings → dependency resolver; use a provider that fails if called; require successful empty dependency output and zero provider calls.
 - Validation: fixture-backed CTest integration while preserving the fixture's known zero-`DT_NEEDED` property.
-- Status: IMPLEMENTED — CI NOT RUN
+- Status: DONE — CI #118 PASS
 
 ## T004 — Converge architecture and durable state
 - Requirements: R1-R2, R10-R11; AC11-AC13
 - Depends on: T001-T003
 - Scope: document the provider-owned lookup boundary, explicit acquisition resource limits, duplicate-preservation policy, and the deliberate stop before guest placement/link-map semantics; update README and `.agent/STATE.md` / `.agent/NEXT.md`.
 - Validation: consistency pass across requirements/design/tasks/code/tests/docs/state.
-- Status: TODO
+- Status: DONE — architecture/README/state converged
 
 ## T005 — CI gate
 - Requirements: R11; AC13
@@ -39,7 +39,7 @@
   - reproducible ARM32 fixture generation PASS;
   - exact `liba32android.so` naming PASS;
   - Android `arm64-v8a` runtime/diagnostics cross-build PASS.
-- Status: TODO
+- Status: IN PROGRESS — final exact-head CI NOT RUN
 
 ## Readiness Check
 
