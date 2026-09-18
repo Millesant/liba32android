@@ -5,7 +5,7 @@
 - Depends on: merged `001-elf32-linker-metadata`
 - Scope: add `src/elf/elf32_linker_strings.{h,cpp}`; define explicit options/result/error types plus independently callable `read_elf32_string_table_entry`; implement checked STRTAB offset/address handling, bounded chunked NUL scanning, explicit max-length enforcement, byte-preserving materialization, and no-mutation behavior.
 - Validation: focused single-entry synthetic cases for empty/non-UTF-8 strings, out-of-range offsets, overflow, read failure, unterminated strings, exact limit, over-limit strings, and unchanged guest bytes.
-- Status: TODO
+- Status: IMPLEMENTED — CI NOT RUN
 
 ## T002 — Materialize SONAME and ordered NEEDED names
 - Requirements: R8-R10; AC1-AC2, AC10
