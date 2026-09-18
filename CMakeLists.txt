@@ -36,6 +36,7 @@ add_library(liba32android SHARED
     src/cpu/dynarmic_cpu.cpp
     src/elf/elf32_dynamic.cpp
     src/elf/elf32_linker_metadata.cpp
+    src/elf/elf32_linker_strings.cpp
     src/elf/elf32_loader.cpp
     src/memory/guest_memory.cpp
 )
@@ -106,6 +107,10 @@ if(LIBA32ANDROID_BUILD_TESTS)
     target_include_directories(elf32_linker_metadata_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(elf32_linker_metadata_test PRIVATE liba32android)
 
+    add_executable(elf32_linker_strings_test tests/elf32_linker_strings.cpp)
+    target_include_directories(elf32_linker_strings_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(elf32_linker_strings_test PRIVATE liba32android)
+
     add_executable(elf32_real_fixture_test tests/elf32_real_fixture.cpp)
     target_include_directories(elf32_real_fixture_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(elf32_real_fixture_test PRIVATE liba32android)
@@ -119,6 +124,12 @@ if(LIBA32ANDROID_BUILD_TESTS)
     target_include_directories(elf32_linker_metadata_real_fixture_test
                                PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(elf32_linker_metadata_real_fixture_test PRIVATE liba32android)
+
+    add_executable(elf32_linker_strings_real_fixture_test
+                   tests/elf32_linker_strings_real_fixture.cpp)
+    target_include_directories(elf32_linker_strings_real_fixture_test
+                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(elf32_linker_strings_real_fixture_test PRIVATE liba32android)
 
     add_test(NAME guest_arm_return_42 COMMAND cpu_smoke arm)
     add_test(NAME guest_thumb_return_42 COMMAND cpu_smoke thumb)
@@ -139,6 +150,7 @@ if(LIBA32ANDROID_BUILD_TESTS)
     add_test(NAME elf32_address_conflict COMMAND elf32_loader_test address_conflict)
     add_test(NAME elf32_dynamic_array COMMAND elf32_dynamic_test)
     add_test(NAME elf32_linker_metadata_collection COMMAND elf32_linker_metadata_test)
+    add_test(NAME elf32_linker_string_entry COMMAND elf32_linker_strings_test)
 
     if(LIBA32ANDROID_ARM32_FIXTURE_PATH)
         if(NOT EXISTS "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
@@ -151,6 +163,9 @@ if(LIBA32ANDROID_BUILD_TESTS)
                  COMMAND elf32_dynamic_real_fixture_test "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
         add_test(NAME elf32_real_linker_metadata
                  COMMAND elf32_linker_metadata_real_fixture_test
+                         "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
+        add_test(NAME elf32_real_linker_strings
+                 COMMAND elf32_linker_strings_real_fixture_test
                          "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
     endif()
 endif()

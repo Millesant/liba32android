@@ -27,8 +27,11 @@ elf32_dynamic
 elf32_linker_metadata
    |  validated guest-VA descriptors + string offsets
    v
+elf32_linker_strings
+   |  materialized SONAME / DT_NEEDED names
+   v
 future linker layers
-   +--> string consumption / SONAME / DT_NEEDED names
+   +--> dependency loading/search-path policy
    +--> symbol/hash semantics
    +--> relocation decoding/application
 ```
@@ -72,8 +75,7 @@ The validator is read-only. Failure paths do not change guest bytes, mappings, o
 
 This layer does not yet:
 
-- read NUL-terminated strings from STRTAB;
-- load `DT_NEEDED` dependencies;
+- load `DT_NEEDED` dependencies or apply search-path/namespace policy;
 - establish full symbol-table bounds or consume symbol entries;
 - interpret SysV/GNU hash tables;
 - decode or apply ARM relocations;
@@ -81,7 +83,7 @@ This layer does not yet:
 - implement symbol lookup/interposition/versioning;
 - process RELRO, TLS, constructors/destructors, or Android packed relocations.
 
-Those are separate linker/runtime slices.
+Bounded SONAME/NEEDED string consumption now lives in `elf32_linker_strings`; the remaining items are separate linker/runtime slices.
 
 ## Validation evidence
 

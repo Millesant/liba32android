@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-18
-Current phase: first M4 linker-metadata slice merged; next linker feature package pending
+Current phase: M4 linker-string slice complete; persistence-only closeout verification pending
 Integration branch: `bleeding`
 Last merged runtime PR: #13
 Runtime baseline commit: `1169f4eff1fb4ba35a74f55167b3904f12ff2425`
-Active runtime work: none
+Active runtime work: none; PR #15 implementation/docs head passed final CI #106
 
 ## Working
 
@@ -31,12 +31,13 @@ Active runtime work: none
   - rejects invalid ranges, non-8-byte file-backed sizes, unreadable guest bytes and unterminated arrays;
   - does not rebase/dereference pointer-like values or begin dynamic linking.
 - `src/elf/elf32_linker_metadata.*` now validates the first linker-facing metadata set: STRTAB/STRSZ, SYMTAB/SYMENT, REL/RELSZ/RELENT, SONAME, and ordered NEEDED offsets. Pointer-like STRTAB/SYMTAB/REL values are rebased exactly once with checked 32-bit arithmetic; declared guest ranges are validated read-only through `GuestMemory`; malformed duplicates/groups, entry sizes, REL sizes, offsets, overflows, and unreadable ranges are rejected.
-- The reproducible real ARMv7/Android fixture remains generated with pinned NDK r27d / API 26 inputs. It has four `PT_LOAD` segments with `p_align=0x4000`, BSS, one `PT_DYNAMIC`, and observed SONAME/REL/SYMTAB/STRTAB/GNU_HASH-related tags with no `DT_NEEDED`; the M4 integration test validates its linker metadata using the loader's actual load bias.
+- `src/elf/elf32_linker_strings.*` now materializes bounded STRTAB entries plus optional SONAME and ordered/repeated NEEDED names. Every call requires an explicit caller-selected payload ceiling; reads remain through `GuestMemory`, use checked guest-address arithmetic, preserve raw bytes, and never mutate guest memory. Aggregate failure is all-or-nothing.
+- The reproducible real ARMv7/Android fixture remains generated with pinned NDK r27d / API 26 inputs. It has four `PT_LOAD` segments with `p_align=0x4000`, BSS, one `PT_DYNAMIC`, and observed SONAME/REL/SYMTAB/STRTAB/GNU_HASH-related tags with no `DT_NEEDED`; the linker-string integration validates SONAME `liba32android_loader_fixture.so` with an explicit 64-byte ceiling and zero NEEDED names.
 - Repository workflow state uses root `AGENTS.md`, durable `.agent/` files, and `specs/<id>-<feature>/{requirements,design,tasks}.md` for feature-scale work. `specs/000-current-baseline/` converts the already implemented work through PR #11 into that structure.
 
 ## Partial / not implemented
 
-- String materialization and full dynamic symbol-table semantics: NOT IMPLEMENTED.
+- `DT_NEEDED` dependency loading, search-path/namespace policy, pathname semantics, and full dynamic symbol-table semantics: NOT IMPLEMENTED.
 - `DT_NEEDED` dependency loading: NOT IMPLEMENTED.
 - ARM relocations: NOT IMPLEMENTED.
 - Symbol lookup/interposition: NOT IMPLEMENTED.
@@ -47,6 +48,10 @@ Active runtime work: none
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### M4 linker-string feature
+
+T001 bounded STRTAB reading is PASS on GitHub Actions run `35387506251` (#97). T002 SONAME/NEEDED aggregation is PASS on run `35391818125` (#99). T003 real-fixture string integration is PASS on run `35402559596` (#102). T004 architecture/README/state convergence is complete. T005 final feature gate is PASS on run `35402997435` (#106): Linux CTest reported 24/24 PASS including `elf32_linker_string_entry` and `elf32_real_linker_strings`, reproducible fixture/build/name checks passed, and Android arm64-v8a cross-build passed.
 
 ### M4 linker-metadata feature
 
@@ -92,9 +97,12 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 
 ## Current blocker
 
-No blocker prevents starting the next linker feature package. Actual 16 KiB Android host-page behavior remains an independent evidence gap rather than a blocker for linker work.
+No implementation blocker remains for PR #15. This persistence-only closeout update should be CI-verified before merge. Actual 16 KiB Android host-page behavior remains an independent evidence gap rather than a blocker for this linker work.
 
 ## Important temporary facts
+
+- `specs/002-elf32-linker-strings/` is complete through T005: T001 PASS #97, T002 PASS #99, T003 PASS #102, T004 DONE, T005 PASS #106. The only remaining branch action is persistence-only closeout CI verification before merge.
+- Dependency loading/search-path policy remains deliberately deferred; this feature only materializes bounded byte strings.
 
 - `specs/000-current-baseline/` is a documentation conversion of already implemented behavior; the runtime evidence above remains its validation basis.
 - The next feature-scale implementation must get a new `specs/<id>-<feature>/` requirements/design/tasks chain instead of extending `specs/000-current-baseline/`.
