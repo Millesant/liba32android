@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-18
-Current phase: M4 linker-string slice implemented through T004; final exact-head CI gate pending
+Current phase: M4 linker-string slice complete; persistence-only closeout verification pending
 Integration branch: `bleeding`
 Last merged runtime PR: #13
 Runtime baseline commit: `1169f4eff1fb4ba35a74f55167b3904f12ff2425`
-Active runtime work: `002-elf32-linker-strings` T005 final exact-head CI gate on `m4-elf32-dynamic-strings`
+Active runtime work: none; PR #15 implementation/docs head passed final CI #106
 
 ## Working
 
@@ -51,7 +51,7 @@ Active runtime work: `002-elf32-linker-strings` T005 final exact-head CI gate on
 
 ### M4 linker-string feature
 
-T001 bounded STRTAB reading is PASS on GitHub Actions run `35387506251` (#97). T002 SONAME/NEEDED aggregation is PASS on run `35391818125` (#99). T003 real-fixture string integration is PASS on run `35402559596` (#102): Linux CTest executed `elf32_real_linker_strings` and reported 24/24 tests PASS, and Android arm64-v8a cross-build PASS. T004 architecture/README/state convergence is complete. The latest convergence head still requires the final T005 exact-head CI gate.
+T001 bounded STRTAB reading is PASS on GitHub Actions run `35387506251` (#97). T002 SONAME/NEEDED aggregation is PASS on run `35391818125` (#99). T003 real-fixture string integration is PASS on run `35402559596` (#102). T004 architecture/README/state convergence is complete. T005 final feature gate is PASS on run `35402997435` (#106): Linux CTest reported 24/24 PASS including `elf32_linker_string_entry` and `elf32_real_linker_strings`, reproducible fixture/build/name checks passed, and Android arm64-v8a cross-build passed.
 
 ### M4 linker-metadata feature
 
@@ -97,11 +97,11 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 
 ## Current blocker
 
-No blocker prevents the final CI gate for `002-elf32-linker-strings`. Actual 16 KiB Android host-page behavior remains an independent evidence gap rather than a blocker for this linker work.
+No implementation blocker remains for PR #15. This persistence-only closeout update should be CI-verified before merge. Actual 16 KiB Android host-page behavior remains an independent evidence gap rather than a blocker for this linker work.
 
 ## Important temporary facts
 
-- `specs/002-elf32-linker-strings/` is implemented through T004. T001 is PASS on #97, T002 on #99, and T003 on #102. T005 final exact-head CI is NOT RUN on the documentation/state-converged head.
+- `specs/002-elf32-linker-strings/` is complete through T005: T001 PASS #97, T002 PASS #99, T003 PASS #102, T004 DONE, T005 PASS #106. The only remaining branch action is persistence-only closeout CI verification before merge.
 - Dependency loading/search-path policy remains deliberately deferred; this feature only materializes bounded byte strings.
 
 - `specs/000-current-baseline/` is a documentation conversion of already implemented behavior; the runtime evidence above remains its validation basis.
