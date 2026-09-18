@@ -12,14 +12,14 @@
 - Depends on: T001
 - Scope: translate provider not-found vs provider-failure distinctly; reject empty identity/image; enforce per-image and total-byte ceilings with checked 64-bit arithmetic; pass the bounded request ceiling to the provider; defensively reject oversized provider results; keep aggregate failure all-or-nothing.
 - Validation: synthetic provider cases for NotFound, Failed, empty identity, empty image, zero/limited per-image budget, limited total budget, provider contract violation, checked total accounting, and a later-occurrence failure with no successful partial aggregate.
-- Status: IMPLEMENTED — CI NOT RUN
+- Status: DONE — CI #116 PASS
 
 ## T003 — Integrate the real ARM32 fixture zero-dependency path
 - Requirements: R10-R11; AC11-AC12
 - Depends on: T001, T002
 - Scope: extend/add fixture-backed integration through loader → dynamic → linker metadata → linker strings → dependency resolver; use a provider that fails if called; require successful empty dependency output and zero provider calls.
 - Validation: fixture-backed CTest integration while preserving the fixture's known zero-`DT_NEEDED` property.
-- Status: TODO
+- Status: IMPLEMENTED — CI NOT RUN
 
 ## T004 — Converge architecture and durable state
 - Requirements: R1-R2, R10-R11; AC11-AC13
