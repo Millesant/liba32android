@@ -2,11 +2,12 @@
 
 The M3 loader + structural dynamic-array baseline is green on `bleeding` through PR #11 / commit `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`. Future feature-scale work uses the repository's current requirements -> design -> tasks structure.
 
-1. `001-elf32-linker-metadata` — merge completed feature after persistence-only closeout CI.
-   - Status: T001 PASS (#78), T002 PASS (#84), T003 PASS (#87), T004 DONE, T005 PASS (#91). PR #13 is implementation-complete.
-   - Exact next action: verify CI on this persistence-only closeout head, then merge PR #13 into `bleeding` with stale-head protection.
-   - After merge: recover the new `bleeding` head and start a fresh feature package for the next linker slice rather than extending `001`.
-   - Termux: no device run is required for `001`; it remains metadata-only and fully exercised by CI/fixture tests.
+1. Create the next linker feature package after merged `001-elf32-linker-metadata`.
+   - Status: PR #13 is merged to `bleeding` as `1169f4eff1fb4ba35a74f55167b3904f12ff2425`; closeout CI #93 passed on the exact pre-merge feature head.
+   - Goal: specify the next bounded linker slice around safe dynamic-string consumption (SONAME and `DT_NEEDED` names) without opening/loading dependencies yet.
+   - Depends on: `specs/001-elf32-linker-metadata/`, `src/elf/elf32_linker_metadata.*`, the existing STRTAB/STRSZ descriptor contract, and D-0003/D-0004.
+   - Exact next action: create a fresh `specs/002-...` requirements/design/tasks package before implementation; keep dependency loading, symbol lookup, and relocation application out of that first string-consumption slice.
+   - Termux: no device run is required yet; ask for one only when a runtime/device path exercises new behavior that CI cannot.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
