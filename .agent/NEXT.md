@@ -2,13 +2,13 @@
 
 The M3 loader + structural dynamic-array baseline is green on `bleeding` through PR #11 / commit `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`. Future feature-scale work uses the repository's current requirements -> design -> tasks structure.
 
-1. `001-elf32-linker-metadata` — define and implement the first M4 linker-metadata slice.
-   - Goal: turn the raw structural `Elf32_Dyn` entries into validated linker-facing metadata without loading dependencies or applying relocations yet.
-   - Depends on: `specs/000-current-baseline/`, `src/elf/elf32_loader.*`, `src/elf/elf32_dynamic.*`, D-0003/D-0004.
-   - Relevant: create `specs/001-elf32-linker-metadata/{requirements.md,design.md,tasks.md}` before substantial implementation; keep the loader/dynamic-parser/linker boundaries explicit.
-   - Design questions to resolve in the spec: supported singleton vs repeated tags, load-bias treatment for pointer-like values, readable guest-range validation for string/symbol/relocation metadata, required entry sizes, duplicate/inconsistent tag failure semantics, and how GNU/Android-specific metadata remains optional/deferred.
-   - Non-goal for the first slice: no `DT_NEEDED` file loading, symbol lookup/interposition, relocation writes, RELRO enforcement, TLS, or application-specific behavior.
-   - DoD: requirements/design/tasks are internally consistent; focused synthetic valid/malformed coverage and the real fixture validate the chosen metadata contract; the existing 20 baseline tests remain PASS; Android `arm64-v8a` cross-build remains PASS; `.agent/STATE.md` and architecture docs converge with the implementation.
+1. `001-elf32-linker-metadata` — implement T001 from the ready M4 spec.
+   - Status: requirements/design/tasks are created and the readiness check is complete on branch `m4-elf32-linker-metadata`.
+   - Goal: add the linker-metadata API and semantic tag collection without range validation or fixture integration yet.
+   - Depends on: `specs/001-elf32-linker-metadata/{requirements.md,design.md,tasks.md}`, the M3 baseline, D-0003/D-0004.
+   - Relevant: `src/elf/elf32_linker_metadata.{h,cpp}` (new), `src/elf/elf32_dynamic.h`, focused new synthetic test, `CMakeLists.txt`.
+   - Exact next action: implement T001 only—supported tag classification, duplicate singleton rejection, incomplete-group rejection, ordered repeated `DT_NEEDED`, and deferred-tag tolerance.
+   - DoD for the next round: T001 synthetic cases are added and CI is opened as the authoritative build/test gate; do not begin T002 range validation until T001 is coherent.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
