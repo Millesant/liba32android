@@ -4,7 +4,7 @@ Status: M4 bounded string-consumption layer implemented through T003
 
 ## Boundary
 
-`elf32_linker_strings` sits above validated linker metadata and below future dependency-loading/path-policy logic.
+`elf32_linker_strings` sits above validated linker metadata and below `elf32_dependency_resolver`.
 
 It consumes:
 
@@ -31,7 +31,10 @@ elf32_linker_strings
     | optional SONAME
     | ordered/repeated NEEDED byte strings
     v
-future dependency loader / namespace / search-path policy
+elf32_dependency_resolver
+    |
+    v
+caller/platform dependency provider / future graph+mapping layers
 ```
 
 Guest addresses remain logical 32-bit values and all guest bytes are accessed through `GuestMemory`.
@@ -93,14 +96,14 @@ This layer does **not**:
 - open or load `DT_NEEDED` libraries;
 - define search paths, namespaces, link maps, or dependency deduplication;
 - canonicalize path/name bytes;
-- reject empty names as dependency policy;
+- reject empty names itself; `elf32_dependency_resolver` applies that dependency-request policy;
 - interpret SysV/GNU hash tables;
 - consume dynamic symbol entries for lookup;
 - implement symbol lookup/interposition/versioning;
 - decode/apply ARM relocations or PLT/JMPREL;
 - process RELRO, TLS, constructors/destructors, or Android packed relocations.
 
-Those remain separate future linker/runtime slices.
+Provider-backed bounded dependency acquisition now lives in `elf32_dependency_resolver`; search paths/namespaces, graph/link-map semantics, guest mapping, symbols, and relocations remain separate later slices.
 
 ## Validation evidence
 

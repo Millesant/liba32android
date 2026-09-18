@@ -6,7 +6,7 @@ The project is intentionally layered: CPU execution, guest memory, ELF32 mapping
 
 ## Current phase
 
-The current runtime baseline is C++20/CMake with Dynarmic pinned behind `src/cpu/`. The guest address space, ELF32 mapping/structural parsing, validated linker metadata, and bounded SONAME/`DT_NEEDED` string consumption are implemented. Dependency loading, symbol semantics, and relocation application remain later linker work.
+The current runtime baseline is C++20/CMake with Dynarmic pinned behind `src/cpu/`. The guest address space, ELF32 mapping/structural parsing, validated linker metadata, bounded SONAME/`DT_NEEDED` string consumption, and bounded provider-backed dependency image acquisition are implemented. Dependency guest mapping/graph semantics, symbol semantics, and relocation application remain later linker work.
 
 Implemented in the current baseline:
 
@@ -19,11 +19,12 @@ Implemented in the current baseline:
 - structural `Elf32_Dyn` parsing from guest memory with raw signed tags/raw values, unknown-tag preservation, and required `DT_NULL` termination;
 - validated linker metadata for STRTAB/STRSZ, SYMTAB/SYMENT, REL/RELSZ/RELENT, SONAME, and ordered `DT_NEEDED` offsets, including checked load-bias rebasing and guest-range validation;
 - bounded STRTAB string consumption with explicit caller-selected per-string limits, optional SONAME materialization, and ordered/repeated `DT_NEEDED` name preservation;
-- a reproducible Android NDK ARMv7 ELF fixture used for loader, dynamic-array, linker-metadata, and linker-string integration coverage.
+- provider-backed dependency image acquisition with exact ordered request forwarding, duplicate preservation, distinct provider errors, opaque provider identities, and explicit dependency-count/per-image/total-image resource ceilings;
+- a reproducible Android NDK ARMv7 ELF fixture used for loader, dynamic-array, linker-metadata, linker-string, and zero-dependency resolver integration coverage.
 
 Still outside the implemented baseline:
 
-- `DT_NEEDED` dependency loading, search-path/namespace policy, and pathname semantics;
+- dependency guest mapping, recursive graph/link-map/cycle/dedup semantics, and Android search-path/namespace/pathname policy;
 - dynamic symbol-table consumption, hash lookup, and symbol lookup/interposition;
 - ARM relocations;
 - RELRO and TLS processing;
@@ -59,4 +60,4 @@ GitHub Actions also cross-builds the shared runtime and Android diagnostics for 
 
 Repository-local agent rules live in `AGENTS.md`. Durable continuation state lives under `.agent/`. Feature-scale work uses the requirements -> design -> tasks packages under `specs/`; `specs/000-current-baseline/` converts the completed runtime work through PR #11 into that structure.
 
-Architecture and evidence details remain under `docs/architecture/` and `docs/research/`. The current linker boundaries are documented in `docs/architecture/elf32-linker-metadata.md` and `docs/architecture/elf32-linker-strings.md`.
+Architecture and evidence details remain under `docs/architecture/` and `docs/research/`. The current linker boundaries are documented in `docs/architecture/elf32-linker-metadata.md`, `docs/architecture/elf32-linker-strings.md`, and `docs/architecture/elf32-dependency-resolution.md`.
