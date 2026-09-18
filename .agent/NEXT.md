@@ -2,12 +2,12 @@
 
 The M3 loader + structural dynamic-array baseline is green on `bleeding` through PR #11 / commit `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`. Future feature-scale work uses the repository's current requirements -> design -> tasks structure.
 
-1. `002-elf32-linker-strings` — CI-gate T002 aggregate linker strings.
-   - Status: T001 is DONE / CI #97 PASS. T002 SONAME + ordered/repeated NEEDED materialization is implemented; validation for the latest head is NOT RUN.
-   - Relevant: `src/elf/elf32_linker_strings.{h,cpp}`, `tests/elf32_linker_strings.cpp`, `specs/002-elf32-linker-strings/tasks.md`.
-   - Exact next action: inspect GitHub Actions for the current PR head and fix only T002 build/test failures.
-   - DoD: Linux build and all CTest cases PASS, Android `arm64-v8a` cross-build PASS, then mark T002 DONE and start T003 real-fixture string integration in a fresh bounded round.
-   - Termux: no device run is required for T002.
+1. `002-elf32-linker-strings` — CI-gate T003 real-fixture string integration.
+   - Status: T001 is DONE / CI #97 PASS. T002 is DONE / CI #99 PASS. T003 fixture integration is implemented; validation for the latest head is NOT RUN.
+   - Relevant: `tests/elf32_linker_strings_real_fixture.cpp`, `CMakeLists.txt`, `src/elf/elf32_linker_strings.{h,cpp}`.
+   - Exact next action: inspect GitHub Actions for the current PR head and fix only T003 fixture-integration failures.
+   - DoD: Linux fixture generation/build and all CTest cases including `elf32_real_linker_strings` PASS, Android `arm64-v8a` cross-build PASS, then begin T004 docs/state convergence in a fresh bounded round.
+   - Termux: no device run is required for T003; this remains host-observable read-only linker-string consumption.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
