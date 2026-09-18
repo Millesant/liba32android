@@ -38,7 +38,7 @@
   - reproducible ARM32 fixture generation remains PASS;
   - exact `liba32android.so` output-name check remains PASS;
   - Android `arm64-v8a` cross-build and diagnostics remain PASS.
-- Status: IN PROGRESS — final exact-head CI NOT RUN
+- Status: DONE — CI #91 PASS
 
 ## Readiness Check
 
