@@ -2,12 +2,12 @@
 
 The M3 loader + structural dynamic-array baseline is green on `bleeding` through PR #11 / commit `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`. Future feature-scale work uses the repository's current requirements -> design -> tasks structure.
 
-1. `003-elf32-dependency-resolution` — CI-gate T001 provider boundary and ordered acquisition.
-   - Status: T001 implementation, focused fake-provider coverage, and CMake registration are committed on `m4-elf32-dependency-resolution`; validation is NOT RUN.
-   - Relevant: `src/elf/elf32_dependency_resolver.{h,cpp}`, `tests/elf32_dependency_resolver.cpp`, `CMakeLists.txt`, `specs/003-elf32-dependency-resolution/tasks.md`.
-   - Exact next action: open/update the feature PR and inspect GitHub Actions for the current head. Fix only T001 build/test failures.
-   - DoD: Linux build plus all CTest cases including `elf32_dependency_resolution` PASS and Android `arm64-v8a` cross-build PASS; then mark T001 DONE and start T002 resource/error hardening in a fresh bounded round.
-   - Termux: no device run is required for T001.
+1. `003-elf32-dependency-resolution` — CI-gate T002 provider errors and resource budgets.
+   - Status: T001 is DONE / CI #112 PASS. T002 provider NotFound/failure translation, identity/image validation, per-image/total byte budgets, bounded provider ceilings, and all-or-nothing failure coverage are implemented; validation for the latest head is NOT RUN.
+   - Relevant: `src/elf/elf32_dependency_resolver.cpp`, `tests/elf32_dependency_resolver.cpp`, `specs/003-elf32-dependency-resolution/tasks.md`.
+   - Exact next action: inspect GitHub Actions for the current PR head and fix only T002 build/test failures.
+   - DoD: Linux build and all CTest cases including `elf32_dependency_resolution` PASS, Android `arm64-v8a` cross-build PASS, then start T003 real-fixture zero-dependency integration in a fresh bounded round.
+   - Termux: no device run is required for T002.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
