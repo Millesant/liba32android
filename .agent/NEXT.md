@@ -2,11 +2,12 @@
 
 The M3 loader + structural dynamic-array baseline is green on `bleeding` through PR #11 / commit `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`. Future feature-scale work uses the repository's current requirements -> design -> tasks structure.
 
-1. `001-elf32-linker-metadata` — CI-gate T002 rebasing/range validation.
-   - Status: T001 is DONE / CI #78 PASS. T002 implementation and focused synthetic coverage are committed; validation for the latest head is NOT RUN.
-   - Relevant: `src/elf/elf32_linker_metadata.{h,cpp}`, `tests/elf32_linker_metadata.cpp`, `specs/001-elf32-linker-metadata/tasks.md`.
-   - Exact next action: inspect GitHub Actions for the current PR head and fix only T002 build/test failures.
-   - DoD: Linux build and all CTest cases PASS, Android `arm64-v8a` cross-build PASS, then mark T002 DONE and begin T003 real-fixture integration in a fresh bounded round.
+1. `001-elf32-linker-metadata` — CI-gate T003 real-fixture integration.
+   - Status: T001 is DONE / CI #78 PASS. T002 is DONE / CI #84 PASS. T003 real-fixture integration is implemented; validation for the latest head is NOT RUN.
+   - Relevant: `tests/elf32_linker_metadata_real_fixture.cpp`, `CMakeLists.txt`, `src/elf/elf32_linker_metadata.{h,cpp}`.
+   - Exact next action: inspect GitHub Actions for the current PR head and fix only T003 integration failures.
+   - DoD: Linux fixture generation/build and all CTest cases including `elf32_real_linker_metadata` PASS, Android `arm64-v8a` cross-build PASS, then begin T004 docs/state convergence in a fresh bounded round.
+   - Termux: no new device test is warranted for T001-T003; these slices only interpret already-loaded metadata. Ask for a Termux run once a runtime/device path materially exercises new behavior.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
