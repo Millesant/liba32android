@@ -12,14 +12,14 @@
 - Depends on: T001
 - Scope: build the aggregate API on `read_elf32_string_table_entry`; require STRTAB when SONAME/NEEDED is requested; consume optional SONAME and ordered/repeated NEEDED offsets from `Elf32LinkerMetadata`; preserve order/duplicates; make aggregate success all-or-nothing.
 - Validation: synthetic SONAME + multiple NEEDED cases, repeated offsets/names, missing-STRTAB rejection, no-strings/no-STRTAB success, and a later-NEEDED failure that does not yield successful partial output.
-- Status: IMPLEMENTED — CI NOT RUN
+- Status: DONE — CI #99 PASS
 
 ## T003 — Integrate the reproducible real ARM32 fixture
 - Requirements: R11; AC11
 - Depends on: T001, T002
 - Scope: load the real fixture, parse dynamic metadata, build linker metadata, consume strings with an explicit ceiling, assert SONAME `liba32android_loader_fixture.so`, and assert zero NEEDED names.
 - Validation: fixture-backed CTest integration.
-- Status: TODO
+- Status: IMPLEMENTED — CI NOT RUN
 
 ## T004 — Converge architecture and durable state
 - Requirements: R1, R11; AC12
