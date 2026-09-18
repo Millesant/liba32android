@@ -10,9 +10,11 @@
 
 namespace {
 
+using liba32android::elf::Elf32LinkerMetadata;
 using liba32android::elf::Elf32LinkerStringError;
 using liba32android::elf::Elf32LinkerStringOptions;
 using liba32android::elf::Elf32StringTableMetadata;
+using liba32android::elf::build_elf32_linker_strings;
 using liba32android::elf::read_elf32_string_table_entry;
 using liba32android::memory::LinearGuestMemory;
 
@@ -166,6 +168,92 @@ int test_failure_does_not_mutate_guest_memory() {
     return 0;
 }
 
+int test_aggregate_soname_and_needed() {
+    LinearGuestMemory memory(0x100, 0x7000);
+    const std::array<std::uint8_t, 27> bytes{
+        'l','i','b','m','a','i','n','.','s','o',0,
+        'l','i','b','a','.','s','o',0,
+        'l','i','b','b','.','s','o',0,
+    };
+    if (!write_bytes(memory, 0x7010, bytes)) return fail("could not stage aggregate string table");
+
+    Elf32LinkerMetadata metadata;
+    metadata.string_table = Elf32StringTableMetadata{.guest_address = 0x7010, .size = 27};
+    metadata.soname_offset = 0;
+    metadata.needed_offsets = {11, 19, 11};
+
+    const auto result = build_elf32_linker_strings(
+        memory, metadata, Elf32LinkerStringOptions{.max_string_bytes = 32});
+    if (!result) return fail("valid aggregate linker strings failed");
+    if (!result.strings.soname.has_value() || *result.strings.soname != "libmain.so") {
+        return fail("SONAME was not materialized exactly");
+    }
+    if (result.strings.needed !=
+        std::vector<std::string>{"liba.so", "libb.so", "liba.so"}) {
+        return fail("NEEDED names did not preserve order and duplicates");
+    }
+    return 0;
+}
+
+int test_aggregate_empty_and_missing_table() {
+    LinearGuestMemory memory(0x20, 0x8000);
+
+    const Elf32LinkerMetadata empty_metadata;
+    const auto empty = build_elf32_linker_strings(
+        memory, empty_metadata, Elf32LinkerStringOptions{.max_string_bytes = 16});
+    if (!empty || empty.strings.soname.has_value() || !empty.strings.needed.empty()) {
+        return fail("metadata with no requested strings did not succeed empty");
+    }
+
+    Elf32LinkerMetadata missing_table;
+    missing_table.soname_offset = 0;
+    if (build_elf32_linker_strings(
+            memory, missing_table,
+            Elf32LinkerStringOptions{.max_string_bytes = 16}).error !=
+        Elf32LinkerStringError::MissingStringTable) {
+        return fail("requested string without STRTAB was not rejected");
+    }
+    return 0;
+}
+
+int test_aggregate_failure_is_all_or_nothing() {
+    LinearGuestMemory memory(0x20, 0x9000);
+    const std::array<std::uint8_t, 7> bytes{'o','k',0,'b','a','d','x'};
+    if (!write_bytes(memory, 0x9000, bytes)) return fail("could not stage aggregate failure bytes");
+
+    Elf32LinkerMetadata metadata;
+    metadata.string_table = Elf32StringTableMetadata{.guest_address = 0x9000, .size = 7};
+    metadata.soname_offset = 0;
+    metadata.needed_offsets = {0, 3};
+
+    const auto result = build_elf32_linker_strings(
+        memory, metadata, Elf32LinkerStringOptions{.max_string_bytes = 8});
+    if (result.error != Elf32LinkerStringError::UnterminatedString) {
+        return fail("later NEEDED failure did not propagate");
+    }
+    if (result.strings.soname.has_value() || !result.strings.needed.empty()) {
+        return fail("aggregate failure exposed partial successful strings");
+    }
+    return 0;
+}
+
+int test_aggregate_defensive_offset_check() {
+    LinearGuestMemory memory(0x20, 0xa000);
+    const std::array<std::uint8_t, 4> bytes{'o','k',0,0};
+    if (!write_bytes(memory, 0xa000, bytes)) return fail("could not stage defensive offset bytes");
+
+    Elf32LinkerMetadata metadata;
+    metadata.string_table = Elf32StringTableMetadata{.guest_address = 0xa000, .size = 4};
+    metadata.needed_offsets = {4};
+
+    const auto result = build_elf32_linker_strings(
+        memory, metadata, Elf32LinkerStringOptions{.max_string_bytes = 8});
+    if (result.error != Elf32LinkerStringError::StringOffsetOutOfRange) {
+        return fail("aggregate path did not defensively reject offset equal to STRSZ");
+    }
+    return 0;
+}
+
 }  // namespace
 
 int main() {
@@ -175,5 +263,9 @@ int main() {
     if (const int status = test_read_failure(); status != 0) return status;
     if (const int status = test_unterminated_and_limit_policy(); status != 0) return status;
     if (const int status = test_failure_does_not_mutate_guest_memory(); status != 0) return status;
+    if (const int status = test_aggregate_soname_and_needed(); status != 0) return status;
+    if (const int status = test_aggregate_empty_and_missing_table(); status != 0) return status;
+    if (const int status = test_aggregate_failure_is_all_or_nothing(); status != 0) return status;
+    if (const int status = test_aggregate_defensive_offset_check(); status != 0) return status;
     return 0;
 }
