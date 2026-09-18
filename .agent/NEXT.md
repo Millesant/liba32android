@@ -2,12 +2,12 @@
 
 The M3 loader + structural dynamic-array baseline is green on `bleeding` through PR #11 / commit `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`. Future feature-scale work uses the repository's current requirements -> design -> tasks structure.
 
-1. `003-elf32-dependency-resolution` — CI-gate T002 provider errors and resource budgets.
-   - Status: T001 is DONE / CI #112 PASS. T002 provider NotFound/failure translation, identity/image validation, per-image/total byte budgets, bounded provider ceilings, and all-or-nothing failure coverage are implemented; validation for the latest head is NOT RUN.
-   - Relevant: `src/elf/elf32_dependency_resolver.cpp`, `tests/elf32_dependency_resolver.cpp`, `specs/003-elf32-dependency-resolution/tasks.md`.
-   - Exact next action: inspect GitHub Actions for the current PR head and fix only T002 build/test failures.
-   - DoD: Linux build and all CTest cases including `elf32_dependency_resolution` PASS, Android `arm64-v8a` cross-build PASS, then start T003 real-fixture zero-dependency integration in a fresh bounded round.
-   - Termux: no device run is required for T002.
+1. `003-elf32-dependency-resolution` — CI-gate T003 real-fixture zero-dependency integration.
+   - Status: T001 is DONE / CI #112 PASS. T002 is DONE / CI #116 PASS. T003 fixture integration is implemented; validation for the latest head is NOT RUN.
+   - Relevant: `tests/elf32_dependency_resolver_real_fixture.cpp`, `CMakeLists.txt`, `src/elf/elf32_dependency_resolver.{h,cpp}`.
+   - Exact next action: inspect GitHub Actions for the current PR head and fix only T003 fixture-integration failures.
+   - DoD: Linux fixture generation/build and all CTest cases including `elf32_real_dependency_resolution` PASS, Android `arm64-v8a` cross-build PASS, then begin T004 docs/state convergence in a fresh bounded round.
+   - Termux: no device run is required for T003.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
