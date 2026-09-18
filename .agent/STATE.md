@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-18
-Current phase: first M4 linker-metadata slice implemented; final exact-head CI gate pending
+Current phase: first M4 linker-metadata slice complete; PR #13 ready to merge
 Integration branch: `bleeding`
 Last merged runtime PR: #11
 Runtime baseline commit: `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`
-Active runtime work: M4 T005 final exact-head CI gate on `m4-elf32-linker-metadata`
+Active runtime work: none; PR #13 feature head passed final CI and is ready to merge
 
 ## Working
 
@@ -50,7 +50,7 @@ Active runtime work: M4 T005 final exact-head CI gate on `m4-elf32-linker-metada
 
 ### Active M4 feature branch
 
-T001 semantic collection is PASS on GitHub Actions run `35329098071` (#78). T002 rebasing/range validation is PASS on run `35329808394` (#84). T003 real-fixture linker-metadata integration is PASS on run `35332054239` (#87), including Linux tests and Android arm64-v8a cross-build. T004 architecture/README/state convergence is complete. The latest documentation-converged head still requires the final T005 exact-head CI gate.
+T001 semantic collection is PASS on GitHub Actions run `35329098071` (#78). T002 rebasing/range validation is PASS on run `35329808394` (#84). T003 real-fixture linker-metadata integration is PASS on run `35332054239` (#87). T004 architecture/README/state convergence is complete. T005 final feature gate is PASS on run `35333083239` (#91), including Linux build/tests, reproducible real ARM32 fixture coverage, and Android arm64-v8a cross-build.
 
 
 ### Current runtime baseline on `bleeding`
@@ -92,7 +92,7 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 
 ## Current blocker
 
-No blocker prevents the final CI gate for this linker-metadata feature. Actual 16 KiB Android host-page behavior remains an independent evidence gap rather than a blocker for this metadata work.
+No blocker remains for merging PR #13. Actual 16 KiB Android host-page behavior remains an independent evidence gap rather than a blocker for this metadata work.
 
 ## Important temporary facts
 
