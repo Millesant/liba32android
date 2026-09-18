@@ -3,15 +3,15 @@
 ## T001 — Add bounded linker-string reader and API
 - Requirements: R1-R7, R10; AC3-AC9
 - Depends on: merged `001-elf32-linker-metadata`
-- Scope: add `src/elf/elf32_linker_strings.{h,cpp}`; define explicit options/result/error types; implement checked STRTAB offset/address handling, bounded chunked NUL scanning, explicit max-length enforcement, byte-preserving materialization, and no-mutation behavior.
-- Validation: focused synthetic cases for empty/non-UTF-8 strings, missing/out-of-range metadata, overflow, read failure, unterminated strings, exact limit, over-limit strings, and unchanged guest bytes.
+- Scope: add `src/elf/elf32_linker_strings.{h,cpp}`; define explicit options/result/error types plus independently callable `read_elf32_string_table_entry`; implement checked STRTAB offset/address handling, bounded chunked NUL scanning, explicit max-length enforcement, byte-preserving materialization, and no-mutation behavior.
+- Validation: focused single-entry synthetic cases for empty/non-UTF-8 strings, out-of-range offsets, overflow, read failure, unterminated strings, exact limit, over-limit strings, and unchanged guest bytes.
 - Status: TODO
 
 ## T002 — Materialize SONAME and ordered NEEDED names
 - Requirements: R8-R10; AC1-AC2, AC10
 - Depends on: T001
-- Scope: consume optional SONAME and ordered/repeated NEEDED offsets from `Elf32LinkerMetadata`; preserve order/duplicates; make aggregate success all-or-nothing.
-- Validation: synthetic SONAME + multiple NEEDED cases, repeated offsets/names, no-strings/no-STRTAB success, and a later-NEEDED failure that does not yield successful partial output.
+- Scope: build the aggregate API on `read_elf32_string_table_entry`; require STRTAB when SONAME/NEEDED is requested; consume optional SONAME and ordered/repeated NEEDED offsets from `Elf32LinkerMetadata`; preserve order/duplicates; make aggregate success all-or-nothing.
+- Validation: synthetic SONAME + multiple NEEDED cases, repeated offsets/names, missing-STRTAB rejection, no-strings/no-STRTAB success, and a later-NEEDED failure that does not yield successful partial output.
 - Status: TODO
 
 ## T003 — Integrate the reproducible real ARM32 fixture
