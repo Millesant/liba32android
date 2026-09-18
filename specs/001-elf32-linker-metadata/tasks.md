@@ -12,14 +12,14 @@
 - Depends on: T001
 - Scope: checked load-bias addition for STRTAB/SYMTAB/REL; checked range ends; bounded-read validation through `GuestMemory`; enforce `DT_SYMENT == 16`, `DT_RELENT == 8`, RELSZ divisibility, and string-offset bounds.
 - Validation: synthetic overflow, unreadable-range, bad-entry-size, bad-RELSZ, and bad-string-offset regressions; verify guest bytes remain unchanged after failures.
-- Status: IMPLEMENTED — CI NOT RUN
+- Status: DONE — CI #84 PASS
 
 ## T003 — Integrate the reproducible real ARM32 fixture
 - Requirements: R10; AC9
 - Depends on: T001, T002
 - Scope: load the real fixture, structurally parse its dynamic array, build linker metadata with the loader's load bias, and assert valid STRTAB/SYMTAB/REL/SONAME descriptors plus no NEEDED entries.
 - Validation: real-fixture linker-metadata integration test in CTest.
-- Status: TODO
+- Status: IMPLEMENTED — CI NOT RUN
 
 ## T004 — Converge architecture and durable state
 - Requirements: R1, R8, R10; AC10
