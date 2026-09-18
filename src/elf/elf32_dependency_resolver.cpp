@@ -1,6 +1,8 @@
 #include "elf/elf32_dependency_resolver.h"
 
+#include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <utility>
 
 namespace liba32android::elf {
@@ -10,6 +12,19 @@ namespace {
     Elf32DependencyResolveResult result;
     result.error = error;
     return result;
+}
+
+[[nodiscard]] Elf32DependencyResolveError translate_provider_error(
+    Elf32DependencyProviderError error) noexcept {
+    switch (error) {
+    case Elf32DependencyProviderError::None:
+        return Elf32DependencyResolveError::None;
+    case Elf32DependencyProviderError::NotFound:
+        return Elf32DependencyResolveError::DependencyNotFound;
+    case Elf32DependencyProviderError::Failed:
+        return Elf32DependencyResolveError::ProviderFailed;
+    }
+    return Elf32DependencyResolveError::ProviderFailed;
 }
 
 }  // namespace
@@ -25,18 +40,47 @@ Elf32DependencyResolveResult resolve_elf32_dependencies(
     Elf32DependencyResolveResult result;
     result.dependencies.ordered.reserve(strings.needed.size());
 
+    std::uint64_t total_image_bytes = 0;
     for (const std::string& requested_name : strings.needed) {
         if (requested_name.empty()) {
             return failure(Elf32DependencyResolveError::EmptyDependencyName);
         }
 
-        Elf32DependencyProviderResult provider_result =
-            provider.resolve(requested_name, options.max_image_bytes);
-        if (!provider_result) {
-            // T002 will distinguish provider NotFound from general provider
-            // failure and add the remaining provider-result validation.
-            return failure(Elf32DependencyResolveError::ProviderFailed);
+        const std::uint64_t remaining_total =
+            options.max_total_image_bytes - total_image_bytes;
+        if (remaining_total == 0) {
+            return failure(Elf32DependencyResolveError::TotalImageBytesExceeded);
         }
+        if (options.max_image_bytes == 0) {
+            return failure(Elf32DependencyResolveError::ImageTooLarge);
+        }
+
+        const std::uint64_t request_limit =
+            std::min(options.max_image_bytes, remaining_total);
+        Elf32DependencyProviderResult provider_result =
+            provider.resolve(requested_name, request_limit);
+        if (!provider_result) {
+            return failure(translate_provider_error(provider_result.error));
+        }
+
+        if (provider_result.source.identity.empty()) {
+            return failure(Elf32DependencyResolveError::EmptyProviderIdentity);
+        }
+        if (provider_result.source.image.empty()) {
+            return failure(Elf32DependencyResolveError::EmptyDependencyImage);
+        }
+
+        const std::uint64_t image_bytes =
+            static_cast<std::uint64_t>(provider_result.source.image.size());
+        if (image_bytes > request_limit) {
+            return failure(remaining_total < options.max_image_bytes
+                               ? Elf32DependencyResolveError::TotalImageBytesExceeded
+                               : Elf32DependencyResolveError::ImageTooLarge);
+        }
+        if (image_bytes > options.max_total_image_bytes - total_image_bytes) {
+            return failure(Elf32DependencyResolveError::TotalImageBytesExceeded);
+        }
+        total_image_bytes += image_bytes;
 
         result.dependencies.ordered.push_back(Elf32ResolvedDependency{
             .requested_name = requested_name,
