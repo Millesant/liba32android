@@ -2,12 +2,12 @@
 
 The M3 loader + structural dynamic-array baseline is green on `bleeding` through PR #11 / commit `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`. Future feature-scale work uses the repository's current requirements -> design -> tasks structure.
 
-1. `003-elf32-dependency-resolution` — CI-gate T003 real-fixture zero-dependency integration.
-   - Status: T001 is DONE / CI #112 PASS. T002 is DONE / CI #116 PASS. T003 fixture integration is implemented; validation for the latest head is NOT RUN.
-   - Relevant: `tests/elf32_dependency_resolver_real_fixture.cpp`, `CMakeLists.txt`, `src/elf/elf32_dependency_resolver.{h,cpp}`.
-   - Exact next action: inspect GitHub Actions for the current PR head and fix only T003 fixture-integration failures.
-   - DoD: Linux fixture generation/build and all CTest cases including `elf32_real_dependency_resolution` PASS, Android `arm64-v8a` cross-build PASS, then begin T004 docs/state convergence in a fresh bounded round.
-   - Termux: no device run is required for T003.
+1. `003-elf32-dependency-resolution` — run the final exact-head T005 CI gate.
+   - Status: T001 PASS (#112), T002 PASS (#116), T003 PASS (#118), T004 DONE. Architecture/README/spec/state are converged; final exact-head CI is NOT RUN.
+   - Current action: let GitHub Actions validate the converged branch head without adding new feature scope.
+   - DoD: Linux build + all CTest cases including `elf32_dependency_resolution` and `elf32_real_dependency_resolution` PASS, reproducible ARM32 fixture generation PASS, exact `liba32android.so` naming PASS, and Android `arm64-v8a` cross-build PASS on the exact T004 head.
+   - After PASS: mark T005 DONE, verify PR #17 remains mergeable on the exact green head, then prepare it for merge. Do not start guest-placement/link-map work on this branch.
+   - Termux: no device run is required for `003`; this feature stops at host-side dependency image acquisition.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
