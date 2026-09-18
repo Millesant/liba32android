@@ -5,7 +5,7 @@ Current phase: first M4 linker-metadata slice merged; next linker feature packag
 Integration branch: `bleeding`
 Last merged runtime PR: #13
 Runtime baseline commit: `1169f4eff1fb4ba35a74f55167b3904f12ff2425`
-Active runtime work: none
+Active runtime work: `002-elf32-linker-strings` spec ready on `m4-elf32-dynamic-strings`; implementation NOT RUN
 
 ## Working
 
@@ -93,6 +93,11 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 ## Current blocker
 
 No blocker prevents starting the next linker feature package. Actual 16 KiB Android host-page behavior remains an independent evidence gap rather than a blocker for linker work.
+
+## Important temporary facts
+
+- `specs/002-elf32-linker-strings/` is readiness-checked for bounded STRTAB string consumption. It requires an explicit caller-selected maximum payload length and defers dependency loading/path policy.
+- The next implementation slice is T001 only: the reusable bounded single-entry STRTAB reader. No build/test has run for `002` yet.
 
 ## Important temporary facts
 
