@@ -1,6 +1,6 @@
 # Design — ELF32 Dependency Resolution
 
-Status: ready for implementation
+Status: implemented through T004; final exact-head CI pending
 
 ## Context
 
