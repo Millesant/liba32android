@@ -198,6 +198,165 @@ int test_raw_bytes_and_slashes_forwarded_exactly() {
     return 0;
 }
 
+
+int test_provider_errors_are_distinct() {
+    Elf32LinkerStrings strings;
+    strings.needed = {"missing.so"};
+
+    {
+        RecordingProvider provider;
+        Elf32DependencyProviderResult response;
+        response.error = Elf32DependencyProviderError::NotFound;
+        provider.responses = {response};
+
+        const auto result = resolve_elf32_dependencies(strings, provider, options());
+        if (result.error != Elf32DependencyResolveError::DependencyNotFound ||
+            !result.dependencies.ordered.empty()) {
+            return fail("provider NotFound was not translated distinctly");
+        }
+    }
+
+    {
+        RecordingProvider provider;
+        Elf32DependencyProviderResult response;
+        response.error = Elf32DependencyProviderError::Failed;
+        provider.responses = {response};
+
+        const auto result = resolve_elf32_dependencies(strings, provider, options());
+        if (result.error != Elf32DependencyResolveError::ProviderFailed ||
+            !result.dependencies.ordered.empty()) {
+            return fail("provider failure was not translated distinctly");
+        }
+    }
+    return 0;
+}
+
+int test_provider_success_requires_identity_and_image() {
+    Elf32LinkerStrings strings;
+    strings.needed = {"libx.so"};
+
+    {
+        RecordingProvider provider;
+        provider.responses = {success("", {1})};
+        const auto result = resolve_elf32_dependencies(strings, provider, options());
+        if (result.error != Elf32DependencyResolveError::EmptyProviderIdentity) {
+            return fail("empty provider identity was not rejected");
+        }
+    }
+
+    {
+        RecordingProvider provider;
+        provider.responses = {success("identity", {})};
+        const auto result = resolve_elf32_dependencies(strings, provider, options());
+        if (result.error != Elf32DependencyResolveError::EmptyDependencyImage) {
+            return fail("empty dependency image was not rejected");
+        }
+    }
+    return 0;
+}
+
+int test_zero_and_per_image_limits() {
+    Elf32LinkerStrings strings;
+    strings.needed = {"libx.so"};
+
+    {
+        RecordingProvider provider;
+        Elf32DependencyResolveOptions limited = options();
+        limited.max_image_bytes = 0;
+        const auto result = resolve_elf32_dependencies(strings, provider, limited);
+        if (result.error != Elf32DependencyResolveError::ImageTooLarge ||
+            !provider.requests.empty()) {
+            return fail("zero per-image budget did not fail before provider access");
+        }
+    }
+
+    {
+        RecordingProvider provider;
+        provider.responses = {success("identity", {1, 2, 3})};
+        Elf32DependencyResolveOptions limited = options();
+        limited.max_image_bytes = 2;
+        const auto result = resolve_elf32_dependencies(strings, provider, limited);
+        if (result.error != Elf32DependencyResolveError::ImageTooLarge ||
+            provider.limits != std::vector<std::uint64_t>{2} ||
+            !result.dependencies.ordered.empty()) {
+            return fail("oversized provider image did not respect the per-image ceiling");
+        }
+    }
+    return 0;
+}
+
+int test_total_image_budget_and_request_ceiling() {
+    Elf32LinkerStrings strings;
+    strings.needed = {"a.so", "b.so"};
+
+    {
+        RecordingProvider provider;
+        Elf32DependencyResolveOptions limited = options();
+        limited.max_total_image_bytes = 0;
+        const auto result = resolve_elf32_dependencies(strings, provider, limited);
+        if (result.error != Elf32DependencyResolveError::TotalImageBytesExceeded ||
+            !provider.requests.empty()) {
+            return fail("zero total-image budget did not fail before provider access");
+        }
+    }
+
+    {
+        RecordingProvider provider;
+        provider.responses = {
+            success("a", {1, 2, 3}),
+            success("b", {4, 5}),
+        };
+        Elf32DependencyResolveOptions limited = options();
+        limited.max_image_bytes = 4;
+        limited.max_total_image_bytes = 5;
+
+        const auto result = resolve_elf32_dependencies(strings, provider, limited);
+        if (!result ||
+            provider.limits != std::vector<std::uint64_t>{4, 2} ||
+            result.dependencies.ordered.size() != 2) {
+            return fail("remaining total budget was not propagated as the provider ceiling");
+        }
+    }
+
+    {
+        RecordingProvider provider;
+        provider.responses = {success("identity", {1, 2, 3, 4})};
+        Elf32DependencyResolveOptions limited = options();
+        limited.max_image_bytes = 8;
+        limited.max_total_image_bytes = 3;
+
+        Elf32LinkerStrings one;
+        one.needed = {"libx.so"};
+        const auto result = resolve_elf32_dependencies(one, provider, limited);
+        if (result.error != Elf32DependencyResolveError::TotalImageBytesExceeded ||
+            provider.limits != std::vector<std::uint64_t>{3}) {
+            return fail("provider image exceeding the remaining total budget was misclassified");
+        }
+    }
+    return 0;
+}
+
+int test_later_failure_returns_no_partial_aggregate() {
+    Elf32LinkerStrings strings;
+    strings.needed = {"a.so", "b.so"};
+
+    RecordingProvider provider;
+    Elf32DependencyProviderResult failed;
+    failed.error = Elf32DependencyProviderError::NotFound;
+    provider.responses = {
+        success("a", {1, 2}),
+        failed,
+    };
+
+    const auto result = resolve_elf32_dependencies(strings, provider, options());
+    if (result.error != Elf32DependencyResolveError::DependencyNotFound ||
+        provider.requests != std::vector<std::string>{"a.so", "b.so"} ||
+        !result.dependencies.ordered.empty()) {
+        return fail("later provider failure exposed a successful partial aggregate");
+    }
+    return 0;
+}
+
 }  // namespace
 
 int main() {
@@ -206,5 +365,10 @@ int main() {
     if (const int status = test_empty_set_and_count_precheck(); status != 0) return status;
     if (const int status = test_empty_name_rejected_before_its_provider_call(); status != 0) return status;
     if (const int status = test_raw_bytes_and_slashes_forwarded_exactly(); status != 0) return status;
+    if (const int status = test_provider_errors_are_distinct(); status != 0) return status;
+    if (const int status = test_provider_success_requires_identity_and_image(); status != 0) return status;
+    if (const int status = test_zero_and_per_image_limits(); status != 0) return status;
+    if (const int status = test_total_image_budget_and_request_ceiling(); status != 0) return status;
+    if (const int status = test_later_failure_returns_no_partial_aggregate(); status != 0) return status;
     return 0;
 }
