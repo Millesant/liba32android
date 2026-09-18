@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-18
-Current phase: M4 linker-string slice complete; persistence-only closeout verification pending
+Current phase: M4 linker-string slice merged; next linker feature package pending
 Integration branch: `bleeding`
-Last merged runtime PR: #13
-Runtime baseline commit: `1169f4eff1fb4ba35a74f55167b3904f12ff2425`
-Active runtime work: none; PR #15 implementation/docs head passed final CI #106
+Last merged runtime PR: #15
+Runtime baseline commit: `dbc329e2205828c97267a2de60ce0771c4173cb6`
+Active runtime work: none
 
 ## Working
 
@@ -51,7 +51,7 @@ Active runtime work: none; PR #15 implementation/docs head passed final CI #106
 
 ### M4 linker-string feature
 
-T001 bounded STRTAB reading is PASS on GitHub Actions run `35387506251` (#97). T002 SONAME/NEEDED aggregation is PASS on run `35391818125` (#99). T003 real-fixture string integration is PASS on run `35402559596` (#102). T004 architecture/README/state convergence is complete. T005 final feature gate is PASS on run `35402997435` (#106): Linux CTest reported 24/24 PASS including `elf32_linker_string_entry` and `elf32_real_linker_strings`, reproducible fixture/build/name checks passed, and Android arm64-v8a cross-build passed.
+PR #15 is merged to `bleeding` as `dbc329e2205828c97267a2de60ce0771c4173cb6`. T001 bounded STRTAB reading is PASS on GitHub Actions run `35387506251` (#97), T002 SONAME/NEEDED aggregation is PASS on `35391818125` (#99), T003 real-fixture string integration is PASS on `35402559596` (#102), T005 feature gate is PASS on `35402997435` (#106), and persistence-only closeout head `6f8a97833f59aa7153d91523283a64286d68c758` is PASS on `35403334639` (#108). Linux closeout CTest reported 24/24 PASS including `elf32_linker_string_entry` and `elf32_real_linker_strings`; Android arm64-v8a cross-build PASS. No post-merge workflow run was observed for the squash-merge commit at reconciliation time.
 
 ### M4 linker-metadata feature
 
@@ -97,11 +97,11 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 
 ## Current blocker
 
-No implementation blocker remains for PR #15. This persistence-only closeout update should be CI-verified before merge. Actual 16 KiB Android host-page behavior remains an independent evidence gap rather than a blocker for this linker work.
+No blocker prevents starting the next linker feature package. Actual 16 KiB Android host-page behavior remains an independent evidence gap rather than a blocker for linker work.
 
 ## Important temporary facts
 
-- `specs/002-elf32-linker-strings/` is complete through T005: T001 PASS #97, T002 PASS #99, T003 PASS #102, T004 DONE, T005 PASS #106. The only remaining branch action is persistence-only closeout CI verification before merge.
+- `specs/002-elf32-linker-strings/` is merged through PR #15 as `dbc329e2205828c97267a2de60ce0771c4173cb6`. T001 PASS #97, T002 PASS #99, T003 PASS #102, T005 feature gate PASS #106, and persistence-only closeout PASS #108.
 - Dependency loading/search-path policy remains deliberately deferred; this feature only materializes bounded byte strings.
 
 - `specs/000-current-baseline/` is a documentation conversion of already implemented behavior; the runtime evidence above remains its validation basis.
