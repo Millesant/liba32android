@@ -5,14 +5,14 @@
 - Depends on: none
 - Scope: add `src/elf/elf32_linker_metadata.{h,cpp}`; classify the supported tag set; collect singleton values and ordered `DT_NEEDED`; reject duplicate supported singletons and incomplete tag groups; keep deferred/unknown tags tolerated.
 - Validation: focused synthetic metadata test for valid collection, duplicate policy, missing companions, repeated NEEDED order, and deferred-tag tolerance.
-- Status: IMPLEMENTED — CI NOT RUN
+- Status: DONE — CI #78 PASS
 
 ## T002 — Add rebasing and guest-range validation
 - Requirements: R2, R5-R7, R9; AC2, AC5-AC7
 - Depends on: T001
 - Scope: checked load-bias addition for STRTAB/SYMTAB/REL; checked range ends; bounded-read validation through `GuestMemory`; enforce `DT_SYMENT == 16`, `DT_RELENT == 8`, RELSZ divisibility, and string-offset bounds.
 - Validation: synthetic overflow, unreadable-range, bad-entry-size, bad-RELSZ, and bad-string-offset regressions; verify guest bytes remain unchanged after failures.
-- Status: TODO
+- Status: IN PROGRESS
 
 ## T003 — Integrate the reproducible real ARM32 fixture
 - Requirements: R10; AC9
