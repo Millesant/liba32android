@@ -6,7 +6,7 @@ The project is intentionally layered: CPU execution, guest memory, ELF32 mapping
 
 ## Current phase
 
-The current runtime baseline is C++20/CMake with Dynarmic pinned behind `src/cpu/`. The guest address space and ELF32 mapping/structural-metadata slices are implemented; dynamic-linker semantics are the next feature-scale boundary.
+The current runtime baseline is C++20/CMake with Dynarmic pinned behind `src/cpu/`. The guest address space, ELF32 mapping/structural parsing, and the first validated linker-metadata slice are implemented. String consumption, dependency loading, symbol semantics, and relocation application remain later linker work.
 
 Implemented in the current baseline:
 
@@ -17,12 +17,13 @@ Implemented in the current baseline:
 - validated ARM ELF32 `ET_EXEC` / explicit-base `ET_DYN` `PT_LOAD` mapping with file copy, BSS zero-fill, alignment checks, final permissions, conflict checks, and loader-owned rollback;
 - validated optional `PT_DYNAMIC` guest-range discovery;
 - structural `Elf32_Dyn` parsing from guest memory with raw signed tags/raw values, unknown-tag preservation, and required `DT_NULL` termination;
-- a reproducible Android NDK ARMv7 ELF fixture used for loader and dynamic-array integration coverage.
+- validated linker metadata for STRTAB/STRSZ, SYMTAB/SYMENT, REL/RELSZ/RELENT, SONAME, and ordered `DT_NEEDED` offsets, including checked load-bias rebasing and guest-range validation;
+- a reproducible Android NDK ARMv7 ELF fixture used for loader, dynamic-array, and linker-metadata integration coverage.
 
 Still outside the implemented baseline:
 
-- `DT_NEEDED` dependency loading;
-- dynamic string/symbol table consumption and symbol lookup/interposition;
+- `DT_NEEDED` dependency loading and string materialization;
+- dynamic symbol-table consumption, hash lookup, and symbol lookup/interposition;
 - ARM relocations;
 - RELRO and TLS processing;
 - automatic `ET_DYN` guest-VA allocation;
@@ -57,4 +58,4 @@ GitHub Actions also cross-builds the shared runtime and Android diagnostics for 
 
 Repository-local agent rules live in `AGENTS.md`. Durable continuation state lives under `.agent/`. Feature-scale work uses the requirements -> design -> tasks packages under `specs/`; `specs/000-current-baseline/` converts the completed runtime work through PR #11 into that structure.
 
-Architecture and evidence details remain under `docs/architecture/` and `docs/research/`.
+Architecture and evidence details remain under `docs/architecture/` and `docs/research/`. The current linker-metadata boundary is documented in `docs/architecture/elf32-linker-metadata.md`.

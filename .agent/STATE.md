@@ -1,11 +1,11 @@
 # Current State
 
-Last updated: 2026-09-17
-Current phase: M3 mapping/structural metadata converged; M4 linker metadata/semantics next
+Last updated: 2026-09-18
+Current phase: first M4 linker-metadata slice complete; PR #13 ready to merge
 Integration branch: `bleeding`
 Last merged runtime PR: #11
 Runtime baseline commit: `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`
-Active runtime work: none
+Active runtime work: none; PR #13 feature head passed final CI and is ready to merge
 
 ## Working
 
@@ -30,12 +30,13 @@ Active runtime work: none
   - retains the first `DT_NULL` and ignores later padding;
   - rejects invalid ranges, non-8-byte file-backed sizes, unreadable guest bytes and unterminated arrays;
   - does not rebase/dereference pointer-like values or begin dynamic linking.
-- The reproducible real ARMv7/Android fixture remains generated with pinned NDK r27d / API 26 inputs. It has four `PT_LOAD` segments with `p_align=0x4000`, BSS, one `PT_DYNAMIC`, and observed SONAME/REL/SYMTAB/STRTAB/GNU_HASH-related tags with no `DT_NEEDED`.
+- `src/elf/elf32_linker_metadata.*` now validates the first linker-facing metadata set: STRTAB/STRSZ, SYMTAB/SYMENT, REL/RELSZ/RELENT, SONAME, and ordered NEEDED offsets. Pointer-like STRTAB/SYMTAB/REL values are rebased exactly once with checked 32-bit arithmetic; declared guest ranges are validated read-only through `GuestMemory`; malformed duplicates/groups, entry sizes, REL sizes, offsets, overflows, and unreadable ranges are rejected.
+- The reproducible real ARMv7/Android fixture remains generated with pinned NDK r27d / API 26 inputs. It has four `PT_LOAD` segments with `p_align=0x4000`, BSS, one `PT_DYNAMIC`, and observed SONAME/REL/SYMTAB/STRTAB/GNU_HASH-related tags with no `DT_NEEDED`; the M4 integration test validates its linker metadata using the loader's actual load bias.
 - Repository workflow state uses root `AGENTS.md`, durable `.agent/` files, and `specs/<id>-<feature>/{requirements,design,tasks}.md` for feature-scale work. `specs/000-current-baseline/` converts the already implemented work through PR #11 into that structure.
 
 ## Partial / not implemented
 
-- Dynamic string/symbol table validation/consumption: NOT IMPLEMENTED.
+- String materialization and full dynamic symbol-table semantics: NOT IMPLEMENTED.
 - `DT_NEEDED` dependency loading: NOT IMPLEMENTED.
 - ARM relocations: NOT IMPLEMENTED.
 - Symbol lookup/interposition: NOT IMPLEMENTED.
@@ -46,6 +47,11 @@ Active runtime work: none
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### Active M4 feature branch
+
+T001 semantic collection is PASS on GitHub Actions run `35329098071` (#78). T002 rebasing/range validation is PASS on run `35329808394` (#84). T003 real-fixture linker-metadata integration is PASS on run `35332054239` (#87). T004 architecture/README/state convergence is complete. T005 final feature gate is PASS on run `35333083239` (#91), including Linux build/tests, reproducible real ARM32 fixture coverage, and Android arm64-v8a cross-build.
+
 
 ### Current runtime baseline on `bleeding`
 
@@ -86,7 +92,7 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 
 ## Current blocker
 
-No blocker prevents beginning the next linker-metadata feature package. Actual 16 KiB Android host-page behavior remains an independent evidence gap rather than a blocker for metadata-only linker work.
+No blocker remains for merging PR #13. Actual 16 KiB Android host-page behavior remains an independent evidence gap rather than a blocker for this metadata work.
 
 ## Important temporary facts
 

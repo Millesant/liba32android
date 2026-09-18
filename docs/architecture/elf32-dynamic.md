@@ -24,7 +24,7 @@ GuestMemory <--------- elf32_dynamic structural parser
                     raw d_tag / d_val entries
                              |
                              v
-                    future linker metadata layer
+                    elf32_linker_metadata
 ```
 
 The parser therefore preserves the existing address-space rule: guest addresses remain logical 32-bit guest VAs and no host pointer crosses the ELF API boundary.
@@ -59,7 +59,7 @@ This M3 slice does **not**:
 - process TLS;
 - implement symbol lookup or interposition.
 
-Those operations belong to later validated metadata/linker layers rather than the structural parser.
+Checked rebasing and the first STRTAB/SYMTAB/REL/SONAME/NEEDED metadata validation now live in `elf32_linker_metadata`. String consumption, dependency loading, symbol semantics, and relocation application remain later linker layers rather than responsibilities of this structural parser.
 
 ## Validation
 

@@ -2,13 +2,11 @@
 
 The M3 loader + structural dynamic-array baseline is green on `bleeding` through PR #11 / commit `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`. Future feature-scale work uses the repository's current requirements -> design -> tasks structure.
 
-1. `001-elf32-linker-metadata` — define and implement the first M4 linker-metadata slice.
-   - Goal: turn the raw structural `Elf32_Dyn` entries into validated linker-facing metadata without loading dependencies or applying relocations yet.
-   - Depends on: `specs/000-current-baseline/`, `src/elf/elf32_loader.*`, `src/elf/elf32_dynamic.*`, D-0003/D-0004.
-   - Relevant: create `specs/001-elf32-linker-metadata/{requirements.md,design.md,tasks.md}` before substantial implementation; keep the loader/dynamic-parser/linker boundaries explicit.
-   - Design questions to resolve in the spec: supported singleton vs repeated tags, load-bias treatment for pointer-like values, readable guest-range validation for string/symbol/relocation metadata, required entry sizes, duplicate/inconsistent tag failure semantics, and how GNU/Android-specific metadata remains optional/deferred.
-   - Non-goal for the first slice: no `DT_NEEDED` file loading, symbol lookup/interposition, relocation writes, RELRO enforcement, TLS, or application-specific behavior.
-   - DoD: requirements/design/tasks are internally consistent; focused synthetic valid/malformed coverage and the real fixture validate the chosen metadata contract; the existing 20 baseline tests remain PASS; Android `arm64-v8a` cross-build remains PASS; `.agent/STATE.md` and architecture docs converge with the implementation.
+1. `001-elf32-linker-metadata` — merge completed feature after persistence-only closeout CI.
+   - Status: T001 PASS (#78), T002 PASS (#84), T003 PASS (#87), T004 DONE, T005 PASS (#91). PR #13 is implementation-complete.
+   - Exact next action: verify CI on this persistence-only closeout head, then merge PR #13 into `bleeding` with stale-head protection.
+   - After merge: recover the new `bleeding` head and start a fresh feature package for the next linker slice rather than extending `001`.
+   - Termux: no device run is required for `001`; it remains metadata-only and fully exercised by CI/fixture tests.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
