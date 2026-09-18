@@ -2,12 +2,14 @@
 
 The M3 loader + structural dynamic-array baseline is green on `bleeding` through PR #11 / commit `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`. Future feature-scale work uses the repository's current requirements -> design -> tasks structure.
 
-1. Create the next linker feature package after merged `001-elf32-linker-metadata`.
-   - Status: PR #13 is merged to `bleeding` as `1169f4eff1fb4ba35a74f55167b3904f12ff2425`; closeout CI #93 passed on the exact pre-merge feature head.
-   - Goal: specify the next bounded linker slice around safe dynamic-string consumption (SONAME and `DT_NEEDED` names) without opening/loading dependencies yet.
-   - Depends on: `specs/001-elf32-linker-metadata/`, `src/elf/elf32_linker_metadata.*`, the existing STRTAB/STRSZ descriptor contract, and D-0003/D-0004.
-   - Exact next action: create a fresh `specs/002-...` requirements/design/tasks package before implementation; keep dependency loading, symbol lookup, and relocation application out of that first string-consumption slice.
-   - Termux: no device run is required yet; ask for one only when a runtime/device path exercises new behavior that CI cannot.
+1. `002-elf32-linker-strings` — implement T001 bounded STRTAB reader.
+   - Status: requirements/design/tasks are created and readiness-checked on `m4-elf32-dynamic-strings`; implementation/CI are NOT RUN.
+   - Goal: add the reusable single-entry STRTAB reader with checked guest-address arithmetic, bounded chunk reads, explicit caller-provided max payload length, NUL termination, byte preservation, and no mutation.
+   - Depends on: merged `001-elf32-linker-metadata`, `Elf32StringTableMetadata`, `GuestMemory`, D-0003/D-0004.
+   - Relevant: `specs/002-elf32-linker-strings/{requirements.md,design.md,tasks.md}`, new `src/elf/elf32_linker_strings.{h,cpp}`, focused synthetic test, CMake.
+   - Exact next action: implement T001 only and open CI for that slice; do not start aggregate SONAME/NEEDED materialization (T002) until T001 is green.
+   - DoD: focused single-entry valid/malformed cases are committed and GitHub Actions is the authoritative build/test gate.
+   - Termux: no device run is required for T001.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
