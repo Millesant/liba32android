@@ -2,13 +2,11 @@
 
 The M3 loader + structural dynamic-array baseline is green on `bleeding` through PR #11 / commit `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`. Future feature-scale work uses the repository's current requirements -> design -> tasks structure.
 
-1. `001-elf32-linker-metadata` — implement T001 from the ready M4 spec.
-   - Status: requirements/design/tasks are created and the readiness check is complete on branch `m4-elf32-linker-metadata`.
-   - Goal: add the linker-metadata API and semantic tag collection without range validation or fixture integration yet.
-   - Depends on: `specs/001-elf32-linker-metadata/{requirements.md,design.md,tasks.md}`, the M3 baseline, D-0003/D-0004.
-   - Relevant: `src/elf/elf32_linker_metadata.{h,cpp}` (new), `src/elf/elf32_dynamic.h`, focused new synthetic test, `CMakeLists.txt`.
-   - Exact next action: implement T001 only—supported tag classification, duplicate singleton rejection, incomplete-group rejection, ordered repeated `DT_NEEDED`, and deferred-tag tolerance.
-   - DoD for the next round: T001 synthetic cases are added and CI is opened as the authoritative build/test gate; do not begin T002 range validation until T001 is coherent.
+1. `001-elf32-linker-metadata` — CI-gate T001 semantic collection.
+   - Status: T001 implementation and focused synthetic coverage are committed on `m4-elf32-linker-metadata`; validation is NOT RUN.
+   - Relevant: `src/elf/elf32_linker_metadata.{h,cpp}`, `tests/elf32_linker_metadata.cpp`, `CMakeLists.txt`, `specs/001-elf32-linker-metadata/tasks.md`.
+   - Exact next action: open/update the feature PR and inspect GitHub Actions for the current head. Fix only T001 build/test failures.
+   - DoD: Linux build plus all CTest cases including `elf32_linker_metadata_collection` PASS, Android `arm64-v8a` cross-build PASS, then mark T001 done and advance to T002 in a fresh bounded round.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
