@@ -2,12 +2,11 @@
 
 The M3 loader + structural dynamic-array baseline is green on `bleeding` through PR #11 / commit `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`. Future feature-scale work uses the repository's current requirements -> design -> tasks structure.
 
-1. `001-elf32-linker-metadata` — implement and CI-gate T002.
-   - Status: T001 semantic collection is DONE with GitHub Actions run `35329098071` (#78) PASS.
-   - Goal: add checked load-bias rebasing and guest-range validation for STRTAB/SYMTAB/REL metadata, plus entry-size and string-offset validation.
+1. `001-elf32-linker-metadata` — CI-gate T002 rebasing/range validation.
+   - Status: T001 is DONE / CI #78 PASS. T002 implementation and focused synthetic coverage are committed; validation for the latest head is NOT RUN.
    - Relevant: `src/elf/elf32_linker_metadata.{h,cpp}`, `tests/elf32_linker_metadata.cpp`, `specs/001-elf32-linker-metadata/tasks.md`.
-   - Exact next action: implement T002 only; do not begin real-fixture integration (T003) in this round.
-   - DoD: focused synthetic overflow/readability/entry-size/RELSZ/string-offset cases are committed and a fresh CI run is opened for the exact head.
+   - Exact next action: inspect GitHub Actions for the current PR head and fix only T002 build/test failures.
+   - DoD: Linux build and all CTest cases PASS, Android `arm64-v8a` cross-build PASS, then mark T002 DONE and begin T003 real-fixture integration in a fresh bounded round.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
