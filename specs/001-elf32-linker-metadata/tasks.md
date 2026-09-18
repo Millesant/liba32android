@@ -12,7 +12,7 @@
 - Depends on: T001
 - Scope: checked load-bias addition for STRTAB/SYMTAB/REL; checked range ends; bounded-read validation through `GuestMemory`; enforce `DT_SYMENT == 16`, `DT_RELENT == 8`, RELSZ divisibility, and string-offset bounds.
 - Validation: synthetic overflow, unreadable-range, bad-entry-size, bad-RELSZ, and bad-string-offset regressions; verify guest bytes remain unchanged after failures.
-- Status: IN PROGRESS
+- Status: IMPLEMENTED — CI NOT RUN
 
 ## T003 — Integrate the reproducible real ARM32 fixture
 - Requirements: R10; AC9
