@@ -19,14 +19,14 @@
 - Depends on: T001, T002
 - Scope: load the real fixture, parse dynamic metadata, build linker metadata, consume strings with an explicit ceiling, assert SONAME `liba32android_loader_fixture.so`, and assert zero NEEDED names.
 - Validation: fixture-backed CTest integration.
-- Status: IMPLEMENTED — CI NOT RUN
+- Status: DONE — CI #102 PASS
 
 ## T004 — Converge architecture and durable state
 - Requirements: R1, R11; AC12
 - Depends on: T001-T003
 - Scope: document the linker-string boundary and explicit resource-limit contract; update README and `.agent/STATE.md` / `.agent/NEXT.md`; keep dependency loading and pathname policy explicitly deferred.
 - Validation: consistency pass across requirements/design/tasks/code/tests/docs/state.
-- Status: TODO
+- Status: DONE — architecture/README/state converged
 
 ## T005 — CI gate
 - Requirements: R11; AC12
@@ -39,7 +39,7 @@
   - reproducible ARM32 fixture generation PASS;
   - exact `liba32android.so` naming PASS;
   - Android `arm64-v8a` runtime/diagnostics cross-build PASS.
-- Status: TODO
+- Status: IN PROGRESS — final exact-head CI NOT RUN
 
 ## Readiness Check
 
