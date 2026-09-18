@@ -21,6 +21,12 @@ struct Elf32LinkerStringOptions {
     std::uint32_t max_string_bytes{};
 };
 
+Elf32SingleStringResult read_elf32_string_table_entry(
+    const memory::GuestMemory& memory,
+    const Elf32StringTableMetadata& string_table,
+    std::uint32_t offset,
+    const Elf32LinkerStringOptions& options);
+
 struct Elf32LinkerStrings {
     std::optional<std::string> soname;
     std::vector<std::string> needed;
@@ -31,6 +37,8 @@ Elf32LinkerStringResult build_elf32_linker_strings(
     const Elf32LinkerMetadata& metadata,
     const Elf32LinkerStringOptions& options);
 ```
+
+The single-entry reader is deliberately exposed within the internal ELF API so T001 is independently testable and later symbol-name work can reuse the same bounded STRTAB primitive. The aggregate SONAME/NEEDED builder is layered on top in T002.
 
 There is intentionally no implicit default for `max_string_bytes` in the first slice. Callers must choose an explicit finite payload limit.
 
@@ -86,7 +94,7 @@ No guest pointer or string-table view escapes through the result.
 
 ## Bounded String Reader
 
-Implement one internal helper that reads a single offset from the validated STRTAB descriptor.
+Implement one narrow reusable helper, `read_elf32_string_table_entry`, that reads a single offset from the validated STRTAB descriptor.
 
 Inputs:
 
