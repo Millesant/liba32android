@@ -5,7 +5,7 @@
 - Depends on: none
 - Scope: add `src/elf/elf32_linker_metadata.{h,cpp}`; classify the supported tag set; collect singleton values and ordered `DT_NEEDED`; reject duplicate supported singletons and incomplete tag groups; keep deferred/unknown tags tolerated.
 - Validation: focused synthetic metadata test for valid collection, duplicate policy, missing companions, repeated NEEDED order, and deferred-tag tolerance.
-- Status: TODO
+- Status: IMPLEMENTED — CI NOT RUN
 
 ## T002 — Add rebasing and guest-range validation
 - Requirements: R2, R5-R7, R9; AC2, AC5-AC7
