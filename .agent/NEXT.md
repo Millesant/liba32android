@@ -2,12 +2,12 @@
 
 The M3 loader + structural dynamic-array baseline is green on `bleeding` through PR #11 / commit `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`. Future feature-scale work uses the repository's current requirements -> design -> tasks structure.
 
-1. `002-elf32-linker-strings` — CI-gate T003 real-fixture string integration.
-   - Status: T001 is DONE / CI #97 PASS. T002 is DONE / CI #99 PASS. T003 fixture integration is implemented; validation for the latest head is NOT RUN.
-   - Relevant: `tests/elf32_linker_strings_real_fixture.cpp`, `CMakeLists.txt`, `src/elf/elf32_linker_strings.{h,cpp}`.
-   - Exact next action: inspect GitHub Actions for the current PR head and fix only T003 fixture-integration failures.
-   - DoD: Linux fixture generation/build and all CTest cases including `elf32_real_linker_strings` PASS, Android `arm64-v8a` cross-build PASS, then begin T004 docs/state convergence in a fresh bounded round.
-   - Termux: no device run is required for T003; this remains host-observable read-only linker-string consumption.
+1. `002-elf32-linker-strings` — complete T005 final exact-head CI gate.
+   - Status: T001 PASS (#97), T002 PASS (#99), T003 PASS (#102), and T004 docs/state convergence DONE on `m4-elf32-dynamic-strings`.
+   - Relevant: PR #15, full feature diff, `docs/architecture/elf32-linker-strings.md`, README, and all linker-string tests.
+   - Exact next action: inspect GitHub Actions for the current documentation-converged PR head. Fix only regressions attributable to this feature.
+   - DoD: Linux configure/build plus all CTest cases PASS, including `elf32_linker_string_entry` and `elf32_real_linker_strings`; reproducible ARM32 fixture generation PASS; exact shared-library naming PASS; Android `arm64-v8a` runtime/diagnostics cross-build PASS. Then mark T005 DONE and the feature ready to merge.
+   - Termux: still no device run is required; this feature remains read-only linker-string consumption and is fully observable in CI.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
