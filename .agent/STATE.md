@@ -1,11 +1,11 @@
 # Current State
 
-Last updated: 2026-09-17
+Last updated: 2026-09-18
 Current phase: M3 mapping/structural metadata converged; M4 linker metadata/semantics next
 Integration branch: `bleeding`
 Last merged runtime PR: #11
 Runtime baseline commit: `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`
-Active runtime work: M4 T002 linker-metadata rebasing/range validation implemented on `m4-elf32-linker-metadata`; fresh CI NOT RUN
+Active runtime work: M4 T003 real-fixture linker-metadata integration implemented on `m4-elf32-linker-metadata`; fresh CI NOT RUN
 
 ## Working
 
@@ -49,7 +49,7 @@ Active runtime work: M4 T002 linker-metadata rebasing/range validation implement
 
 ### Active M4 feature branch
 
-T001 semantic collection is PASS on GitHub Actions run `35329098071` (#78): Linux build/test and Android arm64-v8a cross-build both succeeded. T002 implementation is committed with synthetic validation coverage; its current head still requires fresh CI.
+T001 semantic collection is PASS on GitHub Actions run `35329098071` (#78). T002 rebasing/range validation is PASS on run `35329808394` (#84), including Linux build/test and Android arm64-v8a cross-build. T003 real-fixture linker-metadata integration is implemented and requires fresh CI on the current head.
 
 
 ### Current runtime baseline on `bleeding`
