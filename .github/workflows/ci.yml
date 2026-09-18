@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [bleeding, m0-bootstrap]
+    branches: [bleeding]
   pull_request:
     branches: [bleeding]
 
