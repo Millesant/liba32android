@@ -2,13 +2,11 @@
 
 The M3 loader + structural dynamic-array baseline is green on `bleeding` through PR #11 / commit `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`. Future feature-scale work uses the repository's current requirements -> design -> tasks structure.
 
-1. `003-elf32-dependency-resolution` — implement T001 provider boundary and ordered acquisition.
-   - Status: requirements/design/tasks are created and readiness-checked on `m4-elf32-dependency-resolution`; implementation/CI are NOT RUN.
-   - Goal: add the injected dependency provider boundary that consumes `Elf32LinkerStrings::needed`, preserves ordered/repeated occurrences, forwards non-empty name bytes unchanged, applies the dependency-count precheck, and returns host-owned dependency image inputs without mapping them.
-   - Depends on: merged `002-elf32-linker-strings`, `Elf32LinkerStrings`, D-0003/D-0004, and the existing explicit `ET_DYN dynamic_base` loader contract.
-   - Relevant: `specs/003-elf32-dependency-resolution/{requirements.md,design.md,tasks.md}`; planned `src/elf/elf32_dependency_resolver.{h,cpp}`; focused fake-provider tests; CMake.
-   - Exact next action: implement T001 only and open CI for that slice. Do not start T002 resource/error hardening or any guest mapping/link-map work until T001 is green.
-   - DoD: ordered success, repeated requests, empty-set/no-call behavior, empty-name rejection, raw-byte/slash forwarding, and owned-result behavior are committed and GitHub Actions is the authoritative build/test gate.
+1. `003-elf32-dependency-resolution` — CI-gate T001 provider boundary and ordered acquisition.
+   - Status: T001 implementation, focused fake-provider coverage, and CMake registration are committed on `m4-elf32-dependency-resolution`; validation is NOT RUN.
+   - Relevant: `src/elf/elf32_dependency_resolver.{h,cpp}`, `tests/elf32_dependency_resolver.cpp`, `CMakeLists.txt`, `specs/003-elf32-dependency-resolution/tasks.md`.
+   - Exact next action: open/update the feature PR and inspect GitHub Actions for the current head. Fix only T001 build/test failures.
+   - DoD: Linux build plus all CTest cases including `elf32_dependency_resolution` PASS and Android `arm64-v8a` cross-build PASS; then mark T001 DONE and start T002 resource/error hardening in a fresh bounded round.
    - Termux: no device run is required for T001.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
