@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include "elf/elf32_linker_metadata.h"
 #include "memory/guest_memory.h"
@@ -33,6 +35,20 @@ struct Elf32SingleStringResult {
     }
 };
 
+struct Elf32LinkerStrings {
+    std::optional<std::string> soname;
+    std::vector<std::string> needed;
+};
+
+struct Elf32LinkerStringResult {
+    Elf32LinkerStringError error{Elf32LinkerStringError::None};
+    Elf32LinkerStrings strings;
+
+    [[nodiscard]] explicit operator bool() const noexcept {
+        return error == Elf32LinkerStringError::None;
+    }
+};
+
 // Read one NUL-terminated byte string from a validated ELF32 string-table
 // descriptor. The function is read-only, uses GuestMemory exclusively, and
 // requires an explicit per-string payload ceiling.
@@ -40,6 +56,14 @@ struct Elf32SingleStringResult {
     const memory::GuestMemory& memory,
     const Elf32StringTableMetadata& string_table,
     std::uint32_t offset,
+    const Elf32LinkerStringOptions& options);
+
+// Materialize SONAME and ordered DT_NEEDED names from validated linker
+// metadata. Success is all-or-nothing: no partial aggregate is returned when
+// any requested string fails.
+[[nodiscard]] Elf32LinkerStringResult build_elf32_linker_strings(
+    const memory::GuestMemory& memory,
+    const Elf32LinkerMetadata& metadata,
     const Elf32LinkerStringOptions& options);
 
 [[nodiscard]] const char* to_string(Elf32LinkerStringError error) noexcept;
