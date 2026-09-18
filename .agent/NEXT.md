@@ -2,12 +2,12 @@
 
 The M3 loader + structural dynamic-array baseline is green on `bleeding` through PR #11 / commit `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2`. Future feature-scale work uses the repository's current requirements -> design -> tasks structure.
 
-1. `002-elf32-linker-strings` — verify persistence-only closeout CI, then prepare PR #15 for merge.
-   - Status: T001 PASS (#97), T002 PASS (#99), T003 PASS (#102), T004 DONE, T005 PASS (#106). The implementation/docs head is fully green.
-   - Current action: this status-only closeout commit must be CI-checked once so PR #15 lands with truthful durable state.
-   - DoD: closeout head Linux + Android CI PASS, PR remains mergeable, then report PR #15 ready to merge. Do not begin a new feature on this branch.
-   - After merge: reconcile `bleeding` in a fresh state-only PR if required, then create a new `003-...` package for the next linker slice.
-   - Termux: no device run is required for `002`; the feature remains read-only linker-string consumption.
+1. Create a fresh `003-...` linker feature package after merged `002-elf32-linker-strings`.
+   - Status: PR #15 is merged to `bleeding` as `dbc329e2205828c97267a2de60ce0771c4173cb6`; exact pre-merge closeout CI #108 passed on both Linux and Android.
+   - Goal: specify the next bounded linker slice at the dependency-loader boundary that consumes materialized ordered `DT_NEEDED` names. Search-path, namespace/link-map, duplicate-dependency, and failure semantics must be decided in requirements/design before implementation.
+   - Depends on: `specs/002-elf32-linker-strings/`, `src/elf/elf32_linker_strings.*`, loader/memory logical-guest-VA invariants, and D-0003/D-0004.
+   - Exact next action: create a new `specs/003-...` requirements/design/tasks package and readiness-check it before any dependency loading code. Keep symbol lookup/hash semantics and relocation application out unless the new spec explicitly chooses otherwise.
+   - Termux: no device run is required for the spec-only round; request device validation only when a later runtime path exercises Android-specific behavior that CI cannot establish.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
