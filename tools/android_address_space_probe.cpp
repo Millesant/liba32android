@@ -621,6 +621,11 @@ int main(int argc, char** argv) {
     print_logging_state(logging, disable_file_log);
     const bool crash_handlers_installed = install_crash_handlers();
     log_printf("diagnostics.crash_markers=%s\n", crash_handlers_installed ? "enabled" : "partial");
+    if (crash_test && !crash_handlers_installed) {
+        error_printf("A32ERR|component=diagnostics|code=CRASH_HANDLER_SETUP|"
+                     "message=crash test requires all signal handlers\n");
+        return 1;
+    }
     if (crash_test) {
         run_crash_test();
     }
