@@ -90,9 +90,10 @@ The device smoke has now demonstrated on one real Android/AArch64 environment:
 1. creation of `MappedGuestMemory` and its 4 GiB reservation;
 2. A32 `mov r0,#42` execution through Dynarmic's AArch64 backend;
 3. A32 `STR`/`LDR` through mapped fastmem with zero data callbacks;
-4. fastmem fault -> callback fallback via `--exercise-fastmem-fault`, surfacing a guest memory fault without terminating the process.
+4. fastmem fault -> callback fallback via `--exercise-fastmem-fault`, surfacing a guest memory fault without terminating the process;
+5. explicit `--crash-test` SIGABRT handling, emitting the `A32CRASH` marker before fatal process termination.
 
-Raw evidence and the Observed/Inferred/Not-demonstrated classifications live under `docs/research/evidence/android-runtime-smoke-termux-arm64-2026-09-16.*` and `docs/research/evidence/android-runtime-smoke-fastmem-fallback-termux-arm64-2026-09-16.*`.
+Raw evidence and the Observed/Inferred/Not-demonstrated classifications live under `docs/research/evidence/android-runtime-smoke-termux-arm64-2026-09-16.*`, `docs/research/evidence/android-runtime-smoke-fastmem-fallback-termux-arm64-2026-09-16.*`, and `docs/research/evidence/android-runtime-smoke-crash-test-termux-arm64-2026-09-19.*`.
 
 ## Correctness policy
 
