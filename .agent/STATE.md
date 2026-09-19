@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-19
-Current phase: post-M4 maintenance; address-space probe metadata correction implemented
+Current phase: post-M4 maintenance; address-space probe metadata correction merged
 Integration branch: `bleeding`
-Last merged runtime PR: #18
-Runtime baseline commit: `793c3a42f719cdec679166404635cad470239ebe`
-Active runtime work: standalone address-space probe environment-metadata correction on `fix/address-space-runtime-metadata`; implementation/docs/CI assertions complete, fresh CI NOT RUN
+Last merged runtime PR: #19
+Runtime baseline commit: `f350fd0cf5ba3411ea2f566f00ba61907ce9b2e8`
+Active runtime work: none; next executable slice is focused CPU regression coverage
 
 ## Working
 
@@ -48,6 +48,10 @@ Active runtime work: standalone address-space probe environment-metadata correct
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### Address-space probe metadata correction
+
+PR #19 is merged to `bleeding` as `f350fd0cf5ba3411ea2f566f00ba61907ce9b2e8`. Exact-head GitHub Actions run `35432912229` (#126) at `06043cc7d92a7d4465466adb43e43ebedb766c6e` is PASS: Linux A32 smoke PASS and Android arm64-v8a cross-build PASS. The standalone probe now reports `android.ndk_api` for compile-time target metadata and `android.runtime_sdk` / `android.release` from Android system properties; CI rejects the obsolete `android.api=%d` marker. No post-merge workflow run was observed for the squash-merge commit during reconciliation.
 
 ### M4 dependency-resolution feature
 
@@ -101,7 +105,7 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 
 ## Current blocker
 
-No implementation blocker remains for merged `003-elf32-dependency-resolution`. Actual 16 KiB Android host-page behavior remains an independent device-evidence gap; it does not block the next repository maintenance slice.
+No implementation blocker remains for merged `003-elf32-dependency-resolution` or the standalone probe metadata correction. Actual 16 KiB Android host-page behavior remains an independent device-evidence gap; it does not block the next CPU regression slice.
 
 ## Important temporary facts
 
