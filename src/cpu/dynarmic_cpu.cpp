@@ -190,7 +190,7 @@ ExecutionResult execute(memory::GuestMemory& memory, const ExecutionRequest& req
     jit.ExtRegs().fill(0);
     jit.Regs()[15] = request.entry_pc;
 
-    // Start in AAPCS32 user mode. The T bit selects Thumb state.
+    // Execute in ARMv7 user mode; CPSR.T selects Thumb state.
     const std::uint32_t cpsr = request.instruction_set == InstructionSet::Thumb ? 0x30u : 0x10u;
     jit.SetCpsr(cpsr);
 
