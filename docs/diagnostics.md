@@ -133,7 +133,7 @@ If the runtime smoke crashes, send the complete log plus that marker and any And
 
 `android_address_space_probe` remains the lower-level mapping/JIT diagnostic. It prints machine-readable `key=value` lines and mirrors them to a file when available.
 
-Probe version 2 currently emits `android.api=26`, but that field is the compile-time NDK target (`__ANDROID_API__`), **not** the device runtime SDK. The first device evidence is still valid for its mmap/mprotect/JIT observations, but use `android_runtime_smoke`'s `android.runtime_sdk` / `android.release` fields for new runtime-version identification until the standalone probe metadata is revised.
+The standalone probe now matches `android_runtime_smoke`'s environment naming: `android.ndk_api` reports the compile-time NDK/API target (`__ANDROID_API__`), while `android.runtime_sdk` and `android.release` come from the device's `ro.build.version.sdk` and `ro.build.version.release` system properties. Existing historical probe logs that contain `android.api=26` should still be interpreted as compile-time target metadata, not runtime SDK evidence.
 
 The address-space probe's automatic file selection is:
 
