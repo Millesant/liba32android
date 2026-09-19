@@ -1,15 +1,16 @@
 # Next Work
 
-The current runtime baseline is merged on `bleeding` through PR #19 / commit `f350fd0cf5ba3411ea2f566f00ba61907ce9b2e8`. Dependency image acquisition and the standalone Android probe metadata correction are complete.
+The current runtime baseline is merged on `bleeding` through PR #21 / commit `831f1f7dfdc11fcdcc8dc75170fe815d6141a50c`. Focused ARM/Thumb CPU seam regressions now include branch/call, memory/stack, SVC exception, instruction-fetch fault, and data-fault coverage.
 
-1. Add the next focused CPU regressions independently of linker work.
-   - Status: IMPLEMENTED — exact-head CI NOT RUN.
-   - Coverage: Thumb branch/call, Thumb memory/stack, Thumb SVC exception, instruction-fetch fault, and Thumb data-access fault.
-   - Cleanup: simplify nearby CPU test setup/comments and keep comments focused on non-obvious instruction/control-state behavior; no broad formatting churn.
-   - Relevant: `tests/cpu_execution.cpp`, `CMakeLists.txt`.
-   - Exact next action: run/inspect GitHub Actions on the current branch head; fix only regressions proven by CI.
-   - Validation: all host CTest cases PASS plus Android `arm64-v8a` cross-build PASS.
-   - DoD: exact-head CI PASS, then merge the focused PR and reconcile state.
+1. Add a dedicated safe crash-test mode before deliberately exercising fatal crash diagnostics.
+   - Goal: validate fatal-diagnostic/tombstone coexistence without making ordinary probe or runtime-smoke execution destructive.
+   - Depends on: existing crash marker handlers in `tools/android_address_space_probe.cpp` and `tools/android_runtime_smoke.cpp`.
+   - Relevant: Android diagnostic tools, `docs/diagnostics.md`, CI artifact bundle.
+   - Scope: explicit opt-in crash entry point/mode only; normal smoke/probe paths must remain non-crashing.
+   - Cleanup: while touching these diagnostics, simplify nearby comments/helpers only where behavior becomes clearer; avoid unrelated formatting churn.
+   - Validation: host suite remains PASS, Android `arm64-v8a` cross-build PASS, CI verifies the opt-in marker/path is present, and normal diagnostic invocation remains unchanged.
+   - DoD: dedicated crash behavior is explicit, reproducible, documented, impossible to trigger through ordinary smoke execution, and exact-head CI PASS.
+   - Termux: real fatal-signal/tombstone coexistence remains NOT RUN until the resulting CI artifact is executed on-device.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
@@ -22,12 +23,7 @@ The current runtime baseline is merged on `bleeding` through PR #19 / commit `f3
    - Depends on: access to another Android/AArch64 environment.
    - DoD: environment + reservation/fastmem/fallback observations are recorded as executed evidence.
 
-4. Add a dedicated safe crash-test mode before deliberately exercising fatal crash diagnostics.
-   - Goal: validate fatal diagnostics without turning ordinary probes into destructive tests.
-   - Depends on: explicit isolated crash-test entry point.
-   - DoD: crash behavior is opt-in, reproducible, documented, and cannot be triggered by normal smoke execution.
-
-5. Decide the project's own open-source license before public release.
+4. Decide the project's own open-source license before public release.
    - Goal: make project redistribution terms explicit while retaining dependency-license auditability.
    - Depends on: maintainer choice.
    - DoD: license file and README/dependency notices are consistent.
