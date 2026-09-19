@@ -1,6 +1,6 @@
 # Next Work
 
-The current runtime baseline is merged on `bleeding` through PR #24 / commit `240cafced7c935edc6ec9a228e7d757809f0b2bc`. The CI #134 runtime-smoke artifact has now been executed successfully in Termux for both the ordinary smoke and the explicit SIGABRT crash-test path.
+Repository state is merged on `bleeding` through PR #25 / commit `ce5e3504765b98ca97405580e26e417e702c68de`. The runtime code baseline remains PR #23 / `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`. The CI #134 runtime-smoke artifact has now been executed successfully in Termux for both the ordinary smoke and the explicit SIGABRT crash-test path.
 
 1. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Status: NOT RUN / environment unavailable in the current 4096-byte-page Termux sample.
