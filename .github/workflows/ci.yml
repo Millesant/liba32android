@@ -121,6 +121,13 @@ jobs:
           set -euxo pipefail
           strings build-android/android_address_space_probe | grep -F '/sdcard/Download/liba32android/address-space-probe.log'
           strings build-android/android_address_space_probe | grep -F 'diagnostics.log_file=%s'
+          strings build-android/android_address_space_probe | grep -F 'android.ndk_api=%d'
+          strings build-android/android_address_space_probe | grep -F 'android.runtime_sdk'
+          strings build-android/android_address_space_probe | grep -F 'android.release'
+          if strings build-android/android_address_space_probe | grep -Fq 'android.api=%d'; then
+            echo 'obsolete android.api compile-time marker still present' >&2
+            exit 1
+          fi
           grep -F 'A32CRASH|component=android_address_space_probe|signal=' tools/android_address_space_probe.cpp
           strings build-android/android_runtime_smoke | grep -F 'a32.return42.status=%s'
           strings build-android/android_runtime_smoke | grep -F 'a32.memory.fastmem_direct=%s'

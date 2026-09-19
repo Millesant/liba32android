@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-19
-Current phase: M4 dependency-resolution merged; post-merge reconciliation active
+Current phase: post-M4 maintenance; address-space probe metadata correction implemented
 Integration branch: `bleeding`
-Last merged runtime PR: #17
-Runtime baseline commit: `c1f0f30d6fde7c73c93dec83f5808353a838c856`
-Active runtime work: none; next executable maintenance slice is standalone address-space probe environment-metadata correction
+Last merged runtime PR: #18
+Runtime baseline commit: `793c3a42f719cdec679166404635cad470239ebe`
+Active runtime work: standalone address-space probe environment-metadata correction on `fix/address-space-runtime-metadata`; implementation/docs/CI assertions complete, fresh CI NOT RUN
 
 ## Working
 

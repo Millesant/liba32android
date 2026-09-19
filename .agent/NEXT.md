@@ -3,12 +3,14 @@
 The current runtime baseline is merged on `bleeding` through PR #17 / commit `c1f0f30d6fde7c73c93dec83f5808353a838c856`. Dependency resolution is complete through bounded host-owned image acquisition; guest placement/graph semantics remain later feature-scale work.
 
 1. Correct standalone address-space probe environment metadata.
+   - Status: IMPLEMENTED — fresh CI NOT RUN.
    - Goal: distinguish compile-time NDK/API information from runtime Android SDK/release consistently with `android_runtime_smoke`.
-   - Depends on: none.
-   - Relevant: `tools/android_address_space_probe.cpp`, `tools/android_runtime_smoke.cpp`, `docs/diagnostics.md`.
-   - Validation: source checks as applicable plus Android `arm64-v8a` cross-build PASS; GitHub Actions remains the authoritative clean gate.
-   - Local fallback: the user now has a working WSL setup with NDK `27.3.13750724` that can reproduce host tests and the Android cross-build.
-   - DoD: standalone probe output no longer labels compile-time API as runtime API; naming is consistent with runtime-smoke diagnostics; docs are updated.
+   - Relevant: `tools/android_address_space_probe.cpp`, `.github/workflows/ci.yml`, `docs/diagnostics.md`.
+   - Implemented behavior: `android.ndk_api` reports `__ANDROID_API__`; `android.runtime_sdk` and `android.release` are read from Android system properties; CI rejects the obsolete `android.api=%d` marker.
+   - Exact next action: run/inspect GitHub Actions on the current branch head; fix only metadata/diagnostic regressions if it fails.
+   - Validation: Android `arm64-v8a` cross-build PASS plus existing Linux host suite PASS; GitHub Actions remains the authoritative clean gate.
+   - Local fallback: the user's WSL NDK `27.3.13750724` environment can reproduce host tests and the Android cross-build if a focused local check is useful.
+   - DoD: exact-head CI PASS, then merge the focused PR and reconcile state.
 
 2. Add the next focused CPU regressions independently of linker work.
    - Goal: cover remaining high-value A32 seam behavior before more runtime layers depend on it.
