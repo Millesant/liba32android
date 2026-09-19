@@ -127,7 +127,15 @@ A32CRASH|component=android_runtime_smoke|signal=11|pid=12345|addr=0xdeadbeef
 
 Dynarmic itself owns the active POSIX `SIGSEGV` handler while a JIT exists so it can recover fastmem page faults. Recoverable faults whose PC belongs to Dynarmic-generated code are consumed by Dynarmic and do not reach the smoke crash marker. For a fault Dynarmic does not recognize, its handler chains to the previously installed smoke handler by calling that function directly. The smoke therefore restores `SIG_DFL` explicitly after writing `A32CRASH`; relying only on `SA_RESETHAND` would be insufficient in that direct-call chaining path.
 
-If the runtime smoke crashes, send the complete log plus that marker and any Android tombstone/native backtrace. The crash marker supplements Android's normal crash handling; it does not replace a tombstone. Actual fatal-signal/tombstone coexistence remains **NOT RUN** until a dedicated safe crash-test mode is added.
+If the runtime smoke crashes, send the complete log plus that marker and any Android tombstone/native backtrace. The crash marker supplements Android's normal crash handling; it does not replace a tombstone.
+
+Fatal-diagnostic validation is now an explicit destructive mode:
+
+```sh
+./run.sh --crash-test
+```
+
+The mode is mutually exclusive with `--exercise-fastmem-fault`. It installs and verifies the crash-marker handlers, prints `crash_test.status=ARMED` and `crash_test.signal=SIGABRT`, then calls `abort()`. It is never exercised by normal smoke execution or by CI. Run it as a separate on-device invocation only after the normal smoke passes. Actual Android tombstone coexistence remains **NOT RUN** until that artifact is executed on-device.
 
 ## Android address-space probe
 
@@ -151,7 +159,7 @@ The standalone probe installs the analogous marker:
 A32CRASH|component=android_address_space_probe|signal=11|pid=12345|addr=0xdeadbeef
 ```
 
-Its generated-code mode is `--execute-generated-code`. Real-device evidence for the existing probe is stored under `docs/research/evidence/`.
+Its generated-code mode is `--execute-generated-code`. The mutually exclusive `--crash-test` mode follows the same explicit pattern as runtime smoke: after successful crash-handler setup it prints the armed/SIGABRT markers and calls `abort()` without running the mapping/JIT probes. Real-device evidence for the existing probe is stored under `docs/research/evidence/`.
 
 ## Android storage boundary
 
