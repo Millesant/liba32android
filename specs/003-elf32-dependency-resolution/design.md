@@ -1,6 +1,6 @@
 # Design — ELF32 Dependency Resolution
 
-Status: implemented through T004; final exact-head CI pending
+Status: complete; merged through PR #17
 
 ## Context
 
