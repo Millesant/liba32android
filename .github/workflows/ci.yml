@@ -24,6 +24,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install build dependencies
         run: sudo apt-get update && sudo apt-get install -y ninja-build libboost-dev binutils
+      - name: Validate Android 16 KiB harness
+        run: |
+          set -euxo pipefail
+          bash -n tools/run_android_16k_validation.sh
+          grep -F 'getconf PAGE_SIZE' tools/run_android_16k_validation.sh
+          grep -F 'expected 16384-byte Android page size' tools/run_android_16k_validation.sh
+          grep -F 'expected AArch64 Android target' tools/run_android_16k_validation.sh
+          grep -F 'a32.fastmem_fault.status=PASS' tools/run_android_16k_validation.sh
       - name: Ensure pinned NDK for real ARM32 fixture
         run: |
           set -euxo pipefail
