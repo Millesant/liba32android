@@ -135,7 +135,7 @@ Fatal-diagnostic validation is now an explicit destructive mode:
 ./run.sh --crash-test
 ```
 
-The mode is mutually exclusive with `--exercise-fastmem-fault`. It installs and verifies the crash-marker handlers, prints `crash_test.status=ARMED` and `crash_test.signal=SIGABRT`, then calls `abort()`. It is never exercised by normal smoke execution or by CI. Run it as a separate on-device invocation only after the normal smoke passes. Actual Android tombstone coexistence remains **NOT RUN** until that artifact is executed on-device.
+The mode is mutually exclusive with `--exercise-fastmem-fault`. It installs and verifies the crash-marker handlers, prints `crash_test.status=ARMED` and `crash_test.signal=SIGABRT`, then calls `abort()`. It is never exercised by normal smoke execution or by CI. On 2026-09-19, the CI #134 artifact was run in Termux after a successful normal smoke: the crash invocation emitted the armed/SIGABRT lines plus `A32CRASH|component=android_runtime_smoke|signal=6|...`, and the shell reported `Aborted`. An Android tombstone/native backtrace was not captured, so tombstone coexistence remains **NOT OBSERVED**.
 
 ## Android address-space probe
 
