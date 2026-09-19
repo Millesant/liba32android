@@ -1,6 +1,6 @@
 # ELF32 dependency resolution
 
-Status: M4 provider-backed dependency acquisition implemented through T003
+Status: complete; merged through PR #17
 
 ## Boundary
 
@@ -156,7 +156,7 @@ The fixture intentionally has zero `DT_NEEDED`. The integration test uses a prov
 
 GitHub Actions run `35406297624` (#118) passed the T003 implementation head. The Linux job reported 26/26 CTest cases passing, including `elf32_dependency_resolution` and `elf32_real_dependency_resolution`; the Android `arm64-v8a` cross-build also passed.
 
-A final exact-head CI run is still required after documentation/state convergence before the feature is complete.
+Final exact-head GitHub Actions run `35406975309` (#122) passed on `e2502067ef57c77a6c6c6589f9dc60e4ffc8702f`, with Linux A32 smoke and Android `arm64-v8a` cross-build both PASS. PR #17 was then squash-merged to `bleeding` as `c1f0f30d6fde7c73c93dec83f5808353a838c856`.
 
 ## Deliberate limits
 
