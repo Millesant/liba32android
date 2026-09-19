@@ -1,15 +1,16 @@
 # Next Work
 
-The current runtime baseline is merged on `bleeding` through PR #21 / commit `831f1f7dfdc11fcdcc8dc75170fe815d6141a50c`. Focused ARM/Thumb CPU seam regressions now include branch/call, memory/stack, SVC exception, instruction-fetch fault, and data-fault coverage.
+The current runtime baseline is merged on `bleeding` through PR #23 / commit `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`. Exact-head CI #134 passed the Linux host suite and Android `arm64-v8a` cross-build for the opt-in crash-test diagnostics.
 
-1. Add a dedicated safe crash-test mode before deliberately exercising fatal crash diagnostics.
-   - Status: IMPLEMENTED — exact-head CI NOT RUN.
-   - Behavior: both Android diagnostic executables accept explicit `--crash-test`; runtime smoke rejects combination with `--exercise-fastmem-fault`, address-space probe rejects combination with `--execute-generated-code`.
-   - Safety boundary: the crash mode refuses to abort unless all marker handlers install successfully; ordinary invocations never enter the destructive path.
-   - Evidence markers: `crash_test.status=ARMED`, `crash_test.signal=SIGABRT`, then the existing `A32CRASH|...` handler marker when executed on-device.
-   - CI: cross-build/static marker checks only; CI must never execute `--crash-test`.
-   - Exact next action: review the branch diff, open the focused PR, and inspect exact-head GitHub Actions.
-   - DoD: exact-head Linux host suite PASS, Android arm64-v8a cross-build PASS, then merge; real tombstone coexistence stays NOT RUN until the CI artifact is run in Termux.
+1. Execute the merged runtime-smoke artifact on a real Android/AArch64 Termux environment.
+   - Status: NOT RUN.
+   - Goal: validate the merged diagnostic behavior on-device, including the explicit fatal-signal path.
+   - Depends on: the CI runtime-smoke artifact from exact-head run #134 (`35436087356`) or an equivalent artifact built from the merged baseline.
+   - Sequence: run the ordinary smoke first; then invoke `./run.sh --crash-test` separately.
+   - Expected pre-crash evidence: `crash_test.status=ARMED`, `crash_test.signal=SIGABRT`, and the existing `A32CRASH|component=android_runtime_smoke|signal=6|...` marker if the installed handler executes.
+   - Capture: complete runtime-smoke log plus Android tombstone/native backtrace if available.
+   - Safety: `--crash-test` is intentionally destructive to that process; do not combine it with `--exercise-fastmem-fault`.
+   - DoD: real-device evidence is recorded; until then fatal-signal/tombstone coexistence remains NOT RUN.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
