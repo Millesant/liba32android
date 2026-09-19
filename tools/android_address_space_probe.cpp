@@ -1,6 +1,7 @@
 #include <signal.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/system_properties.h>
 #include <sys/utsname.h>
 #include <unistd.h>
 
@@ -318,12 +319,24 @@ void print_errno(const char* key, int error) {
     log_printf("%s.error=%s\n", key, std::strerror(error));
 }
 
+void print_property(const char* property, const char* key) {
+    char value[PROP_VALUE_MAX]{};
+    const int length = __system_property_get(property, value);
+    if (length > 0) {
+        log_printf("%s=%s\n", key, value);
+    } else {
+        log_printf("%s=unavailable\n", key);
+    }
+}
+
 void print_environment(long page_size) {
 #ifdef __ANDROID_API__
-    log_printf("android.api=%d\n", __ANDROID_API__);
+    log_printf("android.ndk_api=%d\n", __ANDROID_API__);
 #else
-    log_printf("android.api=unknown\n");
+    log_printf("android.ndk_api=unknown\n");
 #endif
+    print_property("ro.build.version.sdk", "android.runtime_sdk");
+    print_property("ro.build.version.release", "android.release");
     log_printf("arch=aarch64\n");
     log_printf("page_size=%ld\n", page_size);
 
