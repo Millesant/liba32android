@@ -3,7 +3,7 @@
 Last updated: 2026-09-19
 Current phase: post-M4 maintenance; opt-in crash-test diagnostics merged
 Integration branch: `bleeding`
-Last merged runtime PR: #24
+Last merged runtime PR: #23
 Runtime baseline commit: `240cafced7c935edc6ec9a228e7d757809f0b2bc`
 Active runtime work: recording real-device crash-test evidence; crash marker + SIGABRT termination observed, Android tombstone/backtrace NOT OBSERVED
 
@@ -117,7 +117,7 @@ No implementation blocker remains for merged dependency acquisition, probe metad
 
 ## Important temporary facts
 - Diagnostic tools have merged opt-in `--crash-test` paths. On 2026-09-19 the runtime-smoke CI #134 artifact emitted the armed/SIGABRT markers and `A32CRASH|...|signal=6|...` before the shell reported `Aborted`; Android tombstone/native-backtrace coexistence remains NOT OBSERVED.
-- CPU regression slice adds Thumb branch/call/memory/stack, Thumb SVC exception, instruction-fetch fault, and Thumb data-fault coverage; nearby test comments/setup are cleaned without changing runtime contracts. Exact-head CI is NOT RUN.
+- CPU regression slice adds Thumb branch/call/memory/stack, Thumb SVC exception, instruction-fetch fault, and Thumb data-fault coverage; nearby test comments/setup are cleaned without changing runtime contracts. Exact-head CI #130 PASS with 33/33 CTest and Android cross-build PASS.
 
 - `specs/002-elf32-linker-strings/` is merged through PR #15 as `dbc329e2205828c97267a2de60ce0771c4173cb6`. T001 PASS #97, T002 PASS #99, T003 PASS #102, T005 feature gate PASS #106, and persistence-only closeout PASS #108.
 - Dependency loading/search-path policy remains deliberately deferred by merged `002`; `003-elf32-dependency-resolution` is now readiness-checked on `m4-elf32-dependency-resolution`.
