@@ -28,7 +28,7 @@ ELF/ABI/runtime APIs operate on logical 32-bit guest VAs and must not expose hos
 
 ## Current phase
 
-The M2 guest-address-space scope is implemented. M3 ELF32 mapping plus structural dynamic-array metadata is implemented and green through PR #11. The next feature-scale boundary is M4-style linker metadata/semantics; dependency loading, symbol resolution and relocations are not implemented.
+The M2 guest-address-space scope is implemented. M3 ELF32 mapping plus structural dynamic-array metadata is implemented. M4 now includes validated linker metadata, bounded linker-string materialization, and bounded provider-backed dependency image acquisition through merged PR #17. Dependency guest placement/graph semantics, symbol resolution, and relocations are not implemented.
 
 ## Current stack
 
@@ -38,7 +38,7 @@ The M2 guest-address-space scope is implemented. M3 ELF32 mapping plus structura
 - Correctness memory: `LinearGuestMemory`.
 - Mapped memory: `MappedGuestMemory`, logical 32-bit guest VAs, contiguous high-host-VA 4 GiB reservation, page map/protect/unmap lifecycle.
 - CPU acceleration: internal mapped-memory `fastmem_base()` capability plus Dynarmic fastmem; callbacks remain the mandatory correctness fallback.
-- ELF: `src/elf/elf32_loader.*` for validated mapping and `src/elf/elf32_dynamic.*` for structural raw dynamic entries.
+- ELF: `src/elf/elf32_loader.*` for validated mapping, `src/elf/elf32_dynamic.*` for structural raw dynamic entries, `src/elf/elf32_linker_metadata.*` / `elf32_linker_strings.*` for validated linker inputs, and `src/elf/elf32_dependency_resolver.*` for bounded provider-backed dependency image acquisition.
 - Android cross-build: `arm64-v8a`, NDK `27.3.13750724`.
 
 D-0003 and D-0004 remain central: guest VAs are independent from host pointer identity, and high-base contiguous fastmem is the preferred first Android acceleration path when available.

@@ -1,11 +1,11 @@
 # Current State
 
-Last updated: 2026-09-18
-Current phase: M4 dependency-resolution implementation/docs complete; final exact-head CI pending
+Last updated: 2026-09-19
+Current phase: M4 dependency-resolution merged; post-merge reconciliation active
 Integration branch: `bleeding`
-Last merged runtime PR: #15
-Runtime baseline commit: `dbc329e2205828c97267a2de60ce0771c4173cb6`
-Active runtime work: `003-elf32-dependency-resolution` through T004 on `m4-elf32-dependency-resolution`; final exact-head CI NOT RUN
+Last merged runtime PR: #17
+Runtime baseline commit: `c1f0f30d6fde7c73c93dec83f5808353a838c856`
+Active runtime work: none; next executable maintenance slice is standalone address-space probe environment-metadata correction
 
 ## Working
 
@@ -51,7 +51,7 @@ Active runtime work: `003-elf32-dependency-resolution` through T004 on `m4-elf32
 
 ### M4 dependency-resolution feature
 
-PR #17 is open on `m4-elf32-dependency-resolution`. T001 provider boundary is PASS on GitHub Actions run `35405652527` (#112). T002 provider-error/resource hardening is PASS on `35405978520` (#116). T003 real-fixture zero-dependency integration is PASS on `35406297624` (#118): Linux CTest reported 26/26 PASS including `elf32_dependency_resolution` and `elf32_real_dependency_resolution`; Android arm64-v8a cross-build PASS. T004 architecture/README/state convergence is complete. Final exact-head T005 CI is NOT RUN yet.
+PR #17 is merged to `bleeding` as `c1f0f30d6fde7c73c93dec83f5808353a838c856`. T001 provider boundary is PASS on GitHub Actions run `35405652527` (#112). T002 provider-error/resource hardening is PASS on `35405978520` (#116). T003 real-fixture zero-dependency integration is PASS on `35406297624` (#118). T005 exact-head gate is PASS on `35406975309` (#122) at `e2502067ef57c77a6c6c6589f9dc60e4ffc8702f`: Linux A32 smoke PASS with 26/26 CTest including `elf32_dependency_resolution` and `elf32_real_dependency_resolution`; Android arm64-v8a cross-build PASS. No post-merge workflow run was observed for the squash-merge commit during reconciliation.
 
 ### M4 linker-string feature
 
@@ -101,14 +101,16 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 
 ## Current blocker
 
-No implementation blocker remains for `003-elf32-dependency-resolution`. The only feature-completion gate is final exact-head CI after T004 convergence. Actual 16 KiB Android host-page behavior remains an independent evidence gap rather than a blocker for this linker work.
+No implementation blocker remains for merged `003-elf32-dependency-resolution`. Actual 16 KiB Android host-page behavior remains an independent device-evidence gap; it does not block the next repository maintenance slice.
 
 ## Important temporary facts
 
 - `specs/002-elf32-linker-strings/` is merged through PR #15 as `dbc329e2205828c97267a2de60ce0771c4173cb6`. T001 PASS #97, T002 PASS #99, T003 PASS #102, T005 feature gate PASS #106, and persistence-only closeout PASS #108.
 - Dependency loading/search-path policy remains deliberately deferred by merged `002`; `003-elf32-dependency-resolution` is now readiness-checked on `m4-elf32-dependency-resolution`.
 - `003` assigns filesystem/search-path/namespace lookup policy to an injected provider, preserves one request/result occurrence per ordered `DT_NEEDED`, requires explicit dependency-count/per-image/total-image byte limits, and stops before guest mapping because `ET_DYN` placement remains explicit.
-- `003-elf32-dependency-resolution` is complete through T004: T001 PASS #112, T002 PASS #116, T003 PASS #118, T004 DONE. T005 final exact-head CI is NOT RUN.
+- `003-elf32-dependency-resolution` is merged through PR #17 as `c1f0f30d6fde7c73c93dec83f5808353a838c856`: T001 PASS #112, T002 PASS #116, T003 PASS #118, T004 DONE, T005 PASS #122.
 
 - `specs/000-current-baseline/` is a documentation conversion of already implemented behavior; the runtime evidence above remains its validation basis.
+- User-owned WSL local validation is now available: pinned NDK r27d (`27.3.13750724`) fixture/host build PASS, 26/26 CTest PASS, and Android `arm64-v8a` cross-build PASS were reported on 2026-09-19. The pasted local logs did not include a Git commit identity, so this is environment-capability evidence rather than an exact-commit release gate.
+- Real Android/AArch64 runtime behavior still requires Termux/device execution; the user prefers downloading the CI-produced runtime-smoke artifact for those runs.
 - The next feature-scale implementation must get a new `specs/<id>-<feature>/` requirements/design/tasks chain instead of extending `specs/000-current-baseline/`.
