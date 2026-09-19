@@ -1,0 +1,44 @@
+$ ./run.sh
+diagnostics.file_log=enabled
+diagnostics.log_file=/data/data/com.termux/files/home/storage/downloads/liba32android-runtime-smoke.log
+diagnostics.crash_markers=enabled
+runtime_smoke.version=1
+android.ndk_api=26
+android.runtime_sdk=36
+android.release=16
+arch=aarch64
+page_size=4096
+kernel.release=6.6.102-android15-8-abA566EXXSDCZHB-4k
+kernel.version=#1 SMP PREEMPT Thu Aug 20 01:37:02 UTC 2026
+fastmem.available=true
+fastmem.base=0x73fba44000
+a32.return42.fastmem_enabled=true
+a32.return42.r0=42
+a32.return42.code_callbacks=1
+a32.return42.status=PASS
+a32.memory.fastmem_enabled=true
+a32.memory.data_read_callbacks=0
+a32.memory.data_write_callbacks=0
+a32.memory.r2=0x12345678
+a32.memory.stored=0x12345678
+a32.memory.fastmem_direct=true
+a32.memory.status=PASS
+a32.fastmem_fault.status=NOT_RUN
+runtime_smoke.complete=true
+
+$ ./run.sh --crash-test
+diagnostics.file_log=enabled
+diagnostics.log_file=/data/data/com.termux/files/home/storage/downloads/liba32android-runtime-smoke.log
+diagnostics.crash_markers=enabled
+runtime_smoke.version=1
+android.ndk_api=26
+android.runtime_sdk=36
+android.release=16
+arch=aarch64
+page_size=4096
+kernel.release=6.6.102-android15-8-abA566EXXSDCZHB-4k
+kernel.version=#1 SMP PREEMPT Thu Aug 20 01:37:02 UTC 2026
+crash_test.status=ARMED
+crash_test.signal=SIGABRT
+A32CRASH|component=android_runtime_smoke|signal=6|pid=31431|addr=0x27db00007ac7
+Aborted                    ./run.sh --crash-test
