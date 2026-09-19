@@ -408,9 +408,15 @@ int main(int argc, char** argv) {
     } else {
         log_printf("diagnostics.file_log=unavailable\n");
     }
-    log_printf("diagnostics.crash_markers=%s\n", install_crash_handlers() ? "enabled" : "partial");
+    const bool crash_handlers_installed = install_crash_handlers();
+    log_printf("diagnostics.crash_markers=%s\n", crash_handlers_installed ? "enabled" : "partial");
     log_printf("runtime_smoke.version=1\n");
     print_environment();
+    if (crash_test && !crash_handlers_installed) {
+        error_printf("A32ERR|component=android_runtime_smoke|code=CRASH_HANDLER_SETUP|"
+                     "message=crash test requires all signal handlers\n");
+        return 1;
+    }
     if (crash_test) {
         run_crash_test();
     }
