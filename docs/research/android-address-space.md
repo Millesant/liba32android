@@ -1,6 +1,6 @@
 # Android guest address-space research
 
-Status: PARTIAL — probe cross-build TESTED/PASS, device evidence NOT RUN
+Status: PARTIAL — 4 KiB real-device paths observed; 16 KiB Android execution NOT RUN
 
 ## Scope
 
@@ -107,6 +107,26 @@ GitHub Actions run `35012394383`, PR #3 implementation commit `11301da46195e323c
 
 This is build evidence only. No Android `mmap`, `mprotect`, fastmem reservation or generated-code result is inferred from CI.
 
+### 16 KiB emulator validation
+
+Google's current Android guidance provides experimental 16 KiB Android 15-or-newer emulator images and uses `adb shell getconf PAGE_SIZE` returning `16384` as the runtime check. For this project, use the **ARM 64 v8a** 16 KiB image for runtime evidence: the diagnostics and `liba32android.so` are built for an AArch64 Android host, so the x86_64 16 KiB image is not a substitute for validating the Dynarmic AArch64 host path.
+
+Source: https://developer.android.com/guide/practices/page-sizes
+
+Once a 16 KiB AArch64 emulator is running, use the repository harness with three Android cross-build outputs:
+
+```sh
+tools/run_android_16k_validation.sh \
+  build-android/android_address_space_probe \
+  build-android/android_runtime_smoke \
+  build-android/liba32android.so \
+  android-16k-validation
+```
+
+The harness refuses to continue unless the target reports both `PAGE_SIZE=16384` and `uname -m=aarch64`. It then runs the address-space probe, generated-code probe, normal runtime smoke, and fastmem-fault fallback smoke, saving host-side logs and requiring the expected PASS markers. It deliberately does not run the destructive `--crash-test` mode.
+
+The script can also consume binaries unpacked from a matching CI artifact instead of a local cross-build. `ANDROID_SERIAL` selects a target when more than one adb device is connected.
+
 ### Device execution
 
 Example once a device/emulator path is available:
@@ -124,4 +144,4 @@ Store device outputs with Android build/API, kernel release, device architecture
 
 ## Current recommendation
 
-Keep callbacks as the correctness baseline. Do not select fastmem or direct low-VA identity until device evidence exists. If 4 GiB reservation proves reliable while low-VA exact mappings are unreliable, fastmem at an arbitrary high host base remains viable because the two properties are independent.
+Keep callbacks as the correctness baseline. Existing 4 KiB Android evidence supports high-base 4 GiB fastmem plus callback fallback on one environment; do not generalize that result across page sizes or vendors. The next discriminating address-space check is the same probe/runtime-smoke sequence on an AArch64 Android target that actually reports 16384-byte pages. Direct low-VA pointer identity remains outside the correctness contract.
