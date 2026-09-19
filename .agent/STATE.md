@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-19
-Current phase: post-M4 maintenance; opt-in crash-test diagnostics merged
+Current phase: post-M4 maintenance; Termux crash-test evidence merged
 Integration branch: `bleeding`
 Last merged runtime PR: #23
-Runtime baseline commit: `240cafced7c935edc6ec9a228e7d757809f0b2bc`
-Active runtime work: recording real-device crash-test evidence; crash marker + SIGABRT termination observed, Android tombstone/backtrace NOT OBSERVED
+Runtime baseline commit: `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`
+Active runtime work: none; remaining prioritized work is device-evidence collection and release licensing
 
 ## Working
 
@@ -48,6 +48,10 @@ Active runtime work: recording real-device crash-test evidence; crash marker + S
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### Termux crash-test evidence recording
+
+PR #25 is merged to `bleeding` as `ce5e3504765b98ca97405580e26e417e702c68de`. Exact-head GitHub Actions run `35436883811` (#138) at `66427cb7dab12b1f299d3eda5cc6be5ad255d5d0` is PASS: Linux A32 smoke PASS and Android `arm64-v8a` cross-build PASS. The merged evidence records the 2026-09-19 Termux normal-smoke PASS and explicit SIGABRT crash-marker termination. Android tombstone/native-backtrace coexistence remains NOT OBSERVED because no native crash record was captured. No post-merge workflow run was observed for the squash-merge commit during reconciliation.
 
 ### Opt-in crash-test diagnostics
 
