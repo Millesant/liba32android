@@ -141,6 +141,12 @@ void crash_handler(int signal_number, siginfo_t* info, void*) {
     // Android's normal fatal-signal/tombstone path after our minimal marker.
 }
 
+[[noreturn]] void run_crash_test() {
+    log_printf("crash_test.status=ARMED\n");
+    log_printf("crash_test.signal=SIGABRT\n");
+    std::abort();
+}
+
 bool install_crash_handlers() {
     constexpr std::array<int, 5> signals{SIGABRT, SIGBUS, SIGFPE, SIGILL, SIGSEGV};
     struct sigaction action {};
@@ -557,7 +563,9 @@ bool probe_jit_wx(std::size_t page_size, bool execute_generated_code) {
 }
 
 void print_usage() {
-    error_printf("usage: android_address_space_probe [--execute-generated-code] [--log-file PATH] [--no-log-file]\n");
+    error_printf(
+        "usage: android_address_space_probe [--execute-generated-code | --crash-test] "
+        "[--log-file PATH] [--no-log-file]\n");
 }
 
 }  // namespace
@@ -565,6 +573,7 @@ void print_usage() {
 int main(int argc, char** argv) {
     bool execute_generated_code = false;
     bool disable_file_log = false;
+    bool crash_test = false;
     const char* requested_log_file = nullptr;
 
     for (int index = 1; index < argc; ++index) {
@@ -576,10 +585,19 @@ int main(int argc, char** argv) {
             disable_file_log = true;
             continue;
         }
+        if (std::strcmp(argv[index], "--crash-test") == 0) {
+            crash_test = true;
+            continue;
+        }
         if (std::strcmp(argv[index], "--log-file") == 0 && index + 1 < argc) {
             requested_log_file = argv[++index];
             continue;
         }
+        print_usage();
+        return 2;
+    }
+
+    if (execute_generated_code && crash_test) {
         print_usage();
         return 2;
     }
@@ -603,6 +621,9 @@ int main(int argc, char** argv) {
     print_logging_state(logging, disable_file_log);
     const bool crash_handlers_installed = install_crash_handlers();
     log_printf("diagnostics.crash_markers=%s\n", crash_handlers_installed ? "enabled" : "partial");
+    if (crash_test) {
+        run_crash_test();
+    }
 
     static_assert(sizeof(std::size_t) >= 8, "4 GiB probe requires a 64-bit process");
 
