@@ -3,14 +3,13 @@
 The current runtime baseline is merged on `bleeding` through PR #21 / commit `831f1f7dfdc11fcdcc8dc75170fe815d6141a50c`. Focused ARM/Thumb CPU seam regressions now include branch/call, memory/stack, SVC exception, instruction-fetch fault, and data-fault coverage.
 
 1. Add a dedicated safe crash-test mode before deliberately exercising fatal crash diagnostics.
-   - Goal: validate fatal-diagnostic/tombstone coexistence without making ordinary probe or runtime-smoke execution destructive.
-   - Depends on: existing crash marker handlers in `tools/android_address_space_probe.cpp` and `tools/android_runtime_smoke.cpp`.
-   - Relevant: Android diagnostic tools, `docs/diagnostics.md`, CI artifact bundle.
-   - Scope: explicit opt-in crash entry point/mode only; normal smoke/probe paths must remain non-crashing.
-   - Cleanup: while touching these diagnostics, simplify nearby comments/helpers only where behavior becomes clearer; avoid unrelated formatting churn.
-   - Validation: host suite remains PASS, Android `arm64-v8a` cross-build PASS, CI verifies the opt-in marker/path is present, and normal diagnostic invocation remains unchanged.
-   - DoD: dedicated crash behavior is explicit, reproducible, documented, impossible to trigger through ordinary smoke execution, and exact-head CI PASS.
-   - Termux: real fatal-signal/tombstone coexistence remains NOT RUN until the resulting CI artifact is executed on-device.
+   - Status: IMPLEMENTED — exact-head CI NOT RUN.
+   - Behavior: both Android diagnostic executables accept explicit `--crash-test`; runtime smoke rejects combination with `--exercise-fastmem-fault`, address-space probe rejects combination with `--execute-generated-code`.
+   - Safety boundary: the crash mode refuses to abort unless all marker handlers install successfully; ordinary invocations never enter the destructive path.
+   - Evidence markers: `crash_test.status=ARMED`, `crash_test.signal=SIGABRT`, then the existing `A32CRASH|...` handler marker when executed on-device.
+   - CI: cross-build/static marker checks only; CI must never execute `--crash-test`.
+   - Exact next action: review the branch diff, open the focused PR, and inspect exact-head GitHub Actions.
+   - DoD: exact-head Linux host suite PASS, Android arm64-v8a cross-build PASS, then merge; real tombstone coexistence stays NOT RUN until the CI artifact is run in Termux.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.

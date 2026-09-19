@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-19
-Current phase: post-M4 maintenance; focused CPU regression slice merged
+Current phase: post-M4 maintenance; opt-in crash-test diagnostics implemented
 Integration branch: `bleeding`
-Last merged runtime PR: #21
-Runtime baseline commit: `831f1f7dfdc11fcdcc8dc75170fe815d6141a50c`
-Active runtime work: none; next executable maintenance slice is dedicated safe crash-test mode
+Last merged runtime PR: #22
+Runtime baseline commit: `a36f09fff414152468ad4d1f96af59551ed766f1`
+Active runtime work: opt-in crash-test diagnostics on `diagnostics/opt-in-crash-test`; code/docs/CI assertions complete, exact-head CI NOT RUN
 
 ## Working
 
@@ -112,6 +112,7 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 No implementation blocker remains for merged dependency acquisition, probe metadata correction, or focused CPU regressions. Actual 16 KiB Android host-page behavior remains an independent device-evidence gap and does not block the next repository maintenance slice.
 
 ## Important temporary facts
+- Diagnostic tools now have opt-in `--crash-test` paths that require successful handler setup, emit armed/SIGABRT markers, then call `abort()`; ordinary smoke/probe execution never selects them. CI/build validation is NOT RUN on this branch.
 - CPU regression slice adds Thumb branch/call/memory/stack, Thumb SVC exception, instruction-fetch fault, and Thumb data-fault coverage; nearby test comments/setup are cleaned without changing runtime contracts. Exact-head CI is NOT RUN.
 
 - `specs/002-elf32-linker-strings/` is merged through PR #15 as `dbc329e2205828c97267a2de60ce0771c4173cb6`. T001 PASS #97, T002 PASS #99, T003 PASS #102, T005 feature gate PASS #106, and persistence-only closeout PASS #108.

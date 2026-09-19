@@ -129,9 +129,15 @@ jobs:
             exit 1
           fi
           grep -F 'A32CRASH|component=android_address_space_probe|signal=' tools/android_address_space_probe.cpp
+          strings build-android/android_address_space_probe | grep -F -- '--crash-test'
+          strings build-android/android_address_space_probe | grep -F 'crash_test.status=ARMED'
+          grep -F 'std::abort();' tools/android_address_space_probe.cpp
           strings build-android/android_runtime_smoke | grep -F 'a32.return42.status=%s'
           strings build-android/android_runtime_smoke | grep -F 'a32.memory.fastmem_direct=%s'
           grep -F 'A32CRASH|component=android_runtime_smoke|signal=' tools/android_runtime_smoke.cpp
+          strings build-android/android_runtime_smoke | grep -F -- '--crash-test'
+          strings build-android/android_runtime_smoke | grep -F 'crash_test.status=ARMED'
+          grep -F 'std::abort();' tools/android_runtime_smoke.cpp
           grep -F 'A32ERR|component=android_runtime_smoke|' tools/android_runtime_smoke.cpp
           grep -F 'signal(signal_number, SIG_DFL);' tools/android_runtime_smoke.cpp
           readelf -d build-android/android_runtime_smoke | grep -F 'Shared library: [liba32android.so]'
@@ -170,6 +176,14 @@ jobs:
 
           Optional fastmem fault/fallback validation after the normal smoke passes:
             ./run.sh --exercise-fastmem-fault
+
+          Destructive crash-marker/tombstone validation is explicit and intentionally terminates the process.
+          Run it separately, only after the normal smoke passes:
+            ./run.sh --crash-test
+          Expected pre-crash output includes:
+            crash_test.status=ARMED
+            crash_test.signal=SIGABRT
+          followed by an A32CRASH marker if the installed handler runs.
 
           The program prints diagnostics.log_file=... with the log path. On Termux it first tries:
             ~/storage/downloads/liba32android-runtime-smoke.log
