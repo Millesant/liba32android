@@ -3,9 +3,9 @@
 Last updated: 2026-09-19
 Current phase: post-M4 maintenance; address-space probe metadata correction merged
 Integration branch: `bleeding`
-Last merged runtime PR: #19
-Runtime baseline commit: `f350fd0cf5ba3411ea2f566f00ba61907ce9b2e8`
-Active runtime work: none; next executable slice is focused CPU regression coverage
+Last merged runtime PR: #20
+Runtime baseline commit: `ac46c787970663b37258f0bdd6a270b8d05c8b76`
+Active runtime work: focused CPU regression coverage on `cpu/thumb-regressions-cleanup`; implementation registered, exact-head CI NOT RUN
 
 ## Working
 
@@ -108,6 +108,7 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 No implementation blocker remains for merged `003-elf32-dependency-resolution` or the standalone probe metadata correction. Actual 16 KiB Android host-page behavior remains an independent device-evidence gap; it does not block the next CPU regression slice.
 
 ## Important temporary facts
+- CPU regression slice adds Thumb branch/call/memory/stack, Thumb SVC exception, instruction-fetch fault, and Thumb data-fault coverage; nearby test comments/setup are cleaned without changing runtime contracts. Exact-head CI is NOT RUN.
 
 - `specs/002-elf32-linker-strings/` is merged through PR #15 as `dbc329e2205828c97267a2de60ce0771c4173cb6`. T001 PASS #97, T002 PASS #99, T003 PASS #102, T005 feature gate PASS #106, and persistence-only closeout PASS #108.
 - Dependency loading/search-path policy remains deliberately deferred by merged `002`; `003-elf32-dependency-resolution` is now readiness-checked on `m4-elf32-dependency-resolution`.
