@@ -3,13 +3,13 @@
 The current runtime baseline is merged on `bleeding` through PR #19 / commit `f350fd0cf5ba3411ea2f566f00ba61907ce9b2e8`. Dependency image acquisition and the standalone Android probe metadata correction are complete.
 
 1. Add the next focused CPU regressions independently of linker work.
-   - Goal: cover remaining high-value A32 seam behavior before more runtime layers depend on it.
-   - Depends on: current CPU adapter/memory tests.
-   - Relevant: `tests/cpu_execution.cpp` and neighboring CPU tests.
-   - Scope: Thumb branch/call, Thumb memory/stack, targeted exception and invalid-code/memory behavior.
-   - Validation: host CTest PASS plus Android `arm64-v8a` cross-build PASS; GitHub Actions remains the authoritative clean gate.
-   - Local fallback: the user's WSL setup with NDK `27.3.13750724` can reproduce host tests and the Android cross-build.
-   - DoD: focused regressions PASS and do not change higher-level runtime contracts.
+   - Status: IMPLEMENTED — exact-head CI NOT RUN.
+   - Coverage: Thumb branch/call, Thumb memory/stack, Thumb SVC exception, instruction-fetch fault, and Thumb data-access fault.
+   - Cleanup: simplify nearby CPU test setup/comments and keep comments focused on non-obvious instruction/control-state behavior; no broad formatting churn.
+   - Relevant: `tests/cpu_execution.cpp`, `CMakeLists.txt`.
+   - Exact next action: run/inspect GitHub Actions on the current branch head; fix only regressions proven by CI.
+   - Validation: all host CTest cases PASS plus Android `arm64-v8a` cross-build PASS.
+   - DoD: exact-head CI PASS, then merge the focused PR and reconcile state.
 
 2. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
    - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
