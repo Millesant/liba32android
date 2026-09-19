@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-19
-Current phase: post-M4 maintenance; address-space probe metadata correction merged
+Current phase: post-M4 maintenance; focused CPU regression slice merged
 Integration branch: `bleeding`
-Last merged runtime PR: #20
-Runtime baseline commit: `ac46c787970663b37258f0bdd6a270b8d05c8b76`
-Active runtime work: focused CPU regression coverage on `cpu/thumb-regressions-cleanup`; implementation registered, exact-head CI NOT RUN
+Last merged runtime PR: #21
+Runtime baseline commit: `831f1f7dfdc11fcdcc8dc75170fe815d6141a50c`
+Active runtime work: none; next executable maintenance slice is dedicated safe crash-test mode
 
 ## Working
 
@@ -48,6 +48,10 @@ Active runtime work: focused CPU regression coverage on `cpu/thumb-regressions-c
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### Focused CPU regression slice
+
+PR #21 is merged to `bleeding` as `831f1f7dfdc11fcdcc8dc75170fe815d6141a50c`. Exact-head GitHub Actions run `35434636206` (#130) at `6c1ae8704f4230d9b36f59a4bb4c213a3acbe1bc` is PASS: Linux A32 smoke PASS with 33/33 CTest and Android `arm64-v8a` cross-build PASS. Newly named tests `guest_thumb_branch`, `guest_thumb_call`, `guest_thumb_memory_load_store`, `guest_thumb_stack`, `guest_thumb_svc_exception`, `guest_instruction_fetch_fault`, and `guest_thumb_data_fault` each PASS. No post-merge workflow run was observed for the squash-merge commit during reconciliation.
 
 ### Address-space probe metadata correction
 
@@ -105,7 +109,7 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 
 ## Current blocker
 
-No implementation blocker remains for merged `003-elf32-dependency-resolution` or the standalone probe metadata correction. Actual 16 KiB Android host-page behavior remains an independent device-evidence gap; it does not block the next CPU regression slice.
+No implementation blocker remains for merged dependency acquisition, probe metadata correction, or focused CPU regressions. Actual 16 KiB Android host-page behavior remains an independent device-evidence gap and does not block the next repository maintenance slice.
 
 ## Important temporary facts
 - CPU regression slice adds Thumb branch/call/memory/stack, Thumb SVC exception, instruction-fetch fault, and Thumb data-fault coverage; nearby test comments/setup are cleaned without changing runtime contracts. Exact-head CI is NOT RUN.
