@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-19
-Current phase: post-M4 maintenance; opt-in crash-test diagnostics implemented
+Current phase: post-M4 maintenance; opt-in crash-test diagnostics merged
 Integration branch: `bleeding`
-Last merged runtime PR: #22
-Runtime baseline commit: `a36f09fff414152468ad4d1f96af59551ed766f1`
-Active runtime work: opt-in crash-test diagnostics on `diagnostics/opt-in-crash-test`; code/docs/CI assertions complete, exact-head CI NOT RUN
+Last merged runtime PR: #23
+Runtime baseline commit: `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`
+Active runtime work: none; next meaningful validation is real-device `--crash-test` execution from the CI runtime-smoke artifact
 
 ## Working
 
@@ -48,6 +48,10 @@ Active runtime work: opt-in crash-test diagnostics on `diagnostics/opt-in-crash-
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### Opt-in crash-test diagnostics
+
+PR #23 is merged to `bleeding` as `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`. Exact-head GitHub Actions run `35436087356` (#134) at `4cb17e059b8258f0cf8ce462c58012ab7d55249d` is PASS: Linux A32 smoke PASS and Android `arm64-v8a` cross-build PASS. CI verified the opt-in `--crash-test` paths and markers statically and did not execute the destructive mode. No post-merge workflow run was observed for the squash-merge commit during reconciliation. Real Android crash-marker/tombstone coexistence is NOT RUN.
 
 ### Focused CPU regression slice
 
@@ -109,10 +113,10 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 
 ## Current blocker
 
-No implementation blocker remains for merged dependency acquisition, probe metadata correction, or focused CPU regressions. Actual 16 KiB Android host-page behavior remains an independent device-evidence gap and does not block the next repository maintenance slice.
+No implementation blocker remains for merged dependency acquisition, probe metadata correction, focused CPU regressions, or opt-in crash-test diagnostics. The remaining highest-value gaps are device evidence: crash-marker/tombstone coexistence and actual 16 KiB Android host-page behavior.
 
 ## Important temporary facts
-- Diagnostic tools now have opt-in `--crash-test` paths that require successful handler setup, emit armed/SIGABRT markers, then call `abort()`; ordinary smoke/probe execution never selects them. CI/build validation is NOT RUN on this branch.
+- Diagnostic tools have merged opt-in `--crash-test` paths that require successful handler setup, emit armed/SIGABRT markers, then call `abort()`; ordinary smoke/probe execution never selects them. Exact-head CI #134 PASS; real-device tombstone coexistence remains NOT RUN.
 - CPU regression slice adds Thumb branch/call/memory/stack, Thumb SVC exception, instruction-fetch fault, and Thumb data-fault coverage; nearby test comments/setup are cleaned without changing runtime contracts. Exact-head CI is NOT RUN.
 
 - `specs/002-elf32-linker-strings/` is merged through PR #15 as `dbc329e2205828c97267a2de60ce0771c4173cb6`. T001 PASS #97, T002 PASS #99, T003 PASS #102, T005 feature gate PASS #106, and persistence-only closeout PASS #108.
