@@ -132,6 +132,12 @@ void crash_handler(int signal_number, siginfo_t* info, void*) {
     signal(signal_number, SIG_DFL);
 }
 
+[[noreturn]] void run_crash_test() {
+    log_printf("crash_test.status=ARMED\n");
+    log_printf("crash_test.signal=SIGABRT\n");
+    std::abort();
+}
+
 bool install_crash_handlers() {
     constexpr std::array<int, 5> signals{SIGABRT, SIGBUS, SIGFPE, SIGILL, SIGSEGV};
     struct sigaction action {};
@@ -372,15 +378,26 @@ int run_smoke(bool exercise_fault) {
 int main(int argc, char** argv) {
     const char* log_path = nullptr;
     bool exercise_fault = false;
+    bool crash_test = false;
     for (int index = 1; index < argc; ++index) {
         if (std::strcmp(argv[index], "--log-file") == 0 && index + 1 < argc) {
             log_path = argv[++index];
         } else if (std::strcmp(argv[index], "--exercise-fastmem-fault") == 0) {
             exercise_fault = true;
+        } else if (std::strcmp(argv[index], "--crash-test") == 0) {
+            crash_test = true;
         } else {
-            std::fprintf(stderr, "usage: android_runtime_smoke [--log-file PATH] [--exercise-fastmem-fault]\n");
+            std::fprintf(stderr,
+                         "usage: android_runtime_smoke [--log-file PATH] "
+                         "[--exercise-fastmem-fault | --crash-test]\n");
             return 2;
         }
+    }
+
+    if (exercise_fault && crash_test) {
+        std::fprintf(stderr,
+                     "--exercise-fastmem-fault and --crash-test are mutually exclusive\n");
+        return 2;
     }
 
     char selected_log[kPathCapacity]{};
@@ -394,6 +411,9 @@ int main(int argc, char** argv) {
     log_printf("diagnostics.crash_markers=%s\n", install_crash_handlers() ? "enabled" : "partial");
     log_printf("runtime_smoke.version=1\n");
     print_environment();
+    if (crash_test) {
+        run_crash_test();
+    }
 
     try {
         const int result = run_smoke(exercise_fault);
