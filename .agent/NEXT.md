@@ -2,11 +2,14 @@
 
 Repository state is merged on `bleeding` through PR #25 / commit `ce5e3504765b98ca97405580e26e417e702c68de`. The runtime code baseline remains PR #23 / `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`. The CI #134 runtime-smoke artifact has now been executed successfully in Termux for both the ordinary smoke and the explicit SIGABRT crash-test path.
 
-1. Collect actual 16 KiB Android host-page evidence when an appropriate device/runner is available.
-   - Status: NOT RUN / environment unavailable in the current 4096-byte-page Termux sample.
-   - Goal: validate `MappedGuestMemory` and, if practical, the real 16 KiB-aligned ARM32 fixture on a runtime reporting 16384-byte pages.
-   - Relevant: `tools/android_address_space_probe.cpp`, `tools/android_runtime_smoke.cpp`, mapped-memory diagnostics/evidence docs.
-   - DoD: executed device evidence is recorded with environment metadata; until then the status remains NOT RUN rather than inferred from ELF `p_align`.
+1. Collect actual 16 KiB Android host-page evidence with the PC-hosted AArch64 emulator path.
+   - Status: HARNESS IMPLEMENTED — exact-head CI NOT RUN; emulator execution NOT RUN.
+   - Setup: Android 15-or-newer Google APIs Experimental 16 KB Page Size ARM 64 v8a system image.
+   - Gate: the running target must return `16384` from `adb shell getconf PAGE_SIZE` and `aarch64` from `uname -m`.
+   - Harness: `tools/run_android_16k_validation.sh PROBE RUNTIME_SMOKE LIBA32ANDROID [OUTPUT_DIR]`.
+   - Coverage: address-space probe, generated AArch64 code, normal runtime smoke/direct fastmem, and fastmem-fault -> callback fallback; destructive crash mode is excluded.
+   - Exact next action: CI-gate the harness/docs branch, then run it from the user's PC against the 16 KiB ARM64 emulator using matching Android artifacts.
+   - DoD: host-side evidence logs show the 16 KiB environment and all expected PASS markers; record Observed/Inferred/Not-demonstrated results under `docs/research/evidence/`.
 
 2. Capture an Android native crash backtrace/tombstone for the opt-in crash test when an accessible device channel is available.
    - Current evidence: crash test armed, emitted `A32CRASH|...|signal=6|...`, and the shell reported `Aborted`.

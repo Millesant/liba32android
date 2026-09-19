@@ -161,6 +161,14 @@ A32CRASH|component=android_address_space_probe|signal=11|pid=12345|addr=0xdeadbe
 
 Its generated-code mode is `--execute-generated-code`. The mutually exclusive `--crash-test` mode follows the same explicit pattern as runtime smoke: after successful crash-handler setup it prints the armed/SIGABRT markers and calls `abort()` without running the mapping/JIT probes. Real-device evidence for the existing probe is stored under `docs/research/evidence/`.
 
+## PC-hosted 16 KiB Android validation
+
+A second physical phone is not required for the page-size-specific check. Android's official guidance provides experimental 16 KiB emulator system images for Android 15 or newer; verify the running target with `adb shell getconf PAGE_SIZE`, which must return `16384`.
+
+For project-valid runtime evidence, use the ARM64 16 KiB image and run `tools/run_android_16k_validation.sh` against the matching `android_address_space_probe`, `android_runtime_smoke`, and `liba32android.so` outputs. The harness rejects a non-AArch64 or non-16 KiB target and captures the normal probe, generated-code probe, runtime smoke, and fastmem-fallback outputs without invoking the destructive crash test.
+
+Official setup reference: https://developer.android.com/guide/practices/page-sizes
+
 ## Android storage boundary
 
 An executable launched as the `adb shell` user, a Termux process, and a normal embedded application do not have identical storage access. Android scoped storage also limits direct shared-storage access for apps targeting modern Android.
