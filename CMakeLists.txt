@@ -50,6 +50,7 @@ add_library(liba32android SHARED
     src/elf/elf32_linker_strings.cpp
     src/elf/elf32_loader.cpp
     src/memory/guest_memory.cpp
+    src/memory/guest_va_allocator.cpp
 )
 
 # CMake automatically prefixes shared libraries with "lib" on Android/Linux.
@@ -107,6 +108,10 @@ if(LIBA32ANDROID_BUILD_TESTS)
     add_executable(mapped_guest_memory_test tests/mapped_guest_memory.cpp)
     target_include_directories(mapped_guest_memory_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(mapped_guest_memory_test PRIVATE liba32android)
+
+    add_executable(guest_va_allocator_test tests/guest_va_allocator.cpp)
+    target_include_directories(guest_va_allocator_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(guest_va_allocator_test PRIVATE liba32android)
 
     add_executable(cpu_fastmem_test tests/cpu_fastmem.cpp)
     target_include_directories(cpu_fastmem_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -174,6 +179,7 @@ if(LIBA32ANDROID_BUILD_TESTS)
     add_test(NAME guest_thumb_data_fault COMMAND cpu_execution thumb_data_fault)
     add_test(NAME guest_memory_bounds COMMAND guest_memory_test)
     add_test(NAME mapped_guest_memory_lifecycle COMMAND mapped_guest_memory_test)
+    add_test(NAME guest_va_free_range_search COMMAND guest_va_allocator_test)
     add_test(NAME dynarmic_fastmem_and_fallback COMMAND cpu_fastmem_test)
     add_test(NAME elf32_valid_dynamic_load COMMAND elf32_loader_test valid_dynamic)
     add_test(NAME elf32_valid_exec_load COMMAND elf32_loader_test valid_exec)
