@@ -5,7 +5,7 @@ Current phase: M4 continuation; ELF32 automatic ET_DYN guest placement
 Integration branch: `bleeding`
 Last merged runtime PR: #23
 Runtime baseline commit: `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`
-Active runtime work: `m4-elf32-dynamic-placement`; T001 DONE with CI #156 PASS; T002 DONE with PR-head CI #162 PASS; T003 automatic ET_DYN placement implemented through `1bb455af587bc1742cf5fd0ce343628a65fd36b2`; latest branch-head CI PENDING, validation NOT RUN
+Active runtime work: `m4-elf32-dynamic-placement`; T001 DONE (#156 PASS), T002 DONE (#162 PASS), T003 DONE (#166 PASS); T004 real ARM32 fixture auto-placement integration implemented through `40c8126cce500ebda200c47acc683e753b8fab75`; latest branch-head CI PENDING, validation NOT RUN
 
 ## Working
 
@@ -120,7 +120,8 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 No x86_64 16 KiB address-space blocker remains on the validated Fedora/KVM environment. Exact-head CI #148 PASSed, all project-owned Android final ELF targets are CI-checked for `PT_LOAD p_align=0x4000`, and the exact-head x86_64 emulator harness PASSed end to end. The remaining 16 KiB evidence gap is AArch64 `liba32android.so` / Dynarmic runtime execution on a real/emulated AArch64 16 KiB Android target.
 
 ## Important temporary facts
-- T003 adds `src/elf/elf32_dynamic_placement.{h,cpp}` plus focused tests. It accepts an ARM ELF32 image and explicit guest search window, reuses `Elf32LoadPlan`, rejects non-ET_DYN/malformed images distinctly, derives the required placement congruence, invokes the non-mutating guest-VA search, and returns only an explicit loader-ready `dynamic_base`. Implementation commit `1bb455af587bc1742cf5fd0ce343628a65fd36b2`; latest branch-head CI is PENDING, so no PASS is claimed yet.
+- T004 adds `tests/elf32_dynamic_placement_real_fixture.cpp` and CI artifact evidence. The pinned NDK-generated ARMv7 fixture is planned through `Elf32LoadPlan`, required to expose `0x4000` load-bias alignment, automatically placed without mutation, then loaded using the exact returned `dynamic_base`. Existing explicit-base fixture tests remain unchanged. Implementation/evidence commit `40c8126cce500ebda200c47acc683e753b8fab75`; latest branch-head CI is PENDING, so no PASS is claimed yet.
+- T003 adds `src/elf/elf32_dynamic_placement.{h,cpp}` plus focused tests. It accepts an ARM ELF32 image and explicit guest search window, reuses `Elf32LoadPlan`, rejects non-ET_DYN/malformed images distinctly, derives the required placement congruence, invokes the non-mutating guest-VA search, and returns only an explicit loader-ready `dynamic_base`. PR-head CI #166 PASSed all three jobs.
 - T002 introduces `src/elf/elf32_load_plan.{h,cpp}` as the single pre-mutation ARM ELF32 validation/layout planner. `load_elf32` consumes that plan while retaining the explicit `dynamic_base` API. PR-head CI #162 PASSed all three jobs.
 - T001 adds `src/memory/guest_va_allocator.{h,cpp}` plus `tests/guest_va_allocator.cpp` and CTest wiring. The primitive is non-mutating low-to-high first-fit over `const MappedGuestMemory&`, with explicit bounded window, page-compatible length/alignment/alignment-offset, checked 32-bit guest-space arithmetic, conflict skipping, and `NoSpace` exhaustion. Exact-head CI #156 PASSed all three jobs.
 - PR #30 is merged to `bleeding` as `428a76ca7d8335b0198b7a2e26c736bc8dbe198f`. Exact-head CI #149 PASSed Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build. The Fedora x86_64 16 KiB probe PASS remains recorded; AArch64 16 KiB runtime execution remains NOT RUN.
