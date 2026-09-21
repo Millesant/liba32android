@@ -47,7 +47,9 @@ Inspection or reasoning alone is never `PASS`.
 
 ## Git and persistence
 
-- Treat `bleeding` as the integration branch. Make substantial changes on a scoped branch and land them through a pull request unless the user explicitly directs otherwise.
+- Treat `bleeding` as the integration branch. Make substantial changes on one scoped branch per real feature/fix/PR and land them through a pull request unless the user explicitly directs otherwise.
+- Do not create task-by-task branches or standalone `state/reconcile-*` branches for routine bookkeeping. Close durable state on the feature branch before merge when practical; tiny factual post-merge reconciliation may land directly on `bleeding` when safe and authorized.
+- Delete merged source branches promptly when repository tooling supports it; do not keep merged branches as pseudo-state.
 - Before ending substantial work, reconcile `.agent/STATE.md` and `.agent/NEXT.md`; update `.agent/DECISIONS.md` only for rationale that future work must preserve.
 - Keep `STATE.md` factual and current, `NEXT.md` dependency-ordered and actionable, and Git history responsible for historical detail.
 - A fresh session should be able to continue from repository state without relying on chat history.
