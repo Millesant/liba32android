@@ -2,14 +2,13 @@
 
 Repository state is merged on `bleeding` through PR #30 / commit `428a76ca7d8335b0198b7a2e26c736bc8dbe198f`. The runtime code baseline remains PR #23 / `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`. The CI #134 runtime-smoke artifact has now been executed successfully in Termux for both the ordinary smoke and the explicit SIGABRT crash-test path.
 
-1. Gate T002 of `specs/004-elf32-dynamic-placement`: reusable immutable ELF load-layout planning.
-   - Status: IMPLEMENTED through `0fd063eba1f0cfc1c58eef11a28489a610dc9bcf`; latest branch-head CI PENDING, validation NOT RUN.
-   - Goal: extract the existing pre-mutation ELF32 validation/planning logic into one reusable immutable plan consumed by `load_elf32` and future placement code.
-   - Required plan facts: ELF type, entry, page-aligned minimum load page, maximum load end/span, combined required load-bias alignment, validated PT_LOAD planning data, and optional validated PT_DYNAMIC metadata.
-   - Invariants: no accepted/rejected loader behavior change, no mapping before validation, explicit `dynamic_base` semantics unchanged, no duplicate ELF parser.
-   - Validation: all existing loader tests PASS plus focused direct plan tests for ET_DYN/ET_EXEC type, mapped extent, and `0x4000` load-bias alignment.
-   - Exact next action: inspect the current PR-head CI; if PASS, mark T002 DONE and begin T003 automatic ET_DYN placement in a fresh bounded round.
-   - DoD: focused plan tests + full Linux CTest + both Android cross-build jobs PASS before T003 automatic placement begins.
+1. Gate T003 of `specs/004-elf32-dynamic-placement`: automatic ET_DYN placement.
+   - Status: IMPLEMENTED through `1bb455af587bc1742cf5fd0ce343628a65fd36b2`; latest branch-head CI PENDING, validation NOT RUN.
+   - Predecessors: T001 DONE with CI #156 PASS; T002 DONE with PR-head CI #162 PASS.
+   - Behavior: valid ET_DYN images are planned once through `Elf32LoadPlan`, searched low-to-high through the non-mutating guest-VA allocator, and return an explicit `dynamic_base` without mapping guest pages.
+   - Coverage added: first-fit + unchanged loader acceptance, occupied-candidate skip, bounded `NoSpace`, malformed-image propagation, ET_EXEC rejection, invalid-window rejection, and non-mutation.
+   - Exact next action: inspect the current PR-head CI; if PASS, mark T003 DONE and begin T004 real ARM32 fixture auto-placement integration in a fresh bounded round.
+   - DoD: focused placement test + full Linux CTest + both Android cross-build jobs PASS before T004 begins.
 
 2. Capture an Android native crash backtrace/tombstone for the opt-in crash test when an accessible device channel is available.
    - Current evidence: crash test armed, emitted `A32CRASH|...|signal=6|...`, and the shell reported `Aborted`.
