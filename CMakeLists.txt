@@ -48,6 +48,7 @@ add_library(liba32android SHARED
     src/elf/elf32_dynamic.cpp
     src/elf/elf32_linker_metadata.cpp
     src/elf/elf32_linker_strings.cpp
+    src/elf/elf32_load_plan.cpp
     src/elf/elf32_loader.cpp
     src/memory/guest_memory.cpp
     src/memory/guest_va_allocator.cpp
@@ -121,6 +122,10 @@ if(LIBA32ANDROID_BUILD_TESTS)
     target_include_directories(elf32_loader_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(elf32_loader_test PRIVATE liba32android)
 
+    add_executable(elf32_load_plan_test tests/elf32_load_plan.cpp)
+    target_include_directories(elf32_load_plan_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(elf32_load_plan_test PRIVATE liba32android)
+
     add_executable(elf32_dynamic_test tests/elf32_dynamic.cpp)
     target_include_directories(elf32_dynamic_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(elf32_dynamic_test PRIVATE liba32android)
@@ -188,6 +193,7 @@ if(LIBA32ANDROID_BUILD_TESTS)
     add_test(NAME elf32_program_header_bounds COMMAND elf32_loader_test ph_bounds)
     add_test(NAME elf32_segment_validation COMMAND elf32_loader_test segments)
     add_test(NAME elf32_address_conflict COMMAND elf32_loader_test address_conflict)
+    add_test(NAME elf32_load_plan COMMAND elf32_load_plan_test)
     add_test(NAME elf32_dynamic_array COMMAND elf32_dynamic_test)
     add_test(NAME elf32_linker_metadata_collection COMMAND elf32_linker_metadata_test)
     add_test(NAME elf32_linker_string_entry COMMAND elf32_linker_strings_test)
