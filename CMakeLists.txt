@@ -9,6 +9,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+function(liba32android_enable_android_16k_elf_alignment target)
+    if(ANDROID)
+        target_link_options(${target}
+            PRIVATE
+                "-Wl,-z,max-page-size=16384"
+                "-Wl,-z,common-page-size=16384"
+        )
+    endif()
+endfunction()
+
 option(LIBA32ANDROID_BUILD_TESTS "Build liba32android tests" ${BUILD_TESTING})
 option(LIBA32ANDROID_BUILD_ANDROID_PROBES "Build Android-only diagnostic probes" OFF)
 set(LIBA32ANDROID_ARM32_FIXTURE_PATH "" CACHE FILEPATH
@@ -57,6 +67,7 @@ target_link_libraries(liba32android
 )
 
 target_compile_features(liba32android PRIVATE cxx_std_20)
+liba32android_enable_android_16k_elf_alignment(liba32android)
 
 if(LIBA32ANDROID_BUILD_ANDROID_PROBES)
     if(NOT ANDROID)
@@ -69,12 +80,14 @@ if(LIBA32ANDROID_BUILD_ANDROID_PROBES)
 
     add_executable(android_address_space_probe tools/android_address_space_probe.cpp)
     target_compile_features(android_address_space_probe PRIVATE cxx_std_20)
+    liba32android_enable_android_16k_elf_alignment(android_address_space_probe)
 
     if(CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
         add_executable(android_runtime_smoke tools/android_runtime_smoke.cpp)
         target_include_directories(android_runtime_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
         target_link_libraries(android_runtime_smoke PRIVATE liba32android)
         target_compile_features(android_runtime_smoke PRIVATE cxx_std_20)
+        liba32android_enable_android_16k_elf_alignment(android_runtime_smoke)
     endif()
 endif()
 
