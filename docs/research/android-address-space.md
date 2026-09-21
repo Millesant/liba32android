@@ -1,6 +1,6 @@
 # Android guest address-space research
 
-Status: PARTIAL — 4 KiB real-device runtime paths observed; 16 KiB x86_64 emulator environment observed, project probe execution NOT RUN
+Status: PARTIAL — 4 KiB AArch64 runtime paths observed; 16 KiB x86_64 Android address-space/JIT probe PASS; AArch64 16 KiB runtime NOT RUN
 
 ## Scope
 
@@ -120,7 +120,7 @@ The evidence path is intentionally split by host architecture:
 
 An x86_64 16 KiB emulator result is valid evidence for Android/kernel page-size and mapping policy. It is **not** evidence that the AArch64 liba32android/Dynarmic runtime path works with 16 KiB pages.
 
-On 2026-09-21 the Fedora/KVM emulator environment itself was observed with `PAGE_SIZE=16384`, `uname -m=x86_64`, Android 15 / SDK 35, and kernel `6.6.50-android15-8-g8adecb593e9b-ab12525588`. Project probe execution on that environment remains NOT RUN until the matching x86_64 probe artifact is built.
+On 2026-09-21 the Fedora/KVM x86_64 16 KiB environment was validated with exact source commit `dad047a71636974173da6b14c388df09ea58deb9` after enabling the NDK r27-compatible 16 KiB ELF linker alignment. The harness PASSed with a 4 GiB reservation/commit, exact sampled low-VA mappings and EEXIST collision semantics, RW->RX, and architecture-native generated code returning 42. This closes the x86_64 Android page-size/address-space/JIT evidence gap for that environment; AArch64 liba32android/Dynarmic execution on 16 KiB pages remains NOT RUN.
 
 ### Device execution
 
@@ -139,4 +139,4 @@ Store device outputs with Android build/API, kernel release, device architecture
 
 ## Current recommendation
 
-Keep callbacks as the correctness baseline. Existing 4 KiB Android evidence supports high-base 4 GiB fastmem plus callback fallback on one environment; do not generalize that result across page sizes or vendors. The next discriminating address-space check is the same probe/runtime-smoke sequence on an AArch64 Android target that actually reports 16384-byte pages. Direct low-VA pointer identity remains outside the correctness contract.
+Keep callbacks as the correctness baseline. Existing 4 KiB Android evidence supports high-base 4 GiB fastmem plus callback fallback on one environment; do not generalize that result across page sizes or vendors. The remaining high-value 16 KiB check is the AArch64 runtime-smoke sequence on an AArch64 Android target that actually reports 16384-byte pages. Direct low-VA pointer identity remains outside the correctness contract.

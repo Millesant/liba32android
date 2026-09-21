@@ -1,17 +1,15 @@
 # Next Work
 
-Repository state is merged on `bleeding` through PR #27 / commit `3e776e4baaf9862affb2b42fb0f706292cdf179a`. The runtime code baseline remains PR #23 / `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`. The CI #134 runtime-smoke artifact has now been executed successfully in Termux for both the ordinary smoke and the explicit SIGABRT crash-test path.
+Repository state is merged on `bleeding` through PR #29 / commit `004bb8a42f3be2638e7a700c6c6a83bf73117a83`. The runtime code baseline remains PR #23 / `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`. The CI #134 runtime-smoke artifact has now been executed successfully in Termux for both the ordinary smoke and the explicit SIGABRT crash-test path.
 
-1. Gate and execute the Fedora-native x86_64 16 KiB Android address-space probe.
-   - Status: IMPLEMENTED — exact-head CI NOT RUN; Fedora project-probe execution NOT RUN.
-   - Branch: `tools/x86-16k-address-probe`.
-   - Environment already observed: Android 15 / SDK 35 x86_64 emulator, `PAGE_SIZE=16384`, kernel `6.6.50-android15-8-g8adecb593e9b-ab12525588`.
-   - Implementation: `android_address_space_probe` now supports Android x86_64 and arm64-v8a; generated-code mode uses architecture-native return-42 bytes.
-   - Harness: `tools/run_android_16k_probe_validation.sh PROBE [OUTPUT_DIR]`.
-   - CI: build and upload `android-address-space-probe-x86_64-<sha>` with pinned NDK r27d.
-   - Boundary: x86_64 results validate page-size/mmap/W^X/address-space behavior only; they do not validate AArch64 `liba32android`/Dynarmic behavior.
-   - Exact next action: require exact-head CI PASS, then run the matching probe on the already-running Fedora 16 KiB emulator and record the resulting evidence.
-   - DoD: CI x86_64 probe build PASS plus emulator harness PASS with 4 GiB reservation/commit and generated-code return 42; persist observed/inferred/not-demonstrated evidence.
+1. Merge the converged Android 16 KiB ELF-alignment fix, then keep the AArch64 16 KiB runtime test as the remaining architecture-specific gap.
+   - Status: CONVERGED on exact head `dad047a71636974173da6b14c388df09ea58deb9`.
+   - GitHub Actions: #148 PASS — Linux A32 smoke, Android x86_64 address-space probe, Android arm64-v8a cross-build.
+   - Fedora emulator: PASS — Android 15 / SDK 35 / x86_64 / PAGE_SIZE=16384.
+   - ELF gate: all observed x86_64 probe `PT_LOAD` entries use `p_align=0x4000`.
+   - Runtime evidence: 4 GiB reservation/commit PASS; sampled exact low-VA mappings + EEXIST collisions PASS; RW->RX PASS; generated x86-64 return-42 PASS; harness final PASS.
+   - Exact next action: merge PR #30 after the persistence-only exact-head CI gate passes.
+   - Remaining boundary: AArch64 `liba32android.so` / Dynarmic runtime execution on a 16 KiB AArch64 Android target remains NOT RUN.
 
 2. Capture an Android native crash backtrace/tombstone for the opt-in crash test when an accessible device channel is available.
    - Current evidence: crash test armed, emitted `A32CRASH|...|signal=6|...`, and the shell reported `Aborted`.

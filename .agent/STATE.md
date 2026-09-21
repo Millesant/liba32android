@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-21
-Current phase: post-M4 maintenance; x86_64 16 KiB address-space probe implementation
+Current phase: post-M4 maintenance; x86_64 16 KiB address-space validation converged
 Integration branch: `bleeding`
 Last merged runtime PR: #23
 Runtime baseline commit: `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`
-Active runtime work: `tools/x86-16k-address-probe`; x86_64 standalone probe + harness + CI artifact implemented, exact-head CI NOT RUN, Fedora project-probe execution NOT RUN
+Active runtime work: `fix/android-16k-elf-alignment`; exact-head CI #148 PASS and Fedora x86_64 16 KiB probe PASS at `dad047a71636974173da6b14c388df09ea58deb9`; documentation/state reconciliation pending PR merge
 
 ## Working
 
@@ -44,7 +44,7 @@ Active runtime work: `tools/x86-16k-address-probe`; x86_64 standalone probe + ha
 - RELRO/TLS processing: NOT IMPLEMENTED.
 - Automatic `ET_DYN` guest-VA allocation: NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.
-- Actual 16 KiB Android host-page behavior: NOT RUN.
+- Actual 16 KiB Android host-page behavior: PARTIAL by architecture — x86_64 Android 15 emulator probe PASS with 4 GiB reservation/commit, exact sampled low-VA `MAP_FIXED_NOREPLACE`, collision `EEXIST`, RW->RX, and generated-code return 42; AArch64 runtime on 16 KiB pages remains NOT RUN.
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
@@ -117,10 +117,10 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 
 ## Current blocker
 
-No implementation blocker remains for merged dependency acquisition, probe metadata correction, focused CPU regressions, or opt-in crash-test diagnostics. The crash-marker/SIGABRT termination path now has device evidence. Remaining device-evidence gaps include Android tombstone/native-backtrace capture, actual 16 KiB Android host-page behavior, and broader vendor/kernel coverage.
+No x86_64 16 KiB address-space blocker remains on the validated Fedora/KVM environment. Exact-head CI #148 PASSed, all project-owned Android final ELF targets are CI-checked for `PT_LOAD p_align=0x4000`, and the exact-head x86_64 emulator harness PASSed end to end. The remaining 16 KiB evidence gap is AArch64 `liba32android.so` / Dynarmic runtime execution on a real/emulated AArch64 16 KiB Android target.
 
 ## Important temporary facts
-- Fedora 16 KiB emulator environment is OBSERVED: Android Emulator 37.1.11 / API 35 x86_64 target, `PAGE_SIZE=16384`, Android 15, kernel `6.6.50-android15-8-g8adecb593e9b-ab12525588`; launch succeeds with `-gpu host -feature -Vulkan`. Project probe execution remains NOT RUN.
+- Fedora 16 KiB emulator environment is VALIDATED for the standalone x86_64 address-space/JIT probe at exact commit `dad047a71636974173da6b14c388df09ea58deb9`: `PAGE_SIZE=16384`, Android 15 / SDK 35, kernel `6.6.50-android15-8-g8adecb593e9b-ab12525588`, 4 GiB reserve/commit PASS, sampled exact low-VA mappings + EEXIST collisions PASS, RW->RX PASS, generated-code return 42 PASS, harness final PASS.
 - PR #27 is merged to `bleeding` as `3e776e4baaf9862affb2b42fb0f706292cdf179a`; exact-head CI #142 PASS on both Linux A32 smoke and Android arm64-v8a cross-build. No post-merge workflow run was observed during merge verification.
 - The user moved the local development host from WSL to native Fedora 44 on x86_64. Native KVM is now the intended PC-emulator path. The next implementation must add an x86_64 standalone Android address-space probe artifact/harness while keeping AArch64 liba32android/Dynarmic validation separate.
 - `tools/run_android_16k_validation.sh` now provides the bounded 16 KiB AArch64 emulator/device evidence path; it requires `PAGE_SIZE=16384` and `aarch64`, captures probe/smoke/fallback logs, and never runs `--crash-test`. Exact-head CI and emulator execution are NOT RUN.
