@@ -2,14 +2,13 @@
 
 Repository state is merged on `bleeding` through PR #30 / commit `428a76ca7d8335b0198b7a2e26c736bc8dbe198f`. The runtime code baseline remains PR #23 / `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`. The CI #134 runtime-smoke artifact has now been executed successfully in Termux for both the ordinary smoke and the explicit SIGABRT crash-test path.
 
-1. Gate T004 of `specs/004-elf32-dynamic-placement`: real ARM32 fixture automatic placement + load.
-   - Status: IMPLEMENTED through `40c8126cce500ebda200c47acc683e753b8fab75`; latest branch-head CI PENDING, validation NOT RUN.
-   - Predecessors: T001 DONE (#156 PASS), T002 DONE (#162 PASS), T003 DONE (#166 PASS).
-   - Behavior: the pinned NDK-generated ARMv7 ET_DYN fixture is planned through the shared load plan, required to report `0x4000` load-bias alignment, auto-placed without guest-memory mutation, and loaded using the exact returned `dynamic_base`.
-   - Existing explicit-base real-fixture coverage remains intact.
-   - CI now retains `auto-placement-evidence.txt` and requires `fixture.auto_placement.required_alignment=0x4000` plus `fixture.auto_placement.status=PASS`.
-   - Exact next action: inspect the current PR-head CI; if PASS, mark T004 DONE and begin T005 feature convergence/documentation in a fresh bounded round.
-   - DoD: new real-fixture auto-placement test PASS, existing real-fixture integration PASS, full Linux CTest PASS, and both Android jobs PASS.
+1. Gate and merge T005 of `specs/004-elf32-dynamic-placement`.
+   - Status: CONVERGENCE UPDATED; final exact-head CI NOT RUN.
+   - Completed evidence: T001 #156 PASS; T002 #162 PASS; T003 #166 PASS; T004 PR-head #169 PASS at `053c6435b902eb0b0f6412b9d63a44e32274d060`.
+   - Converged behavior: deterministic bounded non-mutating guest-VA search, one shared immutable ELF load plan, automatic ET_DYN placement returning an explicit loader-ready `dynamic_base`, and real pinned ARMv7 fixture auto-placement preserving `p_align=0x4000`.
+   - Compatibility: `load_elf32` retains explicit-base semantics; the dependency resolver remains acquisition-only; recursive graph/link-map/loading semantics remain later work.
+   - Exact next action: require the current PR-head CI to PASS, mark T005 DONE, then squash-merge PR #31 with exact-head protection and verify `bleeding`.
+   - DoD: final exact-head Linux + both Android jobs PASS and no unrecorded requirements/design/code/tests/docs/state gap.
 
 2. Capture an Android native crash backtrace/tombstone for the opt-in crash test when an accessible device channel is available.
    - Current evidence: crash test armed, emitted `A32CRASH|...|signal=6|...`, and the shell reported `Aborted`.
