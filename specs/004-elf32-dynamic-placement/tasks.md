@@ -29,7 +29,7 @@
 - Validation:
   - existing `elf32_loader_test` cases remain PASS;
   - new plan tests cover ET_DYN/ET_EXEC type, extent and 0x4000 alignment.
-- Status: TODO
+- Status: ACTIVE — implementation committed through `0fd063eba1f0cfc1c58eef11a28489a610dc9bcf`; latest branch-head CI PENDING, validation NOT RUN.
 
 ## T003 — Add automatic ET_DYN placement API
 - Requirements: R2-R8 / AC1-AC6
