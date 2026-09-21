@@ -1,11 +1,11 @@
 # Current State
 
-Last updated: 2026-09-19
-Current phase: post-M4 maintenance; 16 KiB emulator validation harness implemented
+Last updated: 2026-09-21
+Current phase: post-M4 maintenance; Fedora-native 16 KiB emulator validation pivot
 Integration branch: `bleeding`
 Last merged runtime PR: #23
 Runtime baseline commit: `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`
-Active runtime work: PC-hosted AArch64 16 KiB Android validation harness on `tools/android-16k-emulator-validation`; emulator execution NOT RUN
+Active runtime work: next bounded slice is x86_64 standalone Android address-space probe support for Fedora/KVM 16 KiB emulator evidence; NOT IMPLEMENTED
 
 ## Working
 
@@ -120,6 +120,8 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 No implementation blocker remains for merged dependency acquisition, probe metadata correction, focused CPU regressions, or opt-in crash-test diagnostics. The crash-marker/SIGABRT termination path now has device evidence. Remaining device-evidence gaps include Android tombstone/native-backtrace capture, actual 16 KiB Android host-page behavior, and broader vendor/kernel coverage.
 
 ## Important temporary facts
+- PR #27 is merged to `bleeding` as `3e776e4baaf9862affb2b42fb0f706292cdf179a`; exact-head CI #142 PASS on both Linux A32 smoke and Android arm64-v8a cross-build. No post-merge workflow run was observed during merge verification.
+- The user moved the local development host from WSL to native Fedora 44 on x86_64. Native KVM is now the intended PC-emulator path. The next implementation must add an x86_64 standalone Android address-space probe artifact/harness while keeping AArch64 liba32android/Dynarmic validation separate.
 - `tools/run_android_16k_validation.sh` now provides the bounded 16 KiB AArch64 emulator/device evidence path; it requires `PAGE_SIZE=16384` and `aarch64`, captures probe/smoke/fallback logs, and never runs `--crash-test`. Exact-head CI and emulator execution are NOT RUN.
 - Diagnostic tools have merged opt-in `--crash-test` paths. On 2026-09-19 the runtime-smoke CI #134 artifact emitted the armed/SIGABRT markers and `A32CRASH|...|signal=6|...` before the shell reported `Aborted`; Android tombstone/native-backtrace coexistence remains NOT OBSERVED.
 - CPU regression slice adds Thumb branch/call/memory/stack, Thumb SVC exception, instruction-fetch fault, and Thumb data-fault coverage; nearby test comments/setup are cleaned without changing runtime contracts. Exact-head CI #130 PASS with 33/33 CTest and Android cross-build PASS.
