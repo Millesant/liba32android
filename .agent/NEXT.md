@@ -1,17 +1,15 @@
 # Next Work
 
-Repository state is merged on `bleeding` through PR #27 / commit `3e776e4baaf9862affb2b42fb0f706292cdf179a`. The runtime code baseline remains PR #23 / `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`. The CI #134 runtime-smoke artifact has now been executed successfully in Termux for both the ordinary smoke and the explicit SIGABRT crash-test path.
+Repository state is merged on `bleeding` through PR #29 / commit `004bb8a42f3be2638e7a700c6c6a83bf73117a83`. The runtime code baseline remains PR #23 / `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`. The CI #134 runtime-smoke artifact has now been executed successfully in Termux for both the ordinary smoke and the explicit SIGABRT crash-test path.
 
-1. Gate and execute the Fedora-native x86_64 16 KiB Android address-space probe.
-   - Status: IMPLEMENTED — exact-head CI NOT RUN; Fedora project-probe execution NOT RUN.
-   - Branch: `tools/x86-16k-address-probe`.
-   - Environment already observed: Android 15 / SDK 35 x86_64 emulator, `PAGE_SIZE=16384`, kernel `6.6.50-android15-8-g8adecb593e9b-ab12525588`.
-   - Implementation: `android_address_space_probe` now supports Android x86_64 and arm64-v8a; generated-code mode uses architecture-native return-42 bytes.
-   - Harness: `tools/run_android_16k_probe_validation.sh PROBE [OUTPUT_DIR]`.
-   - CI: build and upload `android-address-space-probe-x86_64-<sha>` with pinned NDK r27d.
-   - Boundary: x86_64 results validate page-size/mmap/W^X/address-space behavior only; they do not validate AArch64 `liba32android`/Dynarmic behavior.
-   - Exact next action: require exact-head CI PASS, then run the matching probe on the already-running Fedora 16 KiB emulator and record the resulting evidence.
-   - DoD: CI x86_64 probe build PASS plus emulator harness PASS with 4 GiB reservation/commit and generated-code return 42; persist observed/inferred/not-demonstrated evidence.
+1. Gate the Android 16 KiB ELF-alignment fix and rerun the Fedora x86_64 probe.
+   - Status: FIX IMPLEMENTED — exact-head CI NOT RUN; emulator retest NOT RUN.
+   - Branch: `fix/android-16k-elf-alignment`.
+   - Reproduced evidence: 16 KiB x86_64 probe observed 4 GiB reservation/commit, exact low-VA mappings with `EEXIST` collision semantics, and RW->RX success; the harness then emitted Android linker warnings + SIGSEGV and never produced generated-code return-42 or final PASS.
+   - Root-cause direction: pinned NDK r27d requires explicit 16 KiB ELF linker alignment flags; these were missing from project-owned Android final ELF targets.
+   - Fix: apply `-Wl,-z,max-page-size=16384` and `-Wl,-z,common-page-size=16384` to `liba32android.so`, `android_address_space_probe`, and `android_runtime_smoke`; CI rejects PT_LOAD alignment below `0x4000`.
+   - Exact next action: require exact-head CI PASS, rebuild/pull the fixed x86_64 probe on Fedora, confirm `readelf -lW` LOAD alignment is `0x4000`, then rerun `tools/run_android_16k_probe_validation.sh`.
+   - DoD: no Android linker-warning/SIGSEGV failure, generated-code returns 42, harness emits `android_16k_probe_validation.status=PASS`, and evidence is reconciled.
 
 2. Capture an Android native crash backtrace/tombstone for the opt-in crash test when an accessible device channel is available.
    - Current evidence: crash test armed, emitted `A32CRASH|...|signal=6|...`, and the shell reported `Aborted`.
