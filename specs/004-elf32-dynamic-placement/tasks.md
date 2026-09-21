@@ -29,7 +29,7 @@
 - Validation:
   - existing `elf32_loader_test` cases remain PASS;
   - new plan tests cover ET_DYN/ET_EXEC type, extent and 0x4000 alignment.
-- Status: ACTIVE — implementation committed through `0fd063eba1f0cfc1c58eef11a28489a610dc9bcf`; latest branch-head CI PENDING, validation NOT RUN.
+- Status: DONE — PR-head CI #162 PASS on `c804c4d9c6eb8ffd5784c396aa14a3f7a158fb17`; Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all PASS.
 
 ## T003 — Add automatic ET_DYN placement API
 - Requirements: R2-R8 / AC1-AC6
@@ -46,7 +46,7 @@
   - bounded exhaustion -> NoSpace;
   - malformed/ET_EXEC rejection;
   - returned base passed unchanged to `load_elf32` -> successful load.
-- Status: TODO
+- Status: ACTIVE — implementation committed through `1bb455af587bc1742cf5fd0ce343628a65fd36b2`; latest branch-head CI PENDING, validation NOT RUN.
 
 ## T004 — Integrate the real ARM32 fixture
 - Requirements: R1, R3, R7, R8 / AC7, AC8
