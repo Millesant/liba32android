@@ -57,12 +57,40 @@ The source-commit identity was not included in the pasted device output. The run
 
 The project pins Android NDK r27d. The Android 16 KiB guidance says NDK r27 and lower require `-Wl,-z,max-page-size=16384` and `-Wl,-z,common-page-size=16384` for 16 KiB ELF alignment, and documents runtime SIGSEGV behavior from incompatible RELRO alignment. The project did not apply those flags to its final Android ELF targets before this run.
 
-A focused fix is in progress on `fix/android-16k-elf-alignment`; validation remains pending.
+The focused fix on `fix/android-16k-elf-alignment` was validated at exact commit `dad047a71636974173da6b14c388df09ea58deb9`. GitHub Actions run #148 PASSed all three jobs, including the x86_64 Android probe and arm64-v8a Android cross-build.
+
+The locally rebuilt x86_64 probe at the same commit reports all three `PT_LOAD` entries with `p_align=0x4000`. The Fedora 16 KiB emulator retest then completed without the prior linker-warning/SIGSEGV failure.
 
 Source: https://developer.android.com/guide/practices/page-sizes
 
-## Not demonstrated
+## Fixed-build retest
 
-- generated-code return-42 execution on this 16 KiB target: NOT RUN / NOT OBSERVED;
-- complete `run_android_16k_probe_validation.sh` PASS: FAIL for this attempt;
-- AArch64 `liba32android.so` / Dynarmic behavior with 16 KiB pages: NOT RUN.
+Exact source commit: `dad047a71636974173da6b14c388df09ea58deb9`.
+
+ELF inspection before execution showed every `PT_LOAD` entry aligned to `0x4000`.
+
+The harness then ran both probe modes successfully on the same Android 15 / SDK 35 / x86_64 / 16 KiB emulator:
+
+- `page_size=16384`;
+- `arch=x86_64`;
+- 4 GiB high-host-VA reservation: PASS;
+- committed page inside the 4 GiB reservation: PASS;
+- reservation unmap: PASS;
+- all six tested low virtual addresses mapped exactly with `MAP_FIXED_NOREPLACE`;
+- every deliberate collision returned `EEXIST`;
+- RW -> RX `mprotect`: PASS;
+- generated x86-64 code execution: RUN;
+- generated-code result: `42`;
+- `jit_wx.result_check=PASS`;
+- `probe.complete=true`;
+- `android_16k_probe_validation.status=PASS`.
+
+The prior Android linker warning flood and SIGSEGV marker were not observed in the fixed-build run.
+
+## Interpretation
+
+**Observed:** the standalone project's Android address-space/JIT probe is compatible with this x86_64 Android 15 16 KiB environment when linked with the explicit 16 KiB ELF alignment required by the pinned NDK r27d.
+
+**Supported on this environment:** high-base 4 GiB reservation/commit, exact low-VA non-replacing mappings at the sampled addresses, collision semantics, RW -> RX transitions, and execution of architecture-native generated code.
+
+**Not demonstrated:** AArch64 `liba32android.so` / Dynarmic runtime behavior with 16 KiB pages remains NOT RUN.
