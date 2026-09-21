@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-21
-Current phase: M4 continuation; ELF32 automatic ET_DYN guest placement
+Current phase: M4 continuation; automatic ET_DYN guest placement merged
 Integration branch: `bleeding`
-Last merged runtime PR: #23
-Runtime baseline commit: `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`
-Active runtime work: `m4-elf32-dynamic-placement`; T001 DONE (#156 PASS), T002 DONE (#162 PASS), T003 DONE (#166 PASS), T004 DONE (#169 PASS), T005 DONE (feature-gate #173 PASS); persistence-only closeout exact-head CI pending
+Last merged runtime PR: #31
+Runtime baseline commit: `2c3be26c05dff81be1f81c9565df5906c521a54c`
+Active runtime work: none selected; `004-elf32-dynamic-placement` is DONE and merged. T001 #156 PASS, T002 #162 PASS, T003 #166 PASS, T004 #169 PASS, T005 feature-gate #173 PASS, persistence-only exact-head #175 PASS.
 
 ## Working
 
@@ -52,7 +52,7 @@ Active runtime work: `m4-elf32-dynamic-placement`; T001 DONE (#156 PASS), T002 D
 
 ### M4 automatic ET_DYN guest placement
 
-PR #31 remains open on `m4-elf32-dynamic-placement`. T001 guest-VA search PASSed CI #156; T002 shared load-plan refactor PASSed CI #162; T003 automatic placement PASSed CI #166; T004 real ARM32 fixture auto-placement PASSed PR-head CI #169 at `053c6435b902eb0b0f6412b9d63a44e32274d060`. CI #169 completed Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build successfully; the Linux job also required the real fixture auto-placement evidence markers including `required_alignment=0x4000` and final PASS. T005 feature-gate CI #173 PASSed at `7295efc6dba56e9642b2f05d80def71e1578eea8`: Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all PASS. This persistence-only closeout changes the PR head and therefore requires a fresh exact-head CI before merge.
+PR #31 squash-merged to `bleeding` as `2c3be26c05dff81be1f81c9565df5906c521a54c`. T001 guest-VA search PASSed CI #156; T002 shared load-plan refactor PASSed CI #162; T003 automatic placement PASSed CI #166; T004 real ARM32 fixture auto-placement PASSed PR-head CI #169 at `053c6435b902eb0b0f6412b9d63a44e32274d060`. T005 feature-gate CI #173 PASSed at `7295efc6dba56e9642b2f05d80def71e1578eea8`, and persistence-only exact-head CI #175 PASSed at `4b23122b6c6fc8469ae1655fcc2b9461118e5e4e`; all three jobs (Linux A32 smoke, Android x86_64 address-space probe, Android arm64-v8a cross-build) completed successfully. `bleeding` was verified identical to the squash commit immediately after merge.
 
 
 ### Termux crash-test evidence recording
@@ -131,7 +131,7 @@ No x86_64 16 KiB address-space blocker remains on the validated Fedora/KVM envir
 - T002 introduces `src/elf/elf32_load_plan.{h,cpp}` as the single pre-mutation ARM ELF32 validation/layout planner. `load_elf32` consumes that plan while retaining the explicit `dynamic_base` API. PR-head CI #162 PASSed all three jobs.
 - T001 adds `src/memory/guest_va_allocator.{h,cpp}` plus `tests/guest_va_allocator.cpp` and CTest wiring. The primitive is non-mutating low-to-high first-fit over `const MappedGuestMemory&`, with explicit bounded window, page-compatible length/alignment/alignment-offset, checked 32-bit guest-space arithmetic, conflict skipping, and `NoSpace` exhaustion. Exact-head CI #156 PASSed all three jobs.
 - PR #30 is merged to `bleeding` as `428a76ca7d8335b0198b7a2e26c736bc8dbe198f`. Exact-head CI #149 PASSed Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build. The Fedora x86_64 16 KiB probe PASS remains recorded; AArch64 16 KiB runtime execution remains NOT RUN.
-- Spec `004-elf32-dynamic-placement` is readiness-checked on `m4-elf32-dynamic-placement`. It keeps `load_elf32` explicit-base semantics, adds a non-mutating placement layer, and defines T001 as a generic deterministic free guest-range search over `MappedGuestMemory`.
+- Spec `004-elf32-dynamic-placement` is DONE and merged through PR #31 as `2c3be26c05dff81be1f81c9565df5906c521a54c`. It keeps `load_elf32` explicit-base semantics and adds the shared load plan plus non-mutating automatic ET_DYN placement layer.
 - Fedora 16 KiB emulator environment is VALIDATED for the standalone x86_64 address-space/JIT probe at exact commit `dad047a71636974173da6b14c388df09ea58deb9`: `PAGE_SIZE=16384`, Android 15 / SDK 35, kernel `6.6.50-android15-8-g8adecb593e9b-ab12525588`, 4 GiB reserve/commit PASS, sampled exact low-VA mappings + EEXIST collisions PASS, RW->RX PASS, generated-code return 42 PASS, harness final PASS.
 - PR #27 is merged to `bleeding` as `3e776e4baaf9862affb2b42fb0f706292cdf179a`; exact-head CI #142 PASS on both Linux A32 smoke and Android arm64-v8a cross-build. No post-merge workflow run was observed during merge verification.
 - The user moved the local development host from WSL to native Fedora 44 on x86_64. Native KVM is now the intended PC-emulator path. The next implementation must add an x86_64 standalone Android address-space probe artifact/harness while keeping AArch64 liba32android/Dynarmic validation separate.
@@ -148,3 +148,5 @@ No x86_64 16 KiB address-space blocker remains on the validated Fedora/KVM envir
 - User-owned WSL local validation is now available: pinned NDK r27d (`27.3.13750724`) fixture/host build PASS, 26/26 CTest PASS, and Android `arm64-v8a` cross-build PASS were reported on 2026-09-19. The pasted local logs did not include a Git commit identity, so this is environment-capability evidence rather than an exact-commit release gate.
 - Real Android/AArch64 runtime behavior still requires Termux/device execution; the user prefers downloading the CI-produced runtime-smoke artifact for those runs.
 - The next feature-scale implementation must get a new `specs/<id>-<feature>/` requirements/design/tasks chain instead of extending `specs/000-current-baseline/`.
+
+- Branch hygiene policy: keep one scoped branch per substantive feature/fix PR, avoid standalone reconciliation branches, and delete merged source branches when supported. Current connector can list/update refs but does not expose delete-ref, so remote branch deletion is externally BLOCKED in-chat.
