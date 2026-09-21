@@ -5,7 +5,7 @@ Current phase: M4 continuation; ELF32 automatic ET_DYN guest placement
 Integration branch: `bleeding`
 Last merged runtime PR: #23
 Runtime baseline commit: `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`
-Active runtime work: `m4-elf32-dynamic-placement`; T001 deterministic free guest-range search DONE with exact-head CI #156 PASS at `81f56630d9f6b499d360320ea5e6d4b640e3fb88`; next slice is T002 shared immutable ELF load-layout planning
+Active runtime work: `m4-elf32-dynamic-placement`; T001 DONE with CI #156 PASS; T002 shared immutable ELF load-layout planning implemented through `0fd063eba1f0cfc1c58eef11a28489a610dc9bcf`; latest branch-head CI PENDING, validation NOT RUN
 
 ## Working
 
@@ -120,6 +120,7 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 No x86_64 16 KiB address-space blocker remains on the validated Fedora/KVM environment. Exact-head CI #148 PASSed, all project-owned Android final ELF targets are CI-checked for `PT_LOAD p_align=0x4000`, and the exact-head x86_64 emulator harness PASSed end to end. The remaining 16 KiB evidence gap is AArch64 `liba32android.so` / Dynarmic runtime execution on a real/emulated AArch64 16 KiB Android target.
 
 ## Important temporary facts
+- T002 introduces `src/elf/elf32_load_plan.{h,cpp}` as the single pre-mutation ARM ELF32 validation/layout planner. `load_elf32` now consumes that plan while retaining the explicit `dynamic_base` API. Focused plan tests cover ET_DYN/ET_EXEC type, mapped extent, 0x4000 load-bias alignment, validation reuse, and non-mutation. Implementation commit `0fd063eba1f0cfc1c58eef11a28489a610dc9bcf`; latest branch-head CI is PENDING, so no PASS is claimed yet.
 - T001 adds `src/memory/guest_va_allocator.{h,cpp}` plus `tests/guest_va_allocator.cpp` and CTest wiring. The primitive is non-mutating low-to-high first-fit over `const MappedGuestMemory&`, with explicit bounded window, page-compatible length/alignment/alignment-offset, checked 32-bit guest-space arithmetic, conflict skipping, and `NoSpace` exhaustion. Exact-head CI #156 PASSed all three jobs.
 - PR #30 is merged to `bleeding` as `428a76ca7d8335b0198b7a2e26c736bc8dbe198f`. Exact-head CI #149 PASSed Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build. The Fedora x86_64 16 KiB probe PASS remains recorded; AArch64 16 KiB runtime execution remains NOT RUN.
 - Spec `004-elf32-dynamic-placement` is readiness-checked on `m4-elf32-dynamic-placement`. It keeps `load_elf32` explicit-base semantics, adds a non-mutating placement layer, and defines T001 as a generic deterministic free guest-range search over `MappedGuestMemory`.
