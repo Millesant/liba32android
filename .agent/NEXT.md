@@ -2,14 +2,14 @@
 
 Repository state is merged on `bleeding` through PR #29 / commit `004bb8a42f3be2638e7a700c6c6a83bf73117a83`. The runtime code baseline remains PR #23 / `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`. The CI #134 runtime-smoke artifact has now been executed successfully in Termux for both the ordinary smoke and the explicit SIGABRT crash-test path.
 
-1. Gate the Android 16 KiB ELF-alignment fix and rerun the Fedora x86_64 probe.
-   - Status: FIX IMPLEMENTED — exact-head CI NOT RUN; emulator retest NOT RUN.
-   - Branch: `fix/android-16k-elf-alignment`.
-   - Reproduced evidence: 16 KiB x86_64 probe observed 4 GiB reservation/commit, exact low-VA mappings with `EEXIST` collision semantics, and RW->RX success; the harness then emitted Android linker warnings + SIGSEGV and never produced generated-code return-42 or final PASS.
-   - Root-cause direction: pinned NDK r27d requires explicit 16 KiB ELF linker alignment flags; these were missing from project-owned Android final ELF targets.
-   - Fix: apply `-Wl,-z,max-page-size=16384` and `-Wl,-z,common-page-size=16384` to `liba32android.so`, `android_address_space_probe`, and `android_runtime_smoke`; CI rejects PT_LOAD alignment below `0x4000`.
-   - Exact next action: require exact-head CI PASS, rebuild/pull the fixed x86_64 probe on Fedora, confirm `readelf -lW` LOAD alignment is `0x4000`, then rerun `tools/run_android_16k_probe_validation.sh`.
-   - DoD: no Android linker-warning/SIGSEGV failure, generated-code returns 42, harness emits `android_16k_probe_validation.status=PASS`, and evidence is reconciled.
+1. Merge the converged Android 16 KiB ELF-alignment fix, then keep the AArch64 16 KiB runtime test as the remaining architecture-specific gap.
+   - Status: CONVERGED on exact head `dad047a71636974173da6b14c388df09ea58deb9`.
+   - GitHub Actions: #148 PASS — Linux A32 smoke, Android x86_64 address-space probe, Android arm64-v8a cross-build.
+   - Fedora emulator: PASS — Android 15 / SDK 35 / x86_64 / PAGE_SIZE=16384.
+   - ELF gate: all observed x86_64 probe `PT_LOAD` entries use `p_align=0x4000`.
+   - Runtime evidence: 4 GiB reservation/commit PASS; sampled exact low-VA mappings + EEXIST collisions PASS; RW->RX PASS; generated x86-64 return-42 PASS; harness final PASS.
+   - Exact next action: merge PR #30 after the persistence-only exact-head CI gate passes.
+   - Remaining boundary: AArch64 `liba32android.so` / Dynarmic runtime execution on a 16 KiB AArch64 Android target remains NOT RUN.
 
 2. Capture an Android native crash backtrace/tombstone for the opt-in crash test when an accessible device channel is available.
    - Current evidence: crash test armed, emitted `A32CRASH|...|signal=6|...`, and the shell reported `Aborted`.
