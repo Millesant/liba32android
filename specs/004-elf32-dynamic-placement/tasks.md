@@ -16,7 +16,7 @@
   - 16 KiB-equivalent alignment PASS;
   - overflow/invalid/no-space failures PASS;
   - mapped state/permissions unchanged after every search.
-- Status: ACTIVE — implementation committed through `268b812302ce06c274a04b3525c829038bae94ed`; exact-head CI #153 PENDING, validation NOT RUN.
+- Status: ACTIVE — implementation committed through `268b812302ce06c274a04b3525c829038bae94ed`; latest branch-head CI PENDING, validation NOT RUN.
 
 ## T002 — Refactor loader validation into a reusable immutable load-layout plan
 - Requirements: R1, R3, R6, R7 / AC3, AC5, AC8
