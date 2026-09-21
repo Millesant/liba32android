@@ -5,7 +5,7 @@ Current phase: M4 continuation; ELF32 automatic ET_DYN guest placement
 Integration branch: `bleeding`
 Last merged runtime PR: #23
 Runtime baseline commit: `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`
-Active runtime work: `m4-elf32-dynamic-placement`; spec `004-elf32-dynamic-placement` requirements/design/tasks are readiness-checked; T001 free guest-range search is TODO / NOT RUN
+Active runtime work: `m4-elf32-dynamic-placement`; T001 deterministic free guest-range search implemented through `268b812302ce06c274a04b3525c829038bae94ed`; exact-head CI #153 PENDING, validation NOT RUN
 
 ## Working
 
@@ -120,6 +120,7 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 No x86_64 16 KiB address-space blocker remains on the validated Fedora/KVM environment. Exact-head CI #148 PASSed, all project-owned Android final ELF targets are CI-checked for `PT_LOAD p_align=0x4000`, and the exact-head x86_64 emulator harness PASSed end to end. The remaining 16 KiB evidence gap is AArch64 `liba32android.so` / Dynarmic runtime execution on a real/emulated AArch64 16 KiB Android target.
 
 ## Important temporary facts
+- T001 adds `src/memory/guest_va_allocator.{h,cpp}` plus `tests/guest_va_allocator.cpp` and CTest wiring. The primitive is non-mutating low-to-high first-fit over `const MappedGuestMemory&`, with explicit bounded window, page-compatible length/alignment/alignment-offset, checked 32-bit guest-space arithmetic, conflict skipping, and `NoSpace` exhaustion. Exact-head CI #153 is PENDING; no PASS is claimed yet.
 - PR #30 is merged to `bleeding` as `428a76ca7d8335b0198b7a2e26c736bc8dbe198f`. Exact-head CI #149 PASSed Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build. The Fedora x86_64 16 KiB probe PASS remains recorded; AArch64 16 KiB runtime execution remains NOT RUN.
 - Spec `004-elf32-dynamic-placement` is readiness-checked on `m4-elf32-dynamic-placement`. It keeps `load_elf32` explicit-base semantics, adds a non-mutating placement layer, and defines T001 as a generic deterministic free guest-range search over `MappedGuestMemory`.
 - Fedora 16 KiB emulator environment is VALIDATED for the standalone x86_64 address-space/JIT probe at exact commit `dad047a71636974173da6b14c388df09ea58deb9`: `PAGE_SIZE=16384`, Android 15 / SDK 35, kernel `6.6.50-android15-8-g8adecb593e9b-ab12525588`, 4 GiB reserve/commit PASS, sampled exact low-VA mappings + EEXIST collisions PASS, RW->RX PASS, generated-code return 42 PASS, harness final PASS.
