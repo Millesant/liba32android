@@ -16,7 +16,7 @@
   - 16 KiB-equivalent alignment PASS;
   - overflow/invalid/no-space failures PASS;
   - mapped state/permissions unchanged after every search.
-- Status: ACTIVE — implementation committed through `268b812302ce06c274a04b3525c829038bae94ed`; latest branch-head CI PENDING, validation NOT RUN.
+- Status: DONE — exact-head CI #156 PASS on `81f56630d9f6b499d360320ea5e6d4b640e3fb88`; Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all PASS.
 
 ## T002 — Refactor loader validation into a reusable immutable load-layout plan
 - Requirements: R1, R3, R6, R7 / AC3, AC5, AC8
