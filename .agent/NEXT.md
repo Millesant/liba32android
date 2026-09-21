@@ -2,13 +2,16 @@
 
 Repository state is merged on `bleeding` through PR #27 / commit `3e776e4baaf9862affb2b42fb0f706292cdf179a`. The runtime code baseline remains PR #23 / `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`. The CI #134 runtime-smoke artifact has now been executed successfully in Termux for both the ordinary smoke and the explicit SIGABRT crash-test path.
 
-1. Implement and execute the Fedora-native x86_64 16 KiB Android address-space evidence path.
-   - Status: NOT IMPLEMENTED / NOT RUN.
-   - Local host: native Fedora 44 on x86_64; use KVM rather than WSL/nested virtualization.
-   - Implementation slice: allow `android_address_space_probe` to build for Android x86_64, emit the real architecture, execute architecture-native return-42 generated code, publish an x86_64 probe CI artifact, and add a 16 KiB probe harness.
-   - Evidence boundary: x86_64 emulator results validate Android/kernel page-size + mmap/W^X/address-space behavior only; they do not validate the AArch64 `liba32android`/Dynarmic runtime.
-   - Gate: Fedora emulator must report `16384` from `adb shell getconf PAGE_SIZE` and `x86_64` from `uname -m`.
-   - DoD: exact-head CI builds the x86_64 probe, then the Fedora emulator run records the 16 KiB environment plus 4 GiB reservation/commit, fixed-address behavior, RW->RX, and generated-code return-42 evidence.
+1. Gate and execute the Fedora-native x86_64 16 KiB Android address-space probe.
+   - Status: IMPLEMENTED — exact-head CI NOT RUN; Fedora project-probe execution NOT RUN.
+   - Branch: `tools/x86-16k-address-probe`.
+   - Environment already observed: Android 15 / SDK 35 x86_64 emulator, `PAGE_SIZE=16384`, kernel `6.6.50-android15-8-g8adecb593e9b-ab12525588`.
+   - Implementation: `android_address_space_probe` now supports Android x86_64 and arm64-v8a; generated-code mode uses architecture-native return-42 bytes.
+   - Harness: `tools/run_android_16k_probe_validation.sh PROBE [OUTPUT_DIR]`.
+   - CI: build and upload `android-address-space-probe-x86_64-<sha>` with pinned NDK r27d.
+   - Boundary: x86_64 results validate page-size/mmap/W^X/address-space behavior only; they do not validate AArch64 `liba32android`/Dynarmic behavior.
+   - Exact next action: require exact-head CI PASS, then run the matching probe on the already-running Fedora 16 KiB emulator and record the resulting evidence.
+   - DoD: CI x86_64 probe build PASS plus emulator harness PASS with 4 GiB reservation/commit and generated-code return 42; persist observed/inferred/not-demonstrated evidence.
 
 2. Capture an Android native crash backtrace/tombstone for the opt-in crash test when an accessible device channel is available.
    - Current evidence: crash test armed, emitted `A32CRASH|...|signal=6|...`, and the shell reported `Aborted`.

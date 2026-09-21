@@ -14,8 +14,8 @@
 #include <cstdlib>
 #include <cstring>
 
-#if !defined(__ANDROID__) || !defined(__aarch64__)
-#error "android_address_space_probe must be built for Android arm64-v8a"
+#if !defined(__ANDROID__) || (!defined(__aarch64__) && !defined(__x86_64__))
+#error "android_address_space_probe must be built for Android arm64-v8a or x86_64"
 #endif
 
 #ifndef MAP_FIXED_NOREPLACE
@@ -343,7 +343,11 @@ void print_environment(long page_size) {
 #endif
     print_property("ro.build.version.sdk", "android.runtime_sdk");
     print_property("ro.build.version.release", "android.release");
+#if defined(__aarch64__)
     log_printf("arch=aarch64\n");
+#elif defined(__x86_64__)
+    log_printf("arch=x86_64\n");
+#endif
     log_printf("page_size=%ld\n", page_size);
 
     utsname info{};
@@ -522,8 +526,13 @@ bool probe_jit_wx(std::size_t page_size, bool execute_generated_code) {
         return false;
     }
 
+#if defined(__aarch64__)
     // AArch64: mov w0, #42; ret
     constexpr std::array<std::uint32_t, 2> code{0x52800540u, 0xd65f03c0u};
+#elif defined(__x86_64__)
+    // x86-64: mov eax, 42; ret
+    constexpr std::array<std::uint8_t, 6> code{0xb8u, 0x2au, 0x00u, 0x00u, 0x00u, 0xc3u};
+#endif
     std::memcpy(mapping, code.data(), sizeof(code));
     auto* begin = static_cast<char*>(mapping);
     __builtin___clear_cache(begin, begin + sizeof(code));

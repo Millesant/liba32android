@@ -1,6 +1,6 @@
 # Android guest address-space research
 
-Status: PARTIAL — 4 KiB real-device paths observed; 16 KiB Android execution NOT RUN
+Status: PARTIAL — 4 KiB real-device runtime paths observed; 16 KiB x86_64 emulator environment observed, project probe execution NOT RUN
 
 ## Scope
 
@@ -78,7 +78,7 @@ No loader, ABI bridge, or compatibility library may rely on guest pointer == hos
 
 ## Android probe
 
-`android_address_space_probe` is a standalone arm64-v8a executable. It intentionally does not link the runtime so that OS address-space behavior can be measured independently of Dynarmic.
+`android_address_space_probe` is a standalone Android 64-bit executable for arm64-v8a or x86_64. It intentionally does not link the runtime so that OS address-space behavior can be measured independently of Dynarmic.
 
 It records:
 
@@ -89,7 +89,7 @@ It records:
 - whether an anonymous `PROT_NONE` 4 GiB reservation succeeds and whether one page inside it can be committed RW;
 - exact low-address `MAP_FIXED_NOREPLACE` attempts at several representative addresses, including collision semantics;
 - whether an anonymous RW page can transition to RX;
-- optionally, whether generated AArch64 code executes and returns 42.
+- optionally, whether architecture-native generated code executes and returns 42.
 
 The probe never uses destructive `MAP_FIXED` against unowned address ranges.
 
@@ -109,23 +109,18 @@ This is build evidence only. No Android `mmap`, `mprotect`, fastmem reservation 
 
 ### 16 KiB emulator validation
 
-Google's current Android guidance provides experimental 16 KiB Android 15-or-newer emulator images and uses `adb shell getconf PAGE_SIZE` returning `16384` as the runtime check. For this project, use the **ARM 64 v8a** 16 KiB image for runtime evidence: the diagnostics and `liba32android.so` are built for an AArch64 Android host, so the x86_64 16 KiB image is not a substitute for validating the Dynarmic AArch64 host path.
+Google's current Android guidance provides experimental 16 KiB Android 15-or-newer emulator images and uses `adb shell getconf PAGE_SIZE` returning `16384` as the runtime check.
 
 Source: https://developer.android.com/guide/practices/page-sizes
 
-Once a 16 KiB AArch64 emulator is running, use the repository harness with three Android cross-build outputs:
+The evidence path is intentionally split by host architecture:
 
-```sh
-tools/run_android_16k_validation.sh \
-  build-android/android_address_space_probe \
-  build-android/android_runtime_smoke \
-  build-android/liba32android.so \
-  android-16k-validation
-```
+- `tools/run_android_16k_probe_validation.sh` validates Android page-size/address-space behavior on x86_64 or AArch64. It runs the standalone probe, including architecture-native generated code, and captures 4 GiB reservation, exact low-VA mapping, and RW->RX behavior. This is the appropriate path for the user's native Fedora 44 x86_64/KVM host.
+- `tools/run_android_16k_validation.sh` remains the stronger AArch64-only runtime path. It additionally executes `liba32android.so` / Dynarmic direct-fastmem and fallback smoke tests and therefore requires an AArch64 Android target.
 
-The harness refuses to continue unless the target reports both `PAGE_SIZE=16384` and `uname -m=aarch64`. It then runs the address-space probe, generated-code probe, normal runtime smoke, and fastmem-fault fallback smoke, saving host-side logs and requiring the expected PASS markers. It deliberately does not run the destructive `--crash-test` mode.
+An x86_64 16 KiB emulator result is valid evidence for Android/kernel page-size and mapping policy. It is **not** evidence that the AArch64 liba32android/Dynarmic runtime path works with 16 KiB pages.
 
-The script can also consume binaries unpacked from a matching CI artifact instead of a local cross-build. `ANDROID_SERIAL` selects a target when more than one adb device is connected.
+On 2026-09-21 the Fedora/KVM emulator environment itself was observed with `PAGE_SIZE=16384`, `uname -m=x86_64`, Android 15 / SDK 35, and kernel `6.6.50-android15-8-g8adecb593e9b-ab12525588`. Project probe execution on that environment remains NOT RUN until the matching x86_64 probe artifact is built.
 
 ### Device execution
 
