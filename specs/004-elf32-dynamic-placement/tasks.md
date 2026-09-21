@@ -46,7 +46,7 @@
   - bounded exhaustion -> NoSpace;
   - malformed/ET_EXEC rejection;
   - returned base passed unchanged to `load_elf32` -> successful load.
-- Status: ACTIVE — implementation committed through `1bb455af587bc1742cf5fd0ce343628a65fd36b2`; latest branch-head CI PENDING, validation NOT RUN.
+- Status: DONE — PR-head CI #166 PASS on `5fe92029e4b7107f9aca97b1505e4f8dee5c8f3d`; Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all PASS.
 
 ## T004 — Integrate the real ARM32 fixture
 - Requirements: R1, R3, R7, R8 / AC7, AC8
@@ -58,7 +58,7 @@
 - Validation:
   - pinned fixture auto-placement + load PASS;
   - existing real-fixture loader/dynamic/linker/resolver integration remains PASS.
-- Status: TODO
+- Status: ACTIVE — real-fixture auto-placement test + CI evidence committed through `40c8126cce500ebda200c47acc683e753b8fab75`; latest branch-head CI PENDING, validation NOT RUN.
 
 ## T005 — Converge feature and durable state
 - Requirements: all / AC1-AC8
