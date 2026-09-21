@@ -4,7 +4,7 @@ Status: complete; merged through PR #17
 
 ## Boundary
 
-`elf32_dependency_resolver` sits above bounded linker-string materialization and below future dependency graph, guest-placement, ELF mapping, symbol, and relocation layers.
+`elf32_dependency_resolver` sits above bounded linker-string materialization and below dependency graph/loading, symbol, and relocation layers. Automatic single-image `ET_DYN` placement now exists separately; this resolver intentionally still stops at host-owned image acquisition.
 
 It consumes:
 
@@ -36,8 +36,10 @@ caller/platform Elf32DependencyProvider
     v
 host-owned dependency ELF image inputs
     |
+    +----> elf32_dynamic_placement -> explicit dynamic_base -> elf32_loader
+    |
     v
-future graph + guest placement + ELF mapping
+future recursive graph/link-map ownership
 ```
 
 The generic ELF core therefore remains independent from Android filesystem layout, APK packaging, namespace/search-path policy, and application profiles.
@@ -111,16 +113,16 @@ Provider-internal I/O/cache side effects are outside the transaction boundary.
 
 ## Relationship to ELF mapping
 
-The current ELF loader still requires an explicit `Elf32LoadOptions::dynamic_base` for `ET_DYN`.
+The ELF loader still consumes an explicit `Elf32LoadOptions::dynamic_base` for `ET_DYN`, and `elf32_dynamic_placement` can now compute such a base from the shared validated load plan and current guest-memory state.
 
-This dependency-resolution layer deliberately does not call `load_elf32`.
+This dependency-resolution layer deliberately does not call either placement or `load_elf32`; it remains an acquisition-only boundary.
 
-Before general dependency loading can begin, a later feature must define:
+Before general recursive dependency loading can begin, a later feature must define:
 
-- guest-VA placement/allocation for dependency images;
-- recursive dependency-graph ownership;
+- recursive dependency-graph ownership and loaded-object lifetime;
 - cycle and deduplication semantics;
 - link-map / namespace identity;
+- when an acquired image is placed/mapped and its own `DT_NEEDED` entries are traversed;
 - the order in which mapped objects proceed into symbol and relocation processing.
 
 This preserves the project invariant that guest virtual addresses are logical 32-bit values independent of host-pointer identity.
@@ -168,7 +170,7 @@ This layer does **not**:
 - deduplicate names or provider identities;
 - detect cycles;
 - build a dependency graph or link map;
-- choose guest addresses or map dependency ELF images;
+- choose guest addresses or map dependency ELF images itself (the separate automatic placement primitive is available to a future graph/loader layer);
 - parse dependency dynamic metadata as part of resolution;
 - consume SysV/GNU hash tables for lookup;
 - perform symbol lookup/interposition/versioning;
