@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-21
-Current phase: M4 continuation; automatic ET_DYN guest placement merged
+Current phase: M4 continuation; recursive ELF32 dependency graph loading
 Integration branch: `bleeding`
 Last merged runtime PR: #31
 Runtime baseline commit: `2c3be26c05dff81be1f81c9565df5906c521a54c`
-Active runtime work: none selected; `004-elf32-dynamic-placement` is DONE and merged. T001 #156 PASS, T002 #162 PASS, T003 #166 PASS, T004 #169 PASS, T005 feature-gate #173 PASS, persistence-only exact-head #175 PASS.
+Active runtime work: `005-elf32-dependency-loading` on `m4-elf32-dependency-loading`; requirements/design/tasks readiness-checked, implementation NOT RUN. Next task: T001 transactional root-object graph loader.
 
 ## Working
 
@@ -150,3 +150,5 @@ No x86_64 16 KiB address-space blocker remains on the validated Fedora/KVM envir
 - The next feature-scale implementation must get a new `specs/<id>-<feature>/` requirements/design/tasks chain instead of extending `specs/000-current-baseline/`.
 
 - Branch hygiene policy: keep one scoped branch per substantive feature/fix PR, avoid standalone reconciliation branches, and delete merged source branches when supported. Current connector can list/update refs but does not expose delete-ref, so remote branch deletion is externally BLOCKED in-chat.
+
+- Spec `005-elf32-dependency-loading` is readiness-checked on `m4-elf32-dependency-loading`. It defines a new graph/loading layer above the unchanged acquisition resolver: root identity/object 0, provider-identity dedup/cycles, deterministic ordered edges, ET_DYN dependency placement + explicit-base loading, identity/image mismatch rejection, graph-wide bounds, and reverse-order rollback of graph-owned mappings. T001 implementation/tests are NOT RUN.
