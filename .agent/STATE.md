@@ -5,17 +5,18 @@ Current phase: M4 continuation; ELF32 automatic ET_DYN guest placement
 Integration branch: `bleeding`
 Last merged runtime PR: #23
 Runtime baseline commit: `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`
-Active runtime work: `m4-elf32-dynamic-placement`; T001 DONE (#156 PASS), T002 DONE (#162 PASS), T003 DONE (#166 PASS); T004 real ARM32 fixture auto-placement integration implemented through `40c8126cce500ebda200c47acc683e753b8fab75`; latest branch-head CI PENDING, validation NOT RUN
+Active runtime work: `m4-elf32-dynamic-placement`; T001 DONE (#156 PASS), T002 DONE (#162 PASS), T003 DONE (#166 PASS), T004 DONE (#169 PASS); T005 convergence/docs/state updated, final exact-head CI NOT RUN
 
 ## Working
 
 - CPU execution is isolated behind `src/cpu/` with pinned Dynarmic. ARM/Thumb smoke plus current register/control-flow/memory/stack regressions are green in the baseline CI.
 - `memory::GuestMemory` is the engine-independent memory seam.
 - `LinearGuestMemory` remains the deterministic callback/correctness implementation.
-- `MappedGuestMemory` implements logical 32-bit guest VAs, a contiguous high-host-VA 4 GiB reservation, guest page map/protect/unmap lifecycle, Dynarmic fastmem and callback fallback.
+- `MappedGuestMemory` implements logical 32-bit guest VAs, a contiguous high-host-VA 4 GiB reservation, guest page map/protect/unmap lifecycle, Dynarmic fastmem and callback fallback. `guest_va_allocator` provides deterministic bounded non-mutating free-range search.
 - D-0003 remains accepted: guest VAs are independent from host pointer identity.
 - D-0004 remains accepted: high-base contiguous fastmem is the preferred first Android acceleration path when available; callbacks remain the correctness fallback.
 - The shared runtime produces exactly `liba32android.so`.
+- Shared pre-mutation ELF32 validation/layout planning is implemented through `src/elf/elf32_load_plan.*`; it is consumed by both mapping and automatic placement.
 - ELF32 mapping is implemented through `src/elf/elf32_loader.*`:
   - ELF32 / little-endian / current-version / `EM_ARM` validation;
   - fixed-address `ET_EXEC`;
@@ -23,6 +24,7 @@ Active runtime work: `m4-elf32-dynamic-placement`; T001 DONE (#156 PASS), T002 D
   - validated `PT_LOAD` mapping, file copy, BSS zero-fill, final permissions and loader-owned rollback;
   - guest-only result metadata; no host pointers in loader results;
   - zero-or-one validated non-empty `PT_DYNAMIC` guest range inside a readable `PT_LOAD`, with file/address/containment/file-to-load validation before guest mutation.
+- Automatic `ET_DYN` guest placement is implemented through `src/elf/elf32_dynamic_placement.*`: deterministic caller-bounded first-fit, host-page and `p_align` congruence preservation, no guest-memory mutation, explicit malformed/non-dynamic/window/overflow/no-space failures, and loader-ready `dynamic_base` output.
 - Structural dynamic-array parsing is implemented through `src/elf/elf32_dynamic.*`:
   - consumes only the loader-validated `Elf32DynamicSegment` plus `GuestMemory`;
   - parses 8-byte ELF32 entries as signed raw `d_tag` + raw 32-bit value;
@@ -38,16 +40,20 @@ Active runtime work: `m4-elf32-dynamic-placement`; T001 DONE (#156 PASS), T002 D
 
 ## Partial / not implemented
 
-- Dependency guest mapping/loading beyond bounded image acquisition, recursive graph/link-map/cycle/dedup semantics, Android search-path/namespace/pathname policy, and full dynamic symbol-table semantics: NOT IMPLEMENTED.
+- Wiring acquired dependency images through placement/loading plus recursive graph/link-map/cycle/dedup semantics, Android search-path/namespace/pathname policy, and full dynamic symbol-table semantics: NOT IMPLEMENTED.
 - ARM relocations: NOT IMPLEMENTED.
 - Symbol lookup/interposition: NOT IMPLEMENTED.
 - RELRO/TLS processing: NOT IMPLEMENTED.
-- Automatic `ET_DYN` guest-VA allocation: SPECIFIED in `specs/004-elf32-dynamic-placement/`; implementation NOT RUN.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.
 - Actual 16 KiB Android host-page behavior: PARTIAL by architecture — x86_64 Android 15 emulator probe PASS with 4 GiB reservation/commit, exact sampled low-VA `MAP_FIXED_NOREPLACE`, collision `EEXIST`, RW->RX, and generated-code return 42; AArch64 runtime on 16 KiB pages remains NOT RUN.
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### M4 automatic ET_DYN guest placement
+
+PR #31 remains open on `m4-elf32-dynamic-placement`. T001 guest-VA search PASSed CI #156; T002 shared load-plan refactor PASSed CI #162; T003 automatic placement PASSed CI #166; T004 real ARM32 fixture auto-placement PASSed PR-head CI #169 at `053c6435b902eb0b0f6412b9d63a44e32274d060`. CI #169 completed Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build successfully; the Linux job also required the real fixture auto-placement evidence markers including `required_alignment=0x4000` and final PASS. T005 final exact-head CI after convergence edits is NOT RUN.
+
 
 ### Termux crash-test evidence recording
 
