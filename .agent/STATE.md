@@ -1,21 +1,22 @@
 # Current State
 
 Last updated: 2026-09-21
-Current phase: post-M4 maintenance; x86_64 16 KiB address-space validation converged
+Current phase: M4 continuation; ELF32 automatic ET_DYN guest placement
 Integration branch: `bleeding`
 Last merged runtime PR: #23
 Runtime baseline commit: `709e9ce74e58ee12d925b64c8466b9afa58cc4a6`
-Active runtime work: `fix/android-16k-elf-alignment`; exact-head CI #148 PASS and Fedora x86_64 16 KiB probe PASS at `dad047a71636974173da6b14c388df09ea58deb9`; documentation/state reconciliation pending PR merge
+Active runtime work: `m4-elf32-dynamic-placement`; T001 DONE (#156 PASS), T002 DONE (#162 PASS), T003 DONE (#166 PASS), T004 DONE (#169 PASS), T005 DONE (feature-gate #173 PASS); persistence-only closeout exact-head CI pending
 
 ## Working
 
 - CPU execution is isolated behind `src/cpu/` with pinned Dynarmic. ARM/Thumb smoke plus current register/control-flow/memory/stack regressions are green in the baseline CI.
 - `memory::GuestMemory` is the engine-independent memory seam.
 - `LinearGuestMemory` remains the deterministic callback/correctness implementation.
-- `MappedGuestMemory` implements logical 32-bit guest VAs, a contiguous high-host-VA 4 GiB reservation, guest page map/protect/unmap lifecycle, Dynarmic fastmem and callback fallback.
+- `MappedGuestMemory` implements logical 32-bit guest VAs, a contiguous high-host-VA 4 GiB reservation, guest page map/protect/unmap lifecycle, Dynarmic fastmem and callback fallback. `guest_va_allocator` provides deterministic bounded non-mutating free-range search.
 - D-0003 remains accepted: guest VAs are independent from host pointer identity.
 - D-0004 remains accepted: high-base contiguous fastmem is the preferred first Android acceleration path when available; callbacks remain the correctness fallback.
 - The shared runtime produces exactly `liba32android.so`.
+- Shared pre-mutation ELF32 validation/layout planning is implemented through `src/elf/elf32_load_plan.*`; it is consumed by both mapping and automatic placement.
 - ELF32 mapping is implemented through `src/elf/elf32_loader.*`:
   - ELF32 / little-endian / current-version / `EM_ARM` validation;
   - fixed-address `ET_EXEC`;
@@ -23,6 +24,7 @@ Active runtime work: `fix/android-16k-elf-alignment`; exact-head CI #148 PASS an
   - validated `PT_LOAD` mapping, file copy, BSS zero-fill, final permissions and loader-owned rollback;
   - guest-only result metadata; no host pointers in loader results;
   - zero-or-one validated non-empty `PT_DYNAMIC` guest range inside a readable `PT_LOAD`, with file/address/containment/file-to-load validation before guest mutation.
+- Automatic `ET_DYN` guest placement is implemented through `src/elf/elf32_dynamic_placement.*`: deterministic caller-bounded first-fit, host-page and `p_align` congruence preservation, no guest-memory mutation, explicit malformed/non-dynamic/window/overflow/no-space failures, and loader-ready `dynamic_base` output.
 - Structural dynamic-array parsing is implemented through `src/elf/elf32_dynamic.*`:
   - consumes only the loader-validated `Elf32DynamicSegment` plus `GuestMemory`;
   - parses 8-byte ELF32 entries as signed raw `d_tag` + raw 32-bit value;
@@ -38,16 +40,20 @@ Active runtime work: `fix/android-16k-elf-alignment`; exact-head CI #148 PASS an
 
 ## Partial / not implemented
 
-- Dependency guest mapping/loading beyond bounded image acquisition, recursive graph/link-map/cycle/dedup semantics, Android search-path/namespace/pathname policy, and full dynamic symbol-table semantics: NOT IMPLEMENTED.
+- Wiring acquired dependency images through placement/loading plus recursive graph/link-map/cycle/dedup semantics, Android search-path/namespace/pathname policy, and full dynamic symbol-table semantics: NOT IMPLEMENTED.
 - ARM relocations: NOT IMPLEMENTED.
 - Symbol lookup/interposition: NOT IMPLEMENTED.
 - RELRO/TLS processing: NOT IMPLEMENTED.
-- Automatic `ET_DYN` guest-VA allocation: NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.
 - Actual 16 KiB Android host-page behavior: PARTIAL by architecture — x86_64 Android 15 emulator probe PASS with 4 GiB reservation/commit, exact sampled low-VA `MAP_FIXED_NOREPLACE`, collision `EEXIST`, RW->RX, and generated-code return 42; AArch64 runtime on 16 KiB pages remains NOT RUN.
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### M4 automatic ET_DYN guest placement
+
+PR #31 remains open on `m4-elf32-dynamic-placement`. T001 guest-VA search PASSed CI #156; T002 shared load-plan refactor PASSed CI #162; T003 automatic placement PASSed CI #166; T004 real ARM32 fixture auto-placement PASSed PR-head CI #169 at `053c6435b902eb0b0f6412b9d63a44e32274d060`. CI #169 completed Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build successfully; the Linux job also required the real fixture auto-placement evidence markers including `required_alignment=0x4000` and final PASS. T005 feature-gate CI #173 PASSed at `7295efc6dba56e9642b2f05d80def71e1578eea8`: Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all PASS. This persistence-only closeout changes the PR head and therefore requires a fresh exact-head CI before merge.
+
 
 ### Termux crash-test evidence recording
 
@@ -120,6 +126,12 @@ Previously recorded Android/AArch64 evidence proves the mapped-memory/fastmem pa
 No x86_64 16 KiB address-space blocker remains on the validated Fedora/KVM environment. Exact-head CI #148 PASSed, all project-owned Android final ELF targets are CI-checked for `PT_LOAD p_align=0x4000`, and the exact-head x86_64 emulator harness PASSed end to end. The remaining 16 KiB evidence gap is AArch64 `liba32android.so` / Dynarmic runtime execution on a real/emulated AArch64 16 KiB Android target.
 
 ## Important temporary facts
+- T004 adds `tests/elf32_dynamic_placement_real_fixture.cpp` and CI artifact evidence. The pinned NDK-generated ARMv7 fixture is planned through `Elf32LoadPlan`, required to expose `0x4000` load-bias alignment, automatically placed without mutation, then loaded using the exact returned `dynamic_base`. Existing explicit-base fixture tests remain unchanged. PR-head CI #169 PASSed at `053c6435b902eb0b0f6412b9d63a44e32274d060`, including the required real-fixture auto-placement evidence.
+- T003 adds `src/elf/elf32_dynamic_placement.{h,cpp}` plus focused tests. It accepts an ARM ELF32 image and explicit guest search window, reuses `Elf32LoadPlan`, rejects non-ET_DYN/malformed images distinctly, derives the required placement congruence, invokes the non-mutating guest-VA search, and returns only an explicit loader-ready `dynamic_base`. PR-head CI #166 PASSed all three jobs.
+- T002 introduces `src/elf/elf32_load_plan.{h,cpp}` as the single pre-mutation ARM ELF32 validation/layout planner. `load_elf32` consumes that plan while retaining the explicit `dynamic_base` API. PR-head CI #162 PASSed all three jobs.
+- T001 adds `src/memory/guest_va_allocator.{h,cpp}` plus `tests/guest_va_allocator.cpp` and CTest wiring. The primitive is non-mutating low-to-high first-fit over `const MappedGuestMemory&`, with explicit bounded window, page-compatible length/alignment/alignment-offset, checked 32-bit guest-space arithmetic, conflict skipping, and `NoSpace` exhaustion. Exact-head CI #156 PASSed all three jobs.
+- PR #30 is merged to `bleeding` as `428a76ca7d8335b0198b7a2e26c736bc8dbe198f`. Exact-head CI #149 PASSed Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build. The Fedora x86_64 16 KiB probe PASS remains recorded; AArch64 16 KiB runtime execution remains NOT RUN.
+- Spec `004-elf32-dynamic-placement` is readiness-checked on `m4-elf32-dynamic-placement`. It keeps `load_elf32` explicit-base semantics, adds a non-mutating placement layer, and defines T001 as a generic deterministic free guest-range search over `MappedGuestMemory`.
 - Fedora 16 KiB emulator environment is VALIDATED for the standalone x86_64 address-space/JIT probe at exact commit `dad047a71636974173da6b14c388df09ea58deb9`: `PAGE_SIZE=16384`, Android 15 / SDK 35, kernel `6.6.50-android15-8-g8adecb593e9b-ab12525588`, 4 GiB reserve/commit PASS, sampled exact low-VA mappings + EEXIST collisions PASS, RW->RX PASS, generated-code return 42 PASS, harness final PASS.
 - PR #27 is merged to `bleeding` as `3e776e4baaf9862affb2b42fb0f706292cdf179a`; exact-head CI #142 PASS on both Linux A32 smoke and Android arm64-v8a cross-build. No post-merge workflow run was observed during merge verification.
 - The user moved the local development host from WSL to native Fedora 44 on x86_64. Native KVM is now the intended PC-emulator path. The next implementation must add an x86_64 standalone Android address-space probe artifact/harness while keeping AArch64 liba32android/Dynarmic validation separate.

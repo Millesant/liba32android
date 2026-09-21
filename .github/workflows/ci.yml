@@ -73,8 +73,12 @@ jobs:
         run: |
           set -euxo pipefail
           build/elf32_real_fixture_test "$ARM32_FIXTURE" | tee build-fixtures/loader-evidence.txt
+          build/elf32_dynamic_placement_real_fixture_test "$ARM32_FIXTURE" |
+            tee build-fixtures/auto-placement-evidence.txt
           readelf -lW "$ARM32_FIXTURE" > build-fixtures/program-headers.txt
           grep -F 'fixture.status=PASS' build-fixtures/loader-evidence.txt
+          grep -F 'fixture.auto_placement.required_alignment=0x4000'             build-fixtures/auto-placement-evidence.txt
+          grep -F 'fixture.auto_placement.status=PASS'             build-fixtures/auto-placement-evidence.txt
       - name: Upload real ARM32 fixture evidence
         uses: actions/upload-artifact@v4
         with:
@@ -82,6 +86,7 @@ jobs:
           path: |
             build-fixtures/liba32android_loader_fixture.so
             build-fixtures/loader-evidence.txt
+            build-fixtures/auto-placement-evidence.txt
             build-fixtures/program-headers.txt
           if-no-files-found: error
           retention-days: 14
