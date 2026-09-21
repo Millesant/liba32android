@@ -72,7 +72,7 @@
   - Android x86_64 probe cross-build PASS;
   - Android arm64-v8a runtime/diagnostics cross-build PASS;
   - requirements/design/code/tests/state convergence has no unrecorded material gap.
-- Status: DONE — feature-gate CI #173 PASS on `7295efc6dba56e9642b2f05d80def71e1578eea8`; Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all PASS. This persistence-only closeout must itself PASS exact-head CI before merge.
+- Status: DONE — feature-gate CI #173 PASS on `7295efc6dba56e9642b2f05d80def71e1578eea8`; persistence-only exact-head CI #175 PASS on `4b23122b6c6fc8469ae1655fcc2b9461118e5e4e`; Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all PASS. PR #31 squash-merged to `bleeding` as `2c3be26c05dff81be1f81c9565df5906c521a54c`.
 
 ## Readiness Check
 
