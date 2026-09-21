@@ -169,6 +169,31 @@ For project-valid runtime evidence, use the ARM64 16 KiB image and run `tools/ru
 
 Official setup reference: https://developer.android.com/guide/practices/page-sizes
 
+## Fedora 16 KiB emulator probe
+
+For the native Fedora 44 x86_64/KVM environment, the page-size/address-space path uses Google's experimental Android 15 x86_64 16 KiB image. Verify the running target first:
+
+```sh
+adb shell getconf PAGE_SIZE
+adb shell uname -m
+```
+
+The required result is `16384` and `x86_64`. Then run the matching x86_64 `android_address_space_probe` through:
+
+```sh
+tools/run_android_16k_probe_validation.sh android_address_space_probe
+```
+
+This harness validates Android/kernel address-space behavior only. It does not load `liba32android.so` and must not be reported as AArch64 Dynarmic/runtime evidence.
+
+On the observed Fedora host, Android Emulator 37.1.11 initially crashed in its software-renderer path. Starting the AVD with host OpenGL and Vulkan disabled completed boot:
+
+```sh
+emulator -avd liba32_16k \
+  -no-window -no-audio -no-boot-anim -no-snapshot \
+  -gpu host -feature -Vulkan
+```
+
 ## Android storage boundary
 
 An executable launched as the `adb shell` user, a Termux process, and a normal embedded application do not have identical storage access. Android scoped storage also limits direct shared-storage access for apps targeting modern Android.
