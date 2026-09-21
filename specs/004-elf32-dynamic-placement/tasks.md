@@ -58,7 +58,7 @@
 - Validation:
   - pinned fixture auto-placement + load PASS;
   - existing real-fixture loader/dynamic/linker/resolver integration remains PASS.
-- Status: ACTIVE — real-fixture auto-placement test + CI evidence committed through `40c8126cce500ebda200c47acc683e753b8fab75`; latest branch-head CI PENDING, validation NOT RUN.
+- Status: DONE — PR-head CI #169 PASS on `053c6435b902eb0b0f6412b9d63a44e32274d060`; real-fixture auto-placement evidence, full Linux CTest, Android x86_64 probe build, and Android arm64-v8a cross-build all PASS.
 
 ## T005 — Converge feature and durable state
 - Requirements: all / AC1-AC8
@@ -72,7 +72,7 @@
   - Android x86_64 probe cross-build PASS;
   - Android arm64-v8a runtime/diagnostics cross-build PASS;
   - requirements/design/code/tests/state convergence has no unrecorded material gap.
-- Status: TODO
+- Status: ACTIVE — convergence/docs/state updated; final exact-head CI NOT RUN.
 
 ## Readiness Check
 
