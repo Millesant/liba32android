@@ -1,6 +1,6 @@
 # ELF32 loader architecture
 
-Status: M3 `PT_LOAD` mapping + validated `PT_DYNAMIC` range discovery implemented; structural `Elf32_Dyn` parsing is implemented separately in `elf32_dynamic`
+Status: M3 `PT_LOAD` mapping + validated `PT_DYNAMIC` range discovery implemented; shared immutable load planning and automatic `ET_DYN` placement are implemented as adjacent layers; structural `Elf32_Dyn` parsing remains separate in `elf32_dynamic`
 
 ## Boundary
 
@@ -14,16 +14,22 @@ Current dependency direction:
 ELF32 byte image
       |
       v
- ELF32 validator / PT_LOAD planner
+ elf32_load_plan
+ validated PT_LOAD/PT_DYNAMIC layout
       |
-      +----> validated PT_DYNAMIC guest range
-      |                    |
-      v                    v
- MappedGuestMemory    elf32_dynamic
-      |               structural raw tags
-      v                    |
- logical guest VAs         v
-                     future linker layer
+      +----> elf32_dynamic_placement ----> explicit dynamic_base
+      |                                      |
+      v                                      v
+ elf32_loader -----------------------> MappedGuestMemory
+      |                                      |
+      +----> validated PT_DYNAMIC guest range|
+      |                    |                 v
+      v                    v            logical guest VAs
+ mapped guest image   elf32_dynamic
+                     structural raw tags
+                            |
+                            v
+                      future linker layer
 ```
 
 The loader itself does not parse `Elf32_Dyn` entries. Structural parsing is the responsibility of `src/elf/elf32_dynamic.*`, and dynamic-linker semantics remain a later layer above both mapping and structural parsing.
@@ -43,7 +49,7 @@ The loader currently accepts:
 
 `ET_EXEC` loads at fixed guest virtual addresses with `load_bias == 0`.
 
-`ET_DYN` requires the caller to provide an explicit host-page-aligned `dynamic_base`. That value identifies where the lowest host-page-aligned `PT_LOAD` mapping begins. The loader computes `load_bias = dynamic_base - lowest_load_page` and requires the resulting load bias to preserve every `PT_LOAD p_align` congruence requirement.
+`ET_DYN` mapping still requires an explicit host-page-aligned `dynamic_base`. That value identifies where the lowest host-page-aligned `PT_LOAD` mapping begins. The loader computes `load_bias = dynamic_base - lowest_load_page` and requires the resulting load bias to preserve every `PT_LOAD p_align` congruence requirement. Callers that do not already own a process-layout policy may obtain that value from the separate `elf32_dynamic_placement` layer; the loader itself does not choose addresses.
 
 That extra rule matters when ELF segment alignment is larger than the current host page size. The reproducible ARMv7 NDK fixture uses `p_align=0x4000`; a merely 4 KiB-aligned base is therefore not necessarily a valid load bias.
 
@@ -71,6 +77,14 @@ On success, `Elf32LoadResult::dynamic_segment` reports only:
 - `p_memsz`.
 
 `elf32_dynamic` may then consume that range through `GuestMemory`. The loader does not interpret `DT_NEEDED`, `DT_REL`, symbols, strings, GNU hash, or any other tag semantics.
+
+## Shared load planning and automatic placement
+
+`src/elf/elf32_load_plan.*` owns the pre-mutation ELF identity/program-header/`PT_LOAD`/`PT_DYNAMIC` validation that used to live directly inside the loader. Its immutable result exposes the ELF type, entry, lowest mapped load page, maximum mapped end, combined required load-bias alignment, validated load segments, and optional validated dynamic segment.
+
+`src/elf/elf32_dynamic_placement.*` consumes that same plan plus `MappedGuestMemory` state. It performs a caller-bounded, deterministic low-to-high first-fit search through `memory::find_free_guest_range`, preserving host-page alignment and every accepted `PT_LOAD p_align` constraint. Placement is non-mutating: it returns only a `dynamic_base`; `load_elf32` remains the mapping authority and can still report `AddressConflict` if memory changes after placement.
+
+The default placement search begins at guest VA `0x10000` and ends at the 32-bit guest-address-space limit. Callers may provide a narrower explicit window. Recursive dependency graph/link-map ownership and complete process-layout policy remain later layers.
 
 ## Validation-before-mapping rule
 
@@ -141,7 +155,7 @@ Observed real-fixture properties include:
 - one `PT_DYNAMIC` at pre-bias guest VA `0x826c`, with file/memory size `0x60`;
 - GNU RELRO and ARM EXIDX program headers.
 
-The real-fixture loader integration test verifies `PT_LOAD` metadata, exact copied bytes, BSS zero-fill, final guest permissions, a valid aligned load bias, rejection of a host-page-aligned bias that violates the fixture's 16 KiB `p_align`, and exact biased `PT_DYNAMIC` metadata.
+The real-fixture loader integration test verifies `PT_LOAD` metadata, exact copied bytes, BSS zero-fill, final guest permissions, a valid aligned load bias, rejection of a host-page-aligned bias that violates the fixture's 16 KiB `p_align`, and exact biased `PT_DYNAMIC` metadata. A separate automatic-placement integration plans the same fixture, requires `required_load_bias_alignment=0x4000`, selects a non-mutating first-fit `dynamic_base`, passes that exact base to `load_elf32`, and verifies the mapped result.
 
 Structural dynamic-array behavior for the same fixture is tested separately by `tests/elf32_dynamic_real_fixture.cpp` and documented in `docs/architecture/elf32-dynamic.md`.
 
@@ -151,9 +165,7 @@ Raw fixture evidence is documented under `docs/research/evidence/`.
 
 ## Next boundary
 
-The next feature-scale layer is linker-facing semantic metadata above `elf32_dynamic`. It should receive its own requirements/design/tasks package under `specs/` and must preserve the loader -> structural parser -> linker separation.
-
-The first linker-metadata slice may validate the relationships between raw dynamic tags and the guest ranges they describe, but it must not make dependency loading, symbol lookup, relocation writes, RELRO/TLS, or application-specific behavior side effects of ELF mapping or structural parsing.
+Automatic placement is now available as an independent primitive, but acquired dependency images are not yet recursively placed/mapped or owned by a dependency graph/link map. The next linker-scale boundary is to define loaded-object graph/lifetime/cycle/dedup semantics before symbol lookup and relocation application.
 
 ## Not implemented in the loader
 
@@ -164,7 +176,6 @@ The first linker-metadata slice may validate the relationships between raw dynam
 - RELRO enforcement;
 - TLS processing;
 - GNU/Android-specific linker semantics;
-- automatic guest-VA allocation for `ET_DYN`;
 - loading the real fixture through the runtime on a real Android device;
 - executing loaded ARM32 fixture symbols.
 
