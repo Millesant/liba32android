@@ -125,6 +125,11 @@ jobs:
         run: |
           set -euxo pipefail
           readelf -hW build-android-x86_64/android_address_space_probe | grep -F 'Machine:' | grep -F 'Advanced Micro Devices X86-64'
+          readelf -lW build-android-x86_64/android_address_space_probe | tee build-android-x86_64/program-headers.txt
+          load_count=$(awk '$1 == "LOAD" { count++ } END { print count + 0 }' build-android-x86_64/program-headers.txt)
+          aligned_load_count=$(awk '$1 == "LOAD" && $NF == "0x4000" { count++ } END { print count + 0 }' build-android-x86_64/program-headers.txt)
+          test "$load_count" -gt 0
+          test "$load_count" -eq "$aligned_load_count"
           strings build-android-x86_64/android_address_space_probe | grep -F 'arch=x86_64'
           strings build-android-x86_64/android_address_space_probe | grep -F 'jit_wx.result_check=%s'
       - name: Upload x86_64 Android address-space probe
@@ -171,11 +176,18 @@ jobs:
           -DDYNARMIC_ENABLE_NO_EXECUTE_SUPPORT=ON
       - name: Build shared runtime and Android diagnostics
         run: cmake --build build-android --target liba32android android_address_space_probe android_runtime_smoke --parallel 2
-      - name: Verify shared library name
+      - name: Verify shared library name and 16 KiB ELF alignment
         run: |
           set -euxo pipefail
           test -f build-android/liba32android.so
           test ! -e build-android/libliba32android.so
+          for elf in build-android/liba32android.so build-android/android_address_space_probe build-android/android_runtime_smoke; do
+            readelf -lW "$elf" > "$elf.program-headers.txt"
+            load_count=$(awk '$1 == "LOAD" { count++ } END { print count + 0 }' "$elf.program-headers.txt")
+            aligned_load_count=$(awk '$1 == "LOAD" && $NF == "0x4000" { count++ } END { print count + 0 }' "$elf.program-headers.txt")
+            test "$load_count" -gt 0
+            test "$load_count" -eq "$aligned_load_count"
+          done
       - name: Verify Android diagnostic markers
         run: |
           set -euxo pipefail
