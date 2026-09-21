@@ -46,6 +46,7 @@ add_library(liba32android SHARED
     src/cpu/dynarmic_cpu.cpp
     src/elf/elf32_dependency_resolver.cpp
     src/elf/elf32_dynamic.cpp
+    src/elf/elf32_dynamic_placement.cpp
     src/elf/elf32_linker_metadata.cpp
     src/elf/elf32_linker_strings.cpp
     src/elf/elf32_load_plan.cpp
@@ -130,6 +131,10 @@ if(LIBA32ANDROID_BUILD_TESTS)
     target_include_directories(elf32_dynamic_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(elf32_dynamic_test PRIVATE liba32android)
 
+    add_executable(elf32_dynamic_placement_test tests/elf32_dynamic_placement.cpp)
+    target_include_directories(elf32_dynamic_placement_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(elf32_dynamic_placement_test PRIVATE liba32android)
+
     add_executable(elf32_linker_metadata_test tests/elf32_linker_metadata.cpp)
     target_include_directories(elf32_linker_metadata_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(elf32_linker_metadata_test PRIVATE liba32android)
@@ -195,6 +200,7 @@ if(LIBA32ANDROID_BUILD_TESTS)
     add_test(NAME elf32_address_conflict COMMAND elf32_loader_test address_conflict)
     add_test(NAME elf32_load_plan COMMAND elf32_load_plan_test)
     add_test(NAME elf32_dynamic_array COMMAND elf32_dynamic_test)
+    add_test(NAME elf32_dynamic_placement COMMAND elf32_dynamic_placement_test)
     add_test(NAME elf32_linker_metadata_collection COMMAND elf32_linker_metadata_test)
     add_test(NAME elf32_linker_string_entry COMMAND elf32_linker_strings_test)
     add_test(NAME elf32_dependency_resolution COMMAND elf32_dependency_resolver_test)
