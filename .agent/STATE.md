@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-22
-Current phase: M4 continuation; recursive ELF32 dependency graph loading
+Current phase: M4 continuation; recursive ELF32 dependency graph loading merged, symbol-resolution feature next
 Integration branch: `bleeding`
-Last merged runtime PR: #31
-Runtime baseline commit: `2c3be26c05dff81be1f81c9565df5906c521a54c`
-Active runtime work: `005-elf32-dependency-loading` on existing draft PR #32 / `m4-elf32-dependency-loading`; T001-T004 PASSed pre-convergence CI #198 at `78665e000a67b559c694aef5b1e22f0742f360c0` after corrected CMake/CTest wiring, including the real fixture graph integration. T005 convergence is active and requires a new exact-head gate after code/docs/state cleanup.
+Last merged runtime PR: #32
+Runtime baseline commit: `17c2aa78535adbd2084c9396f525750e10c0eff8`
+Active runtime work: none. `005-elf32-dependency-loading` is DONE and squash-merged through PR #32. The next feature selected for specification is `006-elf32-symbol-resolution`; implementation has not started.
 
 ## Working
 
@@ -35,12 +35,13 @@ Active runtime work: `005-elf32-dependency-loading` on existing draft PR #32 / `
 - `src/elf/elf32_linker_metadata.*` now validates the first linker-facing metadata set: STRTAB/STRSZ, SYMTAB/SYMENT, REL/RELSZ/RELENT, SONAME, and ordered NEEDED offsets. Pointer-like STRTAB/SYMTAB/REL values are rebased exactly once with checked 32-bit arithmetic; declared guest ranges are validated read-only through `GuestMemory`; malformed duplicates/groups, entry sizes, REL sizes, offsets, overflows, and unreadable ranges are rejected.
 - `src/elf/elf32_linker_strings.*` now materializes bounded STRTAB entries plus optional SONAME and ordered/repeated NEEDED names. Every call requires an explicit caller-selected payload ceiling; reads remain through `GuestMemory`, use checked guest-address arithmetic, preserve raw bytes, and never mutate guest memory. Aggregate failure is all-or-nothing.
 - `src/elf/elf32_dependency_resolver.*` now acquires host-owned dependency image inputs through a caller-owned provider. It preserves ordered/repeated `DT_NEEDED` occurrences, forwards non-empty name bytes unchanged, distinguishes not-found from provider failure, validates non-empty provider identity/image, enforces explicit dependency-count/per-image/total-image ceilings, and returns no partial successful aggregate on failure. It deliberately does not choose guest bases or map dependency ELF images.
+- `src/elf/elf32_dependency_loader.*` now owns one transactional recursive loaded-object graph: provider identity is the per-call object key, ordered/repeated dependency edges are preserved, cycles/shared objects reuse existing mappings, first-seen dependencies are automatically placed and loaded as `ET_DYN`, graph-wide object/depth/occurrence/image/string limits are enforced, and aggregate failure rolls back graph-owned mappings in reverse load order.
 - The reproducible real ARMv7/Android fixture remains generated with pinned NDK r27d / API 26 inputs. It has four `PT_LOAD` segments with `p_align=0x4000`, BSS, one `PT_DYNAMIC`, and observed SONAME/REL/SYMTAB/STRTAB/GNU_HASH-related tags with no `DT_NEEDED`; the linker-string integration validates SONAME `liba32android_loader_fixture.so` with an explicit 64-byte ceiling and zero NEEDED names.
 - Project-local agent material is limited to the root `AGENTS.md` project overlay, durable `.agent/` project state/decisions, and project-owned `specs/<id>-<feature>/{requirements,design,tasks}.md` packages. Generic workflow/runtime/governance is centralized in `Millesant/.gpt` rather than copied into this repository.
 
 ## Partial / not implemented
 
-- Dependency graph loading is ACTIVE on PR #32: T001-T004 implementation and real-fixture integration PASSed corrected pre-convergence CI #198 with 39/39 CTest plus both Android jobs. T005 final convergence/exact-head validation remains pending. Android search-path/namespace/pathname policy and full dynamic symbol-table semantics remain NOT IMPLEMENTED.
+- Android search-path/namespace/pathname policy, process-wide link-map lifetime across graph-loading calls, dynamic symbol-table/hash lookup semantics, and relocation application remain NOT IMPLEMENTED.
 - ARM relocations: NOT IMPLEMENTED.
 - Symbol lookup/interposition: NOT IMPLEMENTED.
 - RELRO/TLS processing: NOT IMPLEMENTED.
@@ -50,9 +51,9 @@ Active runtime work: `005-elf32-dependency-loading` on existing draft PR #32 / `
 
 ## Validation
 
-### M4 recursive ELF32 dependency graph loading (active)
+### M4 recursive ELF32 dependency graph loading
 
-Draft PR #32 pre-convergence implementation head `78665e000a67b559c694aef5b1e22f0742f360c0` PASSed GitHub Actions run `35708717172` (#198). Linux A32 smoke compiled `src/elf/elf32_dependency_loader.cpp`, `tests/elf32_dependency_loader.cpp`, and the real-fixture graph test, then PASSed 39/39 CTest including `elf32_dependency_loading` and `elf32_real_dependency_loading`. Android x86_64 address-space probe and Android arm64-v8a cross-build jobs also PASSed. This validates T001-T004 at that SHA. T005 now converges public error surface, provider-identity indexing, README/architecture/spec/state; a new exact-head CI gate is required because these convergence edits change source and documentation.
+PR #32 final head `1ac47ef59f3570989d6fc07cd187c129cbe76588` PASSed GitHub Actions run `35712896172` (#199). Linux A32 smoke PASSed 39/39 CTest including `elf32_dependency_loading` and `elf32_real_dependency_loading`; Android x86_64 address-space probe and Android arm64-v8a cross-build also PASSed. PR #32 was then squash-merged to `bleeding` as `17c2aa78535adbd2084c9396f525750e10c0eff8`. The squash commit uses tree `ee6ce3fe283d7dac0b9665f4ca89def78ca02081`, identical to the validated PR head tree, so the merged source tree is the exact CI-validated tree.
 
 ### M4 automatic ET_DYN guest placement
 
@@ -154,10 +155,4 @@ No x86_64 16 KiB address-space blocker remains on the validated Fedora/KVM envir
 - The next feature-scale implementation must get a new `specs/<id>-<feature>/` requirements/design/tasks chain instead of extending `specs/000-current-baseline/`.
 
 
-- Spec `005-elf32-dependency-loading` is readiness-checked on `m4-elf32-dependency-loading`. It defines a new graph/loading layer above the unchanged acquisition resolver: root identity/object 0, provider-identity dedup/cycles, deterministic ordered edges, ET_DYN dependency placement + explicit-base loading, identity/image mismatch rejection, graph-wide bounds, and reverse-order rollback of graph-owned mappings. T001 implementation/tests are NOT RUN.
-
-- T001 of `005-elf32-dependency-loading` added `elf32_dependency_loader.{h,cpp}`, root-object graph/result contracts, ET_EXEC fixed root loading, ET_DYN automatic placement + exact-base loading, the existing dynamic → metadata → strings pipeline, and transactional rollback for post-load root failures. Previous CI #182 was green but did not compile the new loader because CMake wiring was absent; validation is superseded by the corrected wiring gate.
-
-- T002 adds ordered direct dependency acquisition through the unchanged resolver, provider-identity object reuse/aliasing, one ET_DYN mapping per first-seen identity, identity/image mismatch rejection, ET_EXEC dependency rejection, graph-wide direct object/occurrence/image limits, and aggregate rollback. Focused tests cover ordered/repeated edges, aliases, mismatch, provider/resource failures, and rollback. Earlier CI did not compile the new loader target; corrected exact-head validation is pending.
-
-- T003 implementation uses call-local Discovered/Loading/Loaded state, acquires each object's full direct dependency set before depth-first traversal, reuses Loading/Loaded identities for cycles/shared transitives, counts duplicate provider acquisitions against graph-wide image/occurrence budgets, and rolls back all successful graph-owned mappings in reverse load order on failure. Focused tests cover A→B→C, A→B→A, shared C reuse, max-depth failure, transitive ET_EXEC failure, recursive occurrence limits, recursive total-image limits, and preexisting-mapping preservation. CI #193 was green but ran only the existing 37 tests and did not exercise this loader; corrected exact-head validation is pending.
+- Spec `005-elf32-dependency-loading` is DONE and merged through PR #32 as `17c2aa78535adbd2084c9396f525750e10c0eff8`. Final head CI #199 PASSed all three jobs with 39/39 CTest, including focused recursive graph coverage and pinned real-fixture graph integration. The feature preserves the acquisition-only resolver boundary and adds provider-identity dedup/cycles, deterministic ordered edges, ET_DYN dependency placement/loading, graph-wide limits, and reverse-order rollback.

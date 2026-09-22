@@ -1,6 +1,6 @@
 # ELF32 dependency loading
 
-Status: implemented on draft PR #32; final T005 exact-head gate pending
+Status: complete; merged through PR #32
 
 ## Boundary
 
@@ -122,7 +122,7 @@ The pinned NDK ARMv7 fixture is also loaded through the graph API. Its integrati
 
 Pre-convergence head `78665e000a67b559c694aef5b1e22f0742f360c0` PASSed GitHub Actions run `35708717172` (#198): Linux A32 smoke passed 39/39 CTest including `elf32_dependency_loading` and `elf32_real_dependency_loading`; Android x86_64 address-space probe and Android arm64-v8a cross-build also passed.
 
-The final T005 convergence commit requires its own exact-head CI before the feature can be marked done.
+Final head `1ac47ef59f3570989d6fc07cd187c129cbe76588` PASSed GitHub Actions CI #199 / run `35708717172` with 39/39 CTest and both Android jobs. PR #32 was then squash-merged to `bleeding` as `17c2aa78535adbd2084c9396f525750e10c0eff8`, preserving the validated source tree.
 
 ## Deliberate limits
 

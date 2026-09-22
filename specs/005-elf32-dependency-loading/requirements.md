@@ -1,6 +1,6 @@
 # Requirements — ELF32 Dependency Graph Loading
 
-Status: implemented on draft PR #32; final T005 exact-head convergence gate pending
+Status: DONE; merged through PR #32 as `17c2aa78535adbd2084c9396f525750e10c0eff8`
 
 ## Goal
 
