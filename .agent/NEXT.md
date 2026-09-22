@@ -1,19 +1,24 @@
 # Next Work
 
-Repository state is merged on `bleeding` through PR #32 / runtime commit `17c2aa78535adbd2084c9396f525750e10c0eff8`. `005-elf32-dependency-loading` is DONE. Final PR-head CI #199 PASSed all three jobs with 39/39 CTest, and the squash merge preserved the exact validated source tree.
+Repository state is on `bleeding` at `9bb52b1e50bf818f6326424975582372db1353cd`; PR #32 / `005-elf32-dependency-loading` remains DONE. Feature `006-elf32-symbol-resolution` is now readiness-checked.
 
-1. Specify the next M4 feature: bounded ELF32 symbol resolution.
-   - Status: NEXT EXECUTABLE FEATURE SELECTED; spec package not yet created.
-   - New feature package: `specs/006-elf32-symbol-resolution/`.
-   - Existing prerequisites now available: validated/rebased `SYMTAB` + `STRTAB` metadata, bounded linker-string access, and an owned recursive dependency graph with deterministic object/edge order.
-   - Required boundary: add bounded symbol-table/hash consumption and graph-level lookup semantics without applying relocations yet.
-   - Required specification questions: symbol-table extent/count derivation, SysV/GNU hash handling, `st_name`/binding/type/visibility validation, undefined/absolute/common symbol treatment, weak-vs-global lookup behavior, graph lookup order/scope, resource limits, malformed-table failures, and which versioning semantics remain deferred.
-   - Non-goals for this feature: ARM relocation writes, PLT/JMPREL execution, TLS/RELRO, constructors/destructors, Android/bionic pathname/namespace policy, `dlopen`/unload, and guest execution.
-   - Exact next action: create readiness-checked `requirements.md -> design.md -> tasks.md` for `006`, then implement its smallest dependency-ordered slice.
-   - DoD for spec round: lookup inputs/ownership, bounded table/hash parsing, deterministic scope/order, weak/global/undefined behavior, error/resource model, compatibility boundaries, and validation are explicit with no unresolved blocker.
+1. T001 — add hash metadata and bounded dynamic-symbol indexing.
+   - Status: READY.
+   - Spec: `specs/006-elf32-symbol-resolution/{requirements,design,tasks}.md`.
+   - Scope: recognize/rebase `DT_HASH` and `DT_GNU_HASH`, add bounded SysV/GNU index parsing, derive a trustworthy dynamic-symbol count without section headers, and validate the complete implied `Elf32_Sym` range.
+   - Exact next action: implement `elf32_symbol_lookup.{h,cpp}`, extend linker metadata hash descriptors/tests, wire the focused host test into CMake/CTest, then run exact-head CI.
+   - DoD: T001 focused tests PASS, neighboring linker tests remain green, Android cross-build still compiles the new source, and durable task/state records the exact evidence.
 
-2. Capture an Android native crash backtrace/tombstone for the opt-in crash test when an accessible device channel is available.
-   - Status: BLOCKED on accessible Android device/environment.
+2. T002 — exact-name per-object symbol lookup.
+   - Status: BLOCKED on T001.
 
-3. Resolve the project license when the maintainer is ready to choose one.
-   - Status: BLOCKED on maintainer choice.
+3. T003 — deterministic graph-local BFS symbol lookup.
+   - Status: BLOCKED on T002.
+
+4. T004 — pinned real ARM32 GNU-hash fixture integration.
+   - Status: BLOCKED on T003.
+
+5. T005 — documentation/state convergence and final exact-head gate.
+   - Status: BLOCKED on T004.
+
+Android native tombstone/backtrace evidence remains BLOCKED on an accessible device environment. Project license remains BLOCKED on maintainer choice.

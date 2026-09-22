@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-22
-Current phase: M4 continuation; recursive ELF32 dependency graph loading merged, symbol-resolution feature next
+Current phase: M4 continuation; bounded ELF32 symbol resolution
 Integration branch: `bleeding`
 Last merged runtime PR: #32
-Runtime baseline commit: `17c2aa78535adbd2084c9396f525750e10c0eff8`
-Active runtime work: none. `005-elf32-dependency-loading` is DONE and squash-merged through PR #32. The next feature selected for specification is `006-elf32-symbol-resolution`; implementation has not started.
+Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
+Active runtime work: `006-elf32-symbol-resolution`; requirements/design/tasks are readiness-checked and T001 is READY. No feature-006 implementation has been validated yet.
 
 ## Working
 
