@@ -10,8 +10,12 @@
 
 namespace {
 
+using liba32android::elf::Elf32DependencyEdge;
+using liba32android::elf::Elf32DependencyGraph;
+using liba32android::elf::Elf32GraphSymbolLookupError;
 using liba32android::elf::Elf32HashTableMetadata;
 using liba32android::elf::Elf32LinkerMetadata;
+using liba32android::elf::Elf32LoadedDependencyObject;
 using liba32android::elf::Elf32StringTableMetadata;
 using liba32android::elf::Elf32ObjectSymbolLookupResult;
 using liba32android::elf::Elf32SymbolIndexError;
@@ -19,6 +23,7 @@ using liba32android::elf::Elf32SymbolLookupError;
 using liba32android::elf::Elf32SymbolLookupOptions;
 using liba32android::elf::Elf32SymbolTableMetadata;
 using liba32android::elf::build_elf32_symbol_index;
+using liba32android::elf::lookup_elf32_graph_symbol;
 using liba32android::elf::lookup_elf32_symbol;
 using liba32android::memory::LinearGuestMemory;
 
@@ -832,6 +837,276 @@ int test_lookup_is_read_only() {
     return 0;
 }
 
+struct GraphLayout {
+    std::uint32_t strings{};
+    std::uint32_t symbols{};
+    std::uint32_t hash{};
+};
+
+GraphLayout graph_layout(std::size_t slot) {
+    const std::uint32_t base =
+        0x8000U + static_cast<std::uint32_t>(slot) * 0x400U;
+    return GraphLayout{
+        .strings = base,
+        .symbols = base + 0x100U,
+        .hash = base + 0x200U,
+    };
+}
+
+bool write_string_at(LinearGuestMemory& memory,
+                     std::uint32_t string_table,
+                     std::uint32_t offset,
+                     std::string_view value) {
+    std::vector<std::uint8_t> bytes(value.begin(), value.end());
+    bytes.push_back(0);
+    return memory.write(string_table + offset, bytes);
+}
+
+bool write_symbol_at(LinearGuestMemory& memory,
+                     std::uint32_t symbol_table,
+                     std::uint32_t index,
+                     std::uint32_t name_offset,
+                     std::uint32_t value,
+                     std::uint8_t binding,
+                     std::uint8_t type,
+                     std::uint8_t visibility,
+                     std::uint16_t section_index) {
+    std::array<std::uint8_t, 16> bytes{};
+    const auto put_u32 = [&](std::size_t offset, std::uint32_t word) {
+        bytes[offset] = static_cast<std::uint8_t>(word);
+        bytes[offset + 1] = static_cast<std::uint8_t>(word >> 8U);
+        bytes[offset + 2] = static_cast<std::uint8_t>(word >> 16U);
+        bytes[offset + 3] = static_cast<std::uint8_t>(word >> 24U);
+    };
+    put_u32(0, name_offset);
+    put_u32(4, value);
+    put_u32(8, 4);
+    bytes[12] = static_cast<std::uint8_t>((binding << 4U) | (type & 0x0fU));
+    bytes[13] = visibility;
+    bytes[14] = static_cast<std::uint8_t>(section_index);
+    bytes[15] = static_cast<std::uint8_t>(section_index >> 8U);
+    return memory.write(symbol_table + index * 16U, bytes);
+}
+
+bool stage_graph_symbol(LinearGuestMemory& memory,
+                        Elf32LoadedDependencyObject& object,
+                        std::size_t slot,
+                        std::string_view name,
+                        std::uint32_t load_bias,
+                        std::uint32_t value,
+                        std::uint8_t binding = 1) {
+    const GraphLayout layout = graph_layout(slot);
+    object.identity = "graph-object-" + std::to_string(slot);
+    object.load.load_bias = load_bias;
+    object.linker_metadata.string_table =
+        Elf32StringTableMetadata{.guest_address = layout.strings, .size = 0x80};
+    object.linker_metadata.symbol_table =
+        Elf32SymbolTableMetadata{.guest_address = layout.symbols, .entry_size = 16};
+    object.linker_metadata.sysv_hash_table =
+        Elf32HashTableMetadata{.guest_address = layout.hash};
+
+    if (!write_string_at(memory, layout.strings, 1, name) ||
+        !write_symbol_at(memory, layout.symbols, 1, 1, value,
+                         binding, 2, 0, 1) ||
+        !write_u32(memory, layout.hash, 1) ||
+        !write_u32(memory, layout.hash + 4U, 2) ||
+        !write_u32(memory, layout.hash + 8U, 1) ||
+        !write_u32(memory, layout.hash + 12U, 0) ||
+        !write_u32(memory, layout.hash + 16U, 0)) {
+        return false;
+    }
+    return true;
+}
+
+void set_identity(Elf32LoadedDependencyObject& object, std::string_view identity) {
+    object.identity.assign(identity.begin(), identity.end());
+}
+
+int test_graph_bfs_ignores_object_vector_order() {
+    LinearGuestMemory memory(0x20000, kMemoryBase);
+    Elf32DependencyGraph graph;
+    graph.objects.resize(5);
+
+    set_identity(graph.objects[0], "A");
+    set_identity(graph.objects[3], "B");
+    set_identity(graph.objects[2], "C");
+    set_identity(graph.objects[1], "D");
+    set_identity(graph.objects[4], "E");
+
+    // Object-vector order is A,D,C,B,E, but dependency BFS is A,B,C,D,E.
+    if (!stage_graph_symbol(memory, graph.objects[1], 1, "target",
+                            0x1000, 0x111) ||
+        !stage_graph_symbol(memory, graph.objects[2], 2, "target",
+                            0x2000, 0x222)) {
+        return fail("could not stage graph BFS symbols");
+    }
+    graph.objects[1].identity = "D";
+    graph.objects[2].identity = "C";
+
+    graph.objects[0].dependencies = {
+        Elf32DependencyEdge{.requested_name = "B", .target_object = 3},
+        Elf32DependencyEdge{.requested_name = "C", .target_object = 2},
+    };
+    graph.objects[3].dependencies = {
+        Elf32DependencyEdge{.requested_name = "D", .target_object = 1},
+    };
+    graph.objects[2].dependencies = {
+        Elf32DependencyEdge{.requested_name = "E", .target_object = 4},
+    };
+
+    const auto result = lookup_elf32_graph_symbol(
+        memory, graph, 0, "target", options());
+    if (!result || result.symbol.object_index != 2 ||
+        result.symbol.symbol.guest_value != 0x2222) {
+        return fail("graph lookup used discovery/vector order instead of BFS edge order");
+    }
+    return 0;
+}
+
+int test_graph_cycles_shared_and_scope_limit() {
+    LinearGuestMemory memory(0x20000, kMemoryBase);
+    Elf32DependencyGraph graph;
+    graph.objects.resize(4);
+    set_identity(graph.objects[0], "A");
+    set_identity(graph.objects[1], "D");
+    set_identity(graph.objects[2], "C");
+    set_identity(graph.objects[3], "B");
+
+    if (!stage_graph_symbol(memory, graph.objects[1], 1, "target",
+                            0x3000, 0x123)) {
+        return fail("could not stage shared graph target");
+    }
+    graph.objects[1].identity = "D";
+
+    graph.objects[0].dependencies = {
+        Elf32DependencyEdge{.requested_name = "B", .target_object = 3},
+        Elf32DependencyEdge{.requested_name = "B-again", .target_object = 3},
+        Elf32DependencyEdge{.requested_name = "C", .target_object = 2},
+    };
+    graph.objects[3].dependencies = {
+        Elf32DependencyEdge{.requested_name = "D", .target_object = 1},
+    };
+    graph.objects[2].dependencies = {
+        Elf32DependencyEdge{.requested_name = "D-shared", .target_object = 1},
+    };
+    graph.objects[1].dependencies = {
+        Elf32DependencyEdge{.requested_name = "A-cycle", .target_object = 0},
+    };
+
+    const auto found = lookup_elf32_graph_symbol(
+        memory, graph, 0, "target", options());
+    if (!found || found.symbol.object_index != 1 ||
+        found.symbol.symbol.guest_value != 0x3123) {
+        return fail("cycle/shared dependency BFS lookup did not terminate correctly");
+    }
+
+    auto limited = options();
+    limited.max_scope_objects = 3;
+    const auto blocked = lookup_elf32_graph_symbol(
+        memory, graph, 0, "target", limited);
+    if (blocked.error != Elf32GraphSymbolLookupError::ScopeLimitExceeded ||
+        !blocked.failing_object.has_value() ||
+        *blocked.failing_object != 1) {
+        return fail("graph scope-object ceiling was not enforced deterministically");
+    }
+    return 0;
+}
+
+int test_graph_weak_first_and_malformed_earlier_object() {
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        Elf32DependencyGraph graph;
+        graph.objects.resize(3);
+        set_identity(graph.objects[0], "A");
+        if (!stage_graph_symbol(memory, graph.objects[1], 1, "target",
+                                0x1000, 0x100, 2) ||
+            !stage_graph_symbol(memory, graph.objects[2], 2, "target",
+                                0x2000, 0x200, 1)) {
+            return fail("could not stage weak/global graph symbols");
+        }
+        graph.objects[1].identity = "weak-B";
+        graph.objects[2].identity = "global-C";
+        graph.objects[0].dependencies = {
+            Elf32DependencyEdge{.requested_name = "B", .target_object = 1},
+            Elf32DependencyEdge{.requested_name = "C", .target_object = 2},
+        };
+
+        const auto result = lookup_elf32_graph_symbol(
+            memory, graph, 0, "target", options());
+        if (!result || result.symbol.object_index != 1 ||
+            result.symbol.symbol.symbol.binding != 2) {
+            return fail("later global incorrectly replaced earlier weak graph definition");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        Elf32DependencyGraph graph;
+        graph.objects.resize(3);
+        set_identity(graph.objects[0], "A");
+        set_identity(graph.objects[1], "malformed-B");
+
+        const GraphLayout bad = graph_layout(1);
+        graph.objects[1].linker_metadata.string_table =
+            Elf32StringTableMetadata{.guest_address = bad.strings, .size = 0x80};
+        graph.objects[1].linker_metadata.symbol_table =
+            Elf32SymbolTableMetadata{.guest_address = bad.symbols, .entry_size = 16};
+
+        if (!stage_graph_symbol(memory, graph.objects[2], 2, "target",
+                                0x2000, 0x200)) {
+            return fail("could not stage later valid graph symbol");
+        }
+        graph.objects[2].identity = "valid-C";
+        graph.objects[0].dependencies = {
+            Elf32DependencyEdge{.requested_name = "B", .target_object = 1},
+            Elf32DependencyEdge{.requested_name = "C", .target_object = 2},
+        };
+
+        const auto result = lookup_elf32_graph_symbol(
+            memory, graph, 0, "target", options());
+        if (result.error != Elf32GraphSymbolLookupError::IndexBuildFailed ||
+            !result.failing_object.has_value() ||
+            *result.failing_object != 1 ||
+            result.index_error != Elf32SymbolIndexError::MissingHashTable) {
+            return fail("malformed earlier searchable object was silently skipped");
+        }
+    }
+    return 0;
+}
+
+int test_graph_invalid_inputs_and_not_found() {
+    LinearGuestMemory memory(0x20000, kMemoryBase);
+    Elf32DependencyGraph graph;
+    graph.objects.resize(1);
+    set_identity(graph.objects[0], "A");
+
+    if (lookup_elf32_graph_symbol(memory, graph, 1, "target", options()).error !=
+        Elf32GraphSymbolLookupError::InvalidGraphStart) {
+        return fail("invalid graph start index was not rejected");
+    }
+
+    auto zero_scope = options();
+    zero_scope.max_scope_objects = 0;
+    if (lookup_elf32_graph_symbol(memory, graph, 0, "target", zero_scope).error !=
+        Elf32GraphSymbolLookupError::InvalidOptions) {
+        return fail("zero graph scope limit was not rejected");
+    }
+
+    if (lookup_elf32_graph_symbol(memory, graph, 0, "target", options()).error !=
+        Elf32GraphSymbolLookupError::SymbolNotFound) {
+        return fail("graph with no searchable objects did not return not-found");
+    }
+
+    graph.objects[0].dependencies = {
+        Elf32DependencyEdge{.requested_name = "bad", .target_object = 9},
+    };
+    if (lookup_elf32_graph_symbol(memory, graph, 0, "target", options()).error !=
+        Elf32GraphSymbolLookupError::InvalidGraphEdge) {
+        return fail("invalid dependency edge target was not rejected");
+    }
+    return 0;
+}
+
 }  // namespace
 
 int main() {
@@ -850,5 +1125,9 @@ int main() {
     if (const int status = test_matching_unsupported_forms(); status != 0) return status;
     if (const int status = test_version_string_and_chain_failures(); status != 0) return status;
     if (const int status = test_lookup_is_read_only(); status != 0) return status;
+    if (const int status = test_graph_bfs_ignores_object_vector_order(); status != 0) return status;
+    if (const int status = test_graph_cycles_shared_and_scope_limit(); status != 0) return status;
+    if (const int status = test_graph_weak_first_and_malformed_earlier_object(); status != 0) return status;
+    if (const int status = test_graph_invalid_inputs_and_not_found(); status != 0) return status;
     return 0;
 }

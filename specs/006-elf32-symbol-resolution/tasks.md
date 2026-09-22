@@ -45,7 +45,7 @@
   - string/read/value overflow failures;
   - unsupported matching symbol forms;
   - no guest mutation.
-- Status: ACTIVE — exact-name per-object lookup, eligibility/value semantics, versioning guard, and focused tests are implemented for the next exact-head gate.
+- Status: DONE — exact-head CI #204 / run `35759553586` PASSed at `5f21c8ed48f458f7f3d909fff39523d9ebf9b7e0`: Linux passed 40/40 CTest including the expanded `elf32_symbol_index`; Android x86_64 and arm64-v8a jobs also PASSed.
 
 ## T003 — Add deterministic graph-local breadth-first lookup
 
@@ -68,7 +68,7 @@
   - earlier malformed object failure;
   - scope limit;
   - read-only behavior.
-- Status: BLOCKED — depends on T002
+- Status: ACTIVE — deterministic graph-local BFS lookup, cycle/shared-object handling, first-definition behavior, scope limits, and focused tests are implemented for the next exact-head gate.
 
 ## T004 — Integrate the pinned real ARM32 GNU-hash fixture
 

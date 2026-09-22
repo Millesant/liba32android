@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
 
+#include "elf/elf32_dependency_loader.h"
 #include "elf/elf32_linker_metadata.h"
 #include "elf/elf32_linker_strings.h"
 #include "memory/guest_memory.h"
@@ -123,6 +125,35 @@ struct Elf32ObjectSymbolLookupResult {
     }
 };
 
+struct Elf32GraphResolvedSymbol {
+    std::size_t object_index{};
+    Elf32ResolvedSymbol symbol;
+};
+
+enum class Elf32GraphSymbolLookupError : std::uint8_t {
+    None = 0,
+    InvalidOptions,
+    InvalidGraphStart,
+    InvalidGraphEdge,
+    ScopeLimitExceeded,
+    IndexBuildFailed,
+    ObjectLookupFailed,
+    SymbolNotFound,
+};
+
+struct Elf32GraphSymbolLookupResult {
+    Elf32GraphSymbolLookupError error{Elf32GraphSymbolLookupError::None};
+    std::optional<std::size_t> failing_object;
+    Elf32SymbolIndexError index_error{Elf32SymbolIndexError::None};
+    Elf32SymbolLookupError lookup_error{Elf32SymbolLookupError::None};
+    Elf32LinkerStringError string_error{Elf32LinkerStringError::None};
+    Elf32GraphResolvedSymbol symbol;
+
+    [[nodiscard]] explicit operator bool() const noexcept {
+        return error == Elf32GraphSymbolLookupError::None;
+    }
+};
+
 // Build a read-only, bounded index for one already-loaded object's dynamic
 // symbol table. No section headers or host pointers are used. The function
 // reads only through GuestMemory, never mutates guest bytes/mappings, and
@@ -148,7 +179,22 @@ struct Elf32ObjectSymbolLookupResult {
     std::string_view name,
     const Elf32SymbolLookupOptions& options);
 
+// Search one graph-local breadth-first dependency closure. The start object is
+// visited first, then direct/transitive dependency targets in stored edge
+// order, each object at most once. Object-vector discovery order is not a
+// lookup scope. The first eligible definition wins, including an earlier weak
+// definition. Objects without SYMTAB are skipped; malformed/versioned
+// searchable objects fail instead of being skipped. The operation is
+// read-only and bounded by max_scope_objects.
+[[nodiscard]] Elf32GraphSymbolLookupResult lookup_elf32_graph_symbol(
+    const memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t start_object,
+    std::string_view name,
+    const Elf32SymbolLookupOptions& options);
+
 [[nodiscard]] const char* to_string(Elf32SymbolIndexError error) noexcept;
 [[nodiscard]] const char* to_string(Elf32SymbolLookupError error) noexcept;
+[[nodiscard]] const char* to_string(Elf32GraphSymbolLookupError error) noexcept;
 
 }  // namespace liba32android::elf
