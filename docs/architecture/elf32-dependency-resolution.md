@@ -36,10 +36,12 @@ caller/platform Elf32DependencyProvider
     v
 host-owned dependency ELF image inputs
     |
-    +----> elf32_dynamic_placement -> explicit dynamic_base -> elf32_loader
-    |
     v
-future recursive graph/link-map ownership
+elf32_dependency_loader
+    | provider-identity reuse / cycles / ordered edges
+    | automatic ET_DYN placement -> explicit-base elf32_loader
+    v
+owned loaded-object dependency graph
 ```
 
 The generic ELF core therefore remains independent from Android filesystem layout, APK packaging, namespace/search-path policy, and application profiles.
@@ -117,15 +119,9 @@ The ELF loader still consumes an explicit `Elf32LoadOptions::dynamic_base` for `
 
 This dependency-resolution layer deliberately does not call either placement or `load_elf32`; it remains an acquisition-only boundary.
 
-Before general recursive dependency loading can begin, a later feature must define:
+The higher `elf32_dependency_loader` layer now consumes this resolver's host-owned results. Within one graph-loading call it uses provider identity as the object key, preserves ordered/repeated dependency edges, terminates cycles by reusing already known identities, automatically places/loads first-seen `ET_DYN` dependencies, runs each new object's dynamic → metadata → string pipeline, and rolls back graph-owned mappings on aggregate failure.
 
-- recursive dependency-graph ownership and loaded-object lifetime;
-- cycle and deduplication semantics;
-- link-map / namespace identity;
-- when an acquired image is placed/mapped and its own `DT_NEEDED` entries are traversed;
-- the order in which mapped objects proceed into symbol and relocation processing.
-
-This preserves the project invariant that guest virtual addresses are logical 32-bit values independent of host-pointer identity.
+The resolver itself still does none of that work. This preserves the acquisition boundary and the project invariant that guest virtual addresses are logical 32-bit values independent of host-pointer identity. Process-wide link-map lifetime, Android requester-sensitive lookup policy, symbols, relocations, and execution remain downstream concerns.
 
 ## Validation evidence
 

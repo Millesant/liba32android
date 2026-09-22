@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <limits>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -158,23 +159,13 @@ enum class ObjectState : std::uint8_t {
     return {};
 }
 
-[[nodiscard]] std::size_t find_identity(
-    const Elf32DependencyGraph& graph,
-    const std::string& identity) {
-    for (std::size_t index = 0; index < graph.objects.size(); ++index) {
-        if (graph.objects[index].identity == identity) {
-            return index;
-        }
-    }
-    return graph.objects.size();
-}
-
 struct GraphLoadContext {
     memory::MappedGuestMemory& memory;
     Elf32DependencyProvider& provider;
     const Elf32DependencyLoadOptions& options;
 
     Elf32DependencyGraph graph;
+    std::unordered_map<std::string, std::size_t> object_indices;
     std::vector<ObjectState> states;
     std::vector<Elf32LoadResult> successful_loads;
     std::uint64_t dependency_occurrences{};
@@ -265,8 +256,10 @@ struct GraphLoadContext {
         total_image_bytes += acquired_bytes;
 
         for (const auto& dependency : resolved.dependencies.ordered) {
+            const auto known = object_indices.find(dependency.identity);
             std::size_t target_index =
-                find_identity(graph, dependency.identity);
+                known == object_indices.end() ? graph.objects.size()
+                                              : known->second;
 
             if (target_index != graph.objects.size()) {
                 if (graph.objects[target_index].image != dependency.image) {
@@ -312,6 +305,8 @@ struct GraphLoadContext {
             child.image = dependency.image;
             graph.objects.push_back(std::move(child));
             states.push_back(ObjectState::Discovered);
+            object_indices.emplace(
+                graph.objects[target_index].identity, target_index);
 
             graph.objects[index].dependencies.push_back(
                 Elf32DependencyEdge{
@@ -371,6 +366,7 @@ Elf32DependencyLoadResult load_elf32_dependency_graph(
     root_object.identity = std::move(root.identity);
     root_object.image = std::move(root.image);
     context.graph.objects.push_back(std::move(root_object));
+    context.object_indices.emplace(context.graph.objects.front().identity, 0U);
     context.states.push_back(ObjectState::Discovered);
 
     auto result = context.process_object(0, 0, false);
@@ -405,8 +401,6 @@ const char* to_string(Elf32DependencyLoadError error) noexcept {
         return "too_many_dependency_occurrences";
     case Elf32DependencyLoadError::DependencyResolveFailed:
         return "dependency_resolve_failed";
-    case Elf32DependencyLoadError::DependenciesNotImplemented:
-        return "dependencies_not_implemented";
     case Elf32DependencyLoadError::IdentityImageMismatch:
         return "identity_image_mismatch";
     case Elf32DependencyLoadError::InvalidImage:

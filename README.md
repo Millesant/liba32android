@@ -6,7 +6,7 @@ The project is intentionally layered: CPU execution, guest memory, ELF32 mapping
 
 ## Current phase
 
-The current runtime baseline is C++20/CMake with Dynarmic pinned behind `src/cpu/`. The guest address space, ELF32 mapping/structural parsing, validated linker metadata, bounded SONAME/`DT_NEEDED` string consumption, bounded provider-backed dependency image acquisition, and deterministic automatic `ET_DYN` guest-VA placement are implemented. Recursive dependency mapping/graph semantics, symbol semantics, and relocation application remain later linker work.
+The current runtime baseline is C++20/CMake with Dynarmic pinned behind `src/cpu/`. The guest address space, ELF32 mapping/structural parsing, validated linker metadata, bounded SONAME/`DT_NEEDED` string consumption, bounded provider-backed dependency image acquisition, deterministic automatic `ET_DYN` guest-VA placement, and transactional recursive dependency-graph loading are implemented on the active feature branch. Symbol semantics and relocation application remain later linker work.
 
 Implemented in the current baseline:
 
@@ -20,12 +20,13 @@ Implemented in the current baseline:
 - validated linker metadata for STRTAB/STRSZ, SYMTAB/SYMENT, REL/RELSZ/RELENT, SONAME, and ordered `DT_NEEDED` offsets, including checked load-bias rebasing and guest-range validation;
 - bounded STRTAB string consumption with explicit caller-selected per-string limits, optional SONAME materialization, and ordered/repeated `DT_NEEDED` name preservation;
 - provider-backed dependency image acquisition with exact ordered request forwarding, duplicate preservation, distinct provider errors, opaque provider identities, and explicit dependency-count/per-image/total-image resource ceilings;
+- a transactional dependency-graph loader that uses provider identity as the per-call object key, preserves ordered/repeated edges, reuses cycles and aliases without remapping, automatically places/loads `ET_DYN` dependencies, enforces graph-wide bounds, retains owned object metadata/images, and rolls back graph-owned mappings on aggregate failure;
 - a shared immutable ELF32 load plan plus deterministic, bounded, non-mutating low-to-high first-fit `ET_DYN` placement that preserves host-page and `PT_LOAD p_align` constraints while returning an explicit loader-ready `dynamic_base`;
-- a reproducible Android NDK ARMv7 ELF fixture used for loader, dynamic-array, linker-metadata, linker-string, zero-dependency resolver, and automatic-placement integration coverage.
+- a reproducible Android NDK ARMv7 ELF fixture used for loader, dynamic-array, linker-metadata, linker-string, zero-dependency resolver, automatic-placement, and dependency-graph integration coverage.
 
 Still outside the implemented baseline:
 
-- wiring acquired dependency images through placement/loading, recursive graph/link-map/cycle/dedup semantics, and Android search-path/namespace/pathname policy;
+- Android search-path/namespace/pathname policy and process-wide loaded-object/link-map lifetime across independent graph-loading calls;
 - dynamic symbol-table consumption, hash lookup, and symbol lookup/interposition;
 - ARM relocations;
 - RELRO and TLS processing;
@@ -34,6 +35,8 @@ Still outside the implemented baseline:
 - general application/game compatibility.
 
 ## Validation evidence
+
+Draft PR #32 pre-convergence implementation head `78665e000a67b559c694aef5b1e22f0742f360c0` passed GitHub Actions run `35708717172` (#198): Linux A32 smoke built the graph-loader source/tests and passed 39/39 CTest including `elf32_dependency_loading` and `elf32_real_dependency_loading`; Android x86_64 address-space probe and Android arm64-v8a cross-build jobs also passed. The final T005 convergence head still requires its own exact-head gate.
 
 Post-merge GitHub Actions run `35204765081` (#73) on `bleeding` commit `ac008b2d2a3158ffa4cb285e88cfabacea2ca4a2` is **PASS**:
 
@@ -60,4 +63,4 @@ GitHub Actions also cross-builds the shared runtime and Android diagnostics for 
 
 The maintainer's generic agent workflow, runtime capability rules, and governance are centralized in `Millesant/.gpt` and are intentionally not vendored into this repository. `AGENTS.md` is only the project-specific overlay. Durable project continuation state lives under `.agent/`, while feature-scale project specifications use the requirements -> design -> tasks packages under `specs/`; `specs/000-current-baseline/` converts the completed runtime work through PR #11 into that structure.
 
-Architecture and evidence details remain under `docs/architecture/` and `docs/research/`. The current linker boundaries are documented in `docs/architecture/elf32-linker-metadata.md`, `docs/architecture/elf32-linker-strings.md`, and `docs/architecture/elf32-dependency-resolution.md`.
+Architecture and evidence details remain under `docs/architecture/` and `docs/research/`. The current linker boundaries are documented in `docs/architecture/elf32-linker-metadata.md`, `docs/architecture/elf32-linker-strings.md`, `docs/architecture/elf32-dependency-resolution.md`, and `docs/architecture/elf32-dependency-loading.md`.

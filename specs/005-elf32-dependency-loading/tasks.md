@@ -19,7 +19,7 @@
   - invalid root/options/resource failures occur before guest mutation;
   - post-load pipeline failure removes root mappings;
   - unrelated preexisting mapping remains unchanged.
-- Status: IMPLEMENTED — prior CI did not compile or execute the dependency-loader code because its source/test target was missing from CMake/CTest. Build/test wiring is corrected on the current workstream and exact-head CI must revalidate this task.
+- Status: IMPLEMENTED — corrected wiring and behavior PASSed pre-convergence CI #198 at `78665e000a67b559c694aef5b1e22f0742f360c0` with 39/39 CTest; the final T005 convergence head must revalidate after code/docs cleanup.
 
 ## T002 — Load direct dependencies with identity-based graph reuse
 - Requirements: R3-R8, R10-R12 / AC3, AC5, AC6, AC8-AC10, AC12, AC14
@@ -40,7 +40,7 @@
   - equal identity + different bytes -> explicit failure + rollback;
   - ET_EXEC dependency rejection + rollback;
   - provider/resource failures expose no partial graph.
-- Status: IMPLEMENTED — direct dependency behavior and focused tests exist, but earlier green CI did not compile or execute the dependency-loader target. Exact-head CI after corrected CMake/CTest wiring is required.
+- Status: IMPLEMENTED — direct dependency behavior PASSed pre-convergence CI #198; final exact-head T005 revalidation remains required after convergence cleanup.
 
 ## T003 — Add bounded recursion, cycles, and aggregate rollback
 - Requirements: R3, R4, R8-R11 / AC4, AC7, AC10, AC11
@@ -60,7 +60,7 @@
   - max-depth failure is deterministic;
   - later transitive acquisition/parse/placement/load failure removes all earlier graph-owned mappings;
   - unrelated preexisting guest mappings remain mapped with original permissions.
-- Status: IMPLEMENTED — recursion/cycle/rollback behavior and focused tests exist, but CI #193 ran only the pre-existing 37-test suite; exact-head CI after corrected CMake/CTest wiring is required.
+- Status: IMPLEMENTED — recursion/cycle/rollback behavior PASSed pre-convergence CI #198; final exact-head T005 revalidation remains required after convergence cleanup.
 
 ## T004 — Integrate the pinned real ARM32 fixture
 - Requirements: R5, R6, R11-R13 / AC15
@@ -77,7 +77,7 @@
   - zero provider calls PASS;
   - required alignment remains `0x4000`;
   - existing real-fixture loader/dynamic/metadata/string/resolver tests remain PASS.
-- Status: BLOCKED — waits for corrected exact-head T001-T003 build/test validation.
+- Status: IMPLEMENTED — `elf32_real_dependency_loading` PASSed pre-convergence CI #198 with the pinned fixture, zero provider calls/edges, preserved SONAME, and `0x4000` placement alignment; final exact-head T005 revalidation remains required.
 
 ## T005 — Converge architecture, durable state, and exact-head CI
 - Requirements: all / AC1-AC16
@@ -92,7 +92,7 @@
   - Android x86_64 address-space probe cross-build PASS;
   - Android arm64-v8a runtime/diagnostics cross-build PASS;
   - requirements/design/code/tests/docs/state convergence has no unrecorded material gap.
-- Status: TODO
+- Status: ACTIVE — architecture/docs/state/spec convergence is in progress; exact-head final CI is the next gate.
 
 ## Readiness Check
 

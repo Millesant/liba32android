@@ -60,7 +60,6 @@ enum class Elf32DependencyLoadError : std::uint8_t {
     MaxDepthExceeded,
     TooManyDependencyOccurrences,
     DependencyResolveFailed,
-    DependenciesNotImplemented,
     IdentityImageMismatch,
     InvalidImage,
     DependencyNotDynamic,

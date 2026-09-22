@@ -5,7 +5,7 @@ Current phase: M4 continuation; recursive ELF32 dependency graph loading
 Integration branch: `bleeding`
 Last merged runtime PR: #31
 Runtime baseline commit: `2c3be26c05dff81be1f81c9565df5906c521a54c`
-Active runtime work: `005-elf32-dependency-loading` on existing draft PR #32 / `m4-elf32-dependency-loading`; T001-T003 are implemented, but their earlier CI claims are invalidated because the dependency-loader source/test target was not wired into CMake/CTest. Corrected exact-head validation is pending before T004.
+Active runtime work: `005-elf32-dependency-loading` on existing draft PR #32 / `m4-elf32-dependency-loading`; T001-T004 PASSed pre-convergence CI #198 at `78665e000a67b559c694aef5b1e22f0742f360c0` after corrected CMake/CTest wiring, including the real fixture graph integration. T005 convergence is active and requires a new exact-head gate after code/docs/state cleanup.
 
 ## Working
 
@@ -40,7 +40,7 @@ Active runtime work: `005-elf32-dependency-loading` on existing draft PR #32 / `
 
 ## Partial / not implemented
 
-- Dependency graph loading is ACTIVE on PR #32: T001-T003 implementation/tests exist, but prior green CI did not compile or execute the new loader because CMake/CTest wiring was missing. Corrected exact-head validation is pending; real-fixture graph integration (T004) and final convergence (T005) remain pending. Android search-path/namespace/pathname policy and full dynamic symbol-table semantics remain NOT IMPLEMENTED.
+- Dependency graph loading is ACTIVE on PR #32: T001-T004 implementation and real-fixture integration PASSed corrected pre-convergence CI #198 with 39/39 CTest plus both Android jobs. T005 final convergence/exact-head validation remains pending. Android search-path/namespace/pathname policy and full dynamic symbol-table semantics remain NOT IMPLEMENTED.
 - ARM relocations: NOT IMPLEMENTED.
 - Symbol lookup/interposition: NOT IMPLEMENTED.
 - RELRO/TLS processing: NOT IMPLEMENTED.
@@ -49,6 +49,10 @@ Active runtime work: `005-elf32-dependency-loading` on existing draft PR #32 / `
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### M4 recursive ELF32 dependency graph loading (active)
+
+Draft PR #32 pre-convergence implementation head `78665e000a67b559c694aef5b1e22f0742f360c0` PASSed GitHub Actions run `35708717172` (#198). Linux A32 smoke compiled `src/elf/elf32_dependency_loader.cpp`, `tests/elf32_dependency_loader.cpp`, and the real-fixture graph test, then PASSed 39/39 CTest including `elf32_dependency_loading` and `elf32_real_dependency_loading`. Android x86_64 address-space probe and Android arm64-v8a cross-build jobs also PASSed. This validates T001-T004 at that SHA. T005 now converges public error surface, provider-identity indexing, README/architecture/spec/state; a new exact-head CI gate is required because these convergence edits change source and documentation.
 
 ### M4 automatic ET_DYN guest placement
 
