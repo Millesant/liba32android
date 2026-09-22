@@ -19,7 +19,7 @@
   - invalid root/options/resource failures occur before guest mutation;
   - post-load pipeline failure removes root mappings;
   - unrelated preexisting mapping remains unchanged.
-- Status: DONE — exact-head CI #182 PASS on `9a1d5bf4e97656724fdb7d649197af0d8cdd1ed8`; Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all PASS. Focused `elf32_dependency_loading_root` coverage is included in the Linux test step.
+- Status: IMPLEMENTED — prior CI did not compile or execute the dependency-loader code because its source/test target was missing from CMake/CTest. Build/test wiring is corrected on the current workstream and exact-head CI must revalidate this task.
 
 ## T002 — Load direct dependencies with identity-based graph reuse
 - Requirements: R3-R8, R10-R12 / AC3, AC5, AC6, AC8-AC10, AC12, AC14
@@ -40,7 +40,7 @@
   - equal identity + different bytes -> explicit failure + rollback;
   - ET_EXEC dependency rejection + rollback;
   - provider/resource failures expose no partial graph.
-- Status: DONE — implementation committed at `8a852f6ec328aa3acf8add6d13f0b7ec51f74482`; superseded implementation-head CI #185 was cancelled after checkpoint commits advanced the PR head. Latest containing head `1d85b223fe8fb6ef4fd1c89806c17afd2811e219` PASSed CI #187: Linux A32 smoke (including Test), Android x86_64 address-space probe, and Android arm64-v8a cross-build all PASS.
+- Status: IMPLEMENTED — direct dependency behavior and focused tests exist, but earlier green CI did not compile or execute the dependency-loader target. Exact-head CI after corrected CMake/CTest wiring is required.
 
 ## T003 — Add bounded recursion, cycles, and aggregate rollback
 - Requirements: R3, R4, R8-R11 / AC4, AC7, AC10, AC11
@@ -60,7 +60,7 @@
   - max-depth failure is deterministic;
   - later transitive acquisition/parse/placement/load failure removes all earlier graph-owned mappings;
   - unrelated preexisting guest mappings remain mapped with original permissions.
-- Status: DONE — recursive graph implementation and focused recursion/cycle/rollback coverage are contained in head `61c9ee214d1d8a965be9a1f187b76b894b942002`; CI #193 PASSed Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build.
+- Status: IMPLEMENTED — recursion/cycle/rollback behavior and focused tests exist, but CI #193 ran only the pre-existing 37-test suite; exact-head CI after corrected CMake/CTest wiring is required.
 
 ## T004 — Integrate the pinned real ARM32 fixture
 - Requirements: R5, R6, R11-R13 / AC15
@@ -77,7 +77,7 @@
   - zero provider calls PASS;
   - required alignment remains `0x4000`;
   - existing real-fixture loader/dynamic/metadata/string/resolver tests remain PASS.
-- Status: READY — T003 validation gate satisfied by CI #193.
+- Status: BLOCKED — waits for corrected exact-head T001-T003 build/test validation.
 
 ## T005 — Converge architecture, durable state, and exact-head CI
 - Requirements: all / AC1-AC16

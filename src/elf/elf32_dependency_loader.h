@@ -92,11 +92,10 @@ struct Elf32DependencyLoadResult {
     }
 };
 
-// Load a root plus its direct dependency set transactionally. T002 preserves
-// ordered/repeated edges, reuses equal provider identities, and loads each
-// first-seen dependency as ET_DYN. Recursive traversal of dependency objects'
-// own DT_NEEDED entries is added by T003; encountering one currently fails
-// explicitly and rolls back all graph-owned mappings.
+// Load a root plus its transitive dependency graph transactionally. Ordered
+// and repeated edges are preserved, equal provider identities reuse one
+// object, cycles terminate by reusing known objects, and every mapping owned
+// by the call is rolled back if the aggregate operation fails.
 [[nodiscard]] Elf32DependencyLoadResult load_elf32_dependency_graph(
     memory::MappedGuestMemory& memory,
     Elf32DependencyLoadSource root,
