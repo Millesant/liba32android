@@ -1,6 +1,6 @@
 # Current State
 
-Last updated: 2026-09-21
+Last updated: 2026-09-22
 Current phase: M4 continuation; automatic ET_DYN guest placement merged
 Integration branch: `bleeding`
 Last merged runtime PR: #31
@@ -36,7 +36,7 @@ Active runtime work: none selected; `004-elf32-dynamic-placement` is DONE and me
 - `src/elf/elf32_linker_strings.*` now materializes bounded STRTAB entries plus optional SONAME and ordered/repeated NEEDED names. Every call requires an explicit caller-selected payload ceiling; reads remain through `GuestMemory`, use checked guest-address arithmetic, preserve raw bytes, and never mutate guest memory. Aggregate failure is all-or-nothing.
 - `src/elf/elf32_dependency_resolver.*` now acquires host-owned dependency image inputs through a caller-owned provider. It preserves ordered/repeated `DT_NEEDED` occurrences, forwards non-empty name bytes unchanged, distinguishes not-found from provider failure, validates non-empty provider identity/image, enforces explicit dependency-count/per-image/total-image ceilings, and returns no partial successful aggregate on failure. It deliberately does not choose guest bases or map dependency ELF images.
 - The reproducible real ARMv7/Android fixture remains generated with pinned NDK r27d / API 26 inputs. It has four `PT_LOAD` segments with `p_align=0x4000`, BSS, one `PT_DYNAMIC`, and observed SONAME/REL/SYMTAB/STRTAB/GNU_HASH-related tags with no `DT_NEEDED`; the linker-string integration validates SONAME `liba32android_loader_fixture.so` with an explicit 64-byte ceiling and zero NEEDED names.
-- Repository workflow state uses root `AGENTS.md`, durable `.agent/` files, and `specs/<id>-<feature>/{requirements,design,tasks}.md` for feature-scale work. `specs/000-current-baseline/` converts the already implemented work through PR #11 into that structure.
+- Project-local agent material is limited to the root `AGENTS.md` project overlay, durable `.agent/` project state/decisions, and project-owned `specs/<id>-<feature>/{requirements,design,tasks}.md` packages. Generic workflow/runtime/governance is centralized in `Millesant/.gpt` rather than copied into this repository.
 
 ## Partial / not implemented
 
@@ -149,4 +149,4 @@ No x86_64 16 KiB address-space blocker remains on the validated Fedora/KVM envir
 - Real Android/AArch64 runtime behavior still requires Termux/device execution; the user prefers downloading the CI-produced runtime-smoke artifact for those runs.
 - The next feature-scale implementation must get a new `specs/<id>-<feature>/` requirements/design/tasks chain instead of extending `specs/000-current-baseline/`.
 
-- Branch hygiene policy: keep one scoped branch per substantive feature/fix PR, avoid standalone reconciliation branches, and delete merged source branches when supported. Current connector can list/update refs but does not expose delete-ref, so remote branch deletion is externally BLOCKED in-chat.
+- Branch model: `bleeding` is the integration branch. There is no project-level branch-per-feature or PR-per-change mandate; branch/PR decisions defer to current user instruction, repository protection/conventions, and central guardrails. Transient connector capabilities are not durable project state.

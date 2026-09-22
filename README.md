@@ -56,8 +56,8 @@ ctest --test-dir build --output-on-failure
 
 GitHub Actions also cross-builds the shared runtime and Android diagnostics for `arm64-v8a` with NDK `27.3.13750724`.
 
-## Project workflow
+## Project workflow metadata
 
-Repository-local agent rules live in `AGENTS.md`. Durable continuation state lives under `.agent/`. Feature-scale work uses the requirements -> design -> tasks packages under `specs/`; `specs/000-current-baseline/` converts the completed runtime work through PR #11 into that structure.
+The maintainer's generic agent workflow, runtime capability rules, and governance are centralized in `Millesant/.gpt` and are intentionally not vendored into this repository. `AGENTS.md` is only the project-specific overlay. Durable project continuation state lives under `.agent/`, while feature-scale project specifications use the requirements -> design -> tasks packages under `specs/`; `specs/000-current-baseline/` converts the completed runtime work through PR #11 into that structure.
 
 Architecture and evidence details remain under `docs/architecture/` and `docs/research/`. The current linker boundaries are documented in `docs/architecture/elf32-linker-metadata.md`, `docs/architecture/elf32-linker-strings.md`, and `docs/architecture/elf32-dependency-resolution.md`.

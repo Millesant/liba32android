@@ -4,7 +4,7 @@ Repository state is merged on `bleeding` through PR #31 / runtime commit `2c3be2
 
 1. Specify and implement the next M4 feature: recursive ELF32 dependency graph/loading.
    - Status: NEXT EXECUTABLE FEATURE SELECTED; spec package not yet created.
-   - New feature package: `specs/005-elf32-dependency-loading/` on one substantive branch/PR (planned branch: `m4-elf32-dependency-loading`).
+   - New feature package: `specs/005-elf32-dependency-loading/`.
    - Existing prerequisites now available: provider-backed dependency image acquisition from `003`, shared load planning + automatic ET_DYN placement from `004`.
    - Required boundary: keep `elf32_dependency_resolver` acquisition-only; add a new higher layer that owns loaded-object graph/lifetime semantics.
    - Intended first design: provider identity is the opaque object key within one graph-loading operation; repeated/cyclic references reuse an already-known object instead of remapping it; each new ET_DYN image is automatically placed then passed to the unchanged explicit-base `load_elf32`; each newly loaded object is parsed through dynamic → linker metadata → linker strings before its dependencies are traversed.
@@ -29,4 +29,3 @@ Repository state is merged on `bleeding` through PR #31 / runtime commit `2c3be2
    - Goal: make project redistribution terms explicit while retaining dependency-license auditability.
    - DoD: license file and README/dependency notices are consistent.
 
-Branch hygiene: do not create standalone `state/reconcile-*` branches. Use one branch per substantive feature/fix PR, close state before merge when practical, and delete merged source branches when repository tooling supports it.
