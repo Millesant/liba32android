@@ -1,6 +1,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -16,6 +17,8 @@ using liba32android::elf::Elf32DependencyLoadSource;
 using liba32android::elf::Elf32DependencyProvider;
 using liba32android::elf::Elf32DependencyProviderError;
 using liba32android::elf::Elf32DependencyProviderResult;
+using liba32android::elf::Elf32DependencyResolveError;
+using liba32android::elf::Elf32DependencySource;
 using liba32android::elf::Elf32DynamicError;
 using liba32android::elf::load_elf32_dependency_graph;
 using liba32android::memory::MappedGuestMemory;
@@ -29,6 +32,13 @@ constexpr std::size_t kSecondProgramHeader =
     kProgramHeaderOffset + kProgramHeaderSize;
 constexpr std::size_t kThirdProgramHeader =
     kProgramHeaderOffset + 2 * kProgramHeaderSize;
+
+constexpr std::uint32_t kPtLoad = 1;
+constexpr std::uint32_t kPtDynamic = 2;
+constexpr std::uint32_t kDtNull = 0;
+constexpr std::uint32_t kDtNeeded = 1;
+constexpr std::uint32_t kDtStrtab = 5;
+constexpr std::uint32_t kDtStrsz = 10;
 
 int fail(const char* message) {
     std::cerr << message << '\n';
@@ -49,6 +59,14 @@ void write_u32(std::vector<std::uint8_t>& image,
     image[offset + 1] = static_cast<std::uint8_t>((value >> 8U) & 0xffU);
     image[offset + 2] = static_cast<std::uint8_t>((value >> 16U) & 0xffU);
     image[offset + 3] = static_cast<std::uint8_t>((value >> 24U) & 0xffU);
+}
+
+void write_dynamic_entry(std::vector<std::uint8_t>& image,
+                         std::size_t offset,
+                         std::uint32_t tag,
+                         std::uint32_t value) {
+    write_u32(image, offset, tag);
+    write_u32(image, offset + 4, value);
 }
 
 std::vector<std::uint8_t> make_image(std::uint16_t type,
@@ -73,7 +91,7 @@ std::vector<std::uint8_t> make_image(std::uint16_t type,
     write_u16(image, 42, kProgramHeaderSize);
     write_u16(image, 44, with_dynamic ? 3 : 2);
 
-    write_u32(image, kFirstProgramHeader + 0, 1);
+    write_u32(image, kFirstProgramHeader + 0, kPtLoad);
     write_u32(image, kFirstProgramHeader + 4, 0);
     write_u32(image, kFirstProgramHeader + 8, virtual_base);
     write_u32(image, kFirstProgramHeader + 16, 0x100);
@@ -81,7 +99,7 @@ std::vector<std::uint8_t> make_image(std::uint16_t type,
     write_u32(image, kFirstProgramHeader + 24, 5);
     write_u32(image, kFirstProgramHeader + 28, 0x4000);
 
-    write_u32(image, kSecondProgramHeader + 0, 1);
+    write_u32(image, kSecondProgramHeader + 0, kPtLoad);
     write_u32(image, kSecondProgramHeader + 4, 0x1000);
     write_u32(image, kSecondProgramHeader + 8, virtual_base + 0x4000);
     write_u32(image, kSecondProgramHeader + 16, 4);
@@ -95,7 +113,7 @@ std::vector<std::uint8_t> make_image(std::uint16_t type,
     image[0x1003] = 0x12;
 
     if (with_dynamic) {
-        write_u32(image, kThirdProgramHeader + 0, 2);
+        write_u32(image, kThirdProgramHeader + 0, kPtDynamic);
         write_u32(image, kThirdProgramHeader + 4, 0xc0);
         write_u32(image, kThirdProgramHeader + 8, virtual_base + 0xc0);
         write_u32(image, kThirdProgramHeader + 16, 8);
@@ -104,13 +122,130 @@ std::vector<std::uint8_t> make_image(std::uint16_t type,
         write_u32(image, kThirdProgramHeader + 28, 4);
 
         if (!terminate_dynamic) {
-            write_u32(image, 0xc0, 0x70000001U);
-            write_u32(image, 0xc4, 0x12345678U);
+            write_dynamic_entry(image, 0xc0, 0x70000001U, 0x12345678U);
         }
     }
 
     return image;
 }
+
+std::vector<std::uint8_t> make_needed_image(
+    std::uint16_t type,
+    std::uint32_t virtual_base,
+    const std::vector<std::string>& needed) {
+    std::vector<std::uint8_t> image(0x1010, 0);
+    image[0] = 0x7f;
+    image[1] = 'E';
+    image[2] = 'L';
+    image[3] = 'F';
+    image[4] = 1;
+    image[5] = 1;
+    image[6] = 1;
+
+    write_u16(image, 16, type);
+    write_u16(image, 18, 40);
+    write_u32(image, 20, 1);
+    write_u32(image, 24, virtual_base + 0x80);
+    write_u32(image, 28, kProgramHeaderOffset);
+    write_u16(image, 40, kHeaderSize);
+    write_u16(image, 42, kProgramHeaderSize);
+    write_u16(image, 44, 3);
+
+    write_u32(image, kFirstProgramHeader + 0, kPtLoad);
+    write_u32(image, kFirstProgramHeader + 4, 0);
+    write_u32(image, kFirstProgramHeader + 8, virtual_base);
+    write_u32(image, kFirstProgramHeader + 16, 0x400);
+    write_u32(image, kFirstProgramHeader + 20, 0x400);
+    write_u32(image, kFirstProgramHeader + 24, 5);
+    write_u32(image, kFirstProgramHeader + 28, 0x4000);
+
+    write_u32(image, kSecondProgramHeader + 0, kPtLoad);
+    write_u32(image, kSecondProgramHeader + 4, 0x1000);
+    write_u32(image, kSecondProgramHeader + 8, virtual_base + 0x4000);
+    write_u32(image, kSecondProgramHeader + 16, 4);
+    write_u32(image, kSecondProgramHeader + 20, 0x20);
+    write_u32(image, kSecondProgramHeader + 24, 6);
+    write_u32(image, kSecondProgramHeader + 28, 0x4000);
+
+    image[0x1000] = 0x78;
+    image[0x1001] = 0x56;
+    image[0x1002] = 0x34;
+    image[0x1003] = 0x12;
+
+    constexpr std::size_t dynamic_offset = 0x100;
+    constexpr std::size_t string_offset = 0x200;
+    std::vector<std::uint32_t> name_offsets;
+    std::size_t cursor = string_offset;
+    for (const std::string& name : needed) {
+        name_offsets.push_back(
+            static_cast<std::uint32_t>(cursor - string_offset));
+        for (const unsigned char byte : name) {
+            image[cursor++] = byte;
+        }
+        image[cursor++] = 0;
+    }
+
+    const std::uint32_t string_size =
+        static_cast<std::uint32_t>(cursor - string_offset);
+    std::size_t dynamic_cursor = dynamic_offset;
+    write_dynamic_entry(image, dynamic_cursor, kDtStrtab,
+                        virtual_base + static_cast<std::uint32_t>(string_offset));
+    dynamic_cursor += 8;
+    write_dynamic_entry(image, dynamic_cursor, kDtStrsz, string_size);
+    dynamic_cursor += 8;
+    for (const std::uint32_t offset : name_offsets) {
+        write_dynamic_entry(image, dynamic_cursor, kDtNeeded, offset);
+        dynamic_cursor += 8;
+    }
+    write_dynamic_entry(image, dynamic_cursor, kDtNull, 0);
+    dynamic_cursor += 8;
+
+    write_u32(image, kThirdProgramHeader + 0, kPtDynamic);
+    write_u32(image, kThirdProgramHeader + 4,
+              static_cast<std::uint32_t>(dynamic_offset));
+    write_u32(image, kThirdProgramHeader + 8,
+              virtual_base + static_cast<std::uint32_t>(dynamic_offset));
+    write_u32(image, kThirdProgramHeader + 16,
+              static_cast<std::uint32_t>(dynamic_cursor - dynamic_offset));
+    write_u32(image, kThirdProgramHeader + 20,
+              static_cast<std::uint32_t>(dynamic_cursor - dynamic_offset));
+    write_u32(image, kThirdProgramHeader + 24, 4);
+    write_u32(image, kThirdProgramHeader + 28, 4);
+
+    return image;
+}
+
+Elf32DependencyProviderResult success(
+    std::string identity,
+    std::vector<std::uint8_t> image) {
+    Elf32DependencyProviderResult result;
+    result.source = Elf32DependencySource{
+        .identity = std::move(identity),
+        .image = std::move(image),
+    };
+    return result;
+}
+
+class RecordingProvider final : public Elf32DependencyProvider {
+public:
+    std::vector<Elf32DependencyProviderResult> responses;
+    std::vector<std::string> requests;
+    std::vector<std::uint64_t> limits;
+
+    Elf32DependencyProviderResult resolve(
+        std::string_view requested_name,
+        std::uint64_t max_image_bytes) override {
+        requests.emplace_back(requested_name.data(), requested_name.size());
+        limits.push_back(max_image_bytes);
+        const std::size_t index = requests.size() - 1;
+        if (index >= responses.size()) {
+            Elf32DependencyProviderResult result;
+            result.error = Elf32DependencyProviderError::Failed;
+            return result;
+        }
+        return responses[index];
+    }
+};
 
 class FailIfCalledProvider final : public Elf32DependencyProvider {
 public:
@@ -287,6 +422,241 @@ int test_post_load_dynamic_failure_rolls_back_root_only() {
     return 0;
 }
 
+int test_ordered_direct_dependencies() {
+    MappedGuestMemory memory;
+    RecordingProvider provider;
+    provider.responses = {
+        success("id-a", make_image(3, 0, false, true)),
+        success("id-b", make_image(3, 0, false, true)),
+    };
+
+    const auto result = load_elf32_dependency_graph(
+        memory,
+        Elf32DependencyLoadSource{
+            .identity = "root",
+            .image = make_needed_image(
+                3, 0, std::vector<std::string>{"liba.so", "libb.so"}),
+        },
+        provider,
+        options());
+
+    if (!result || result.graph.objects.size() != 3) {
+        return fail("ordered direct dependency graph did not load");
+    }
+    if (provider.requests !=
+        std::vector<std::string>{"liba.so", "libb.so"}) {
+        return fail("direct dependency provider order changed");
+    }
+    const auto& root = result.graph.objects[0];
+    if (root.dependencies.size() != 2 ||
+        root.dependencies[0].requested_name != "liba.so" ||
+        root.dependencies[0].target_object != 1 ||
+        root.dependencies[1].requested_name != "libb.so" ||
+        root.dependencies[1].target_object != 2) {
+        return fail("direct dependency edges did not preserve order");
+    }
+    if (result.graph.objects[1].identity != "id-a" ||
+        result.graph.objects[2].identity != "id-b" ||
+        result.graph.objects[1].load.load_bias ==
+            result.graph.objects[2].load.load_bias) {
+        return fail("direct dependency objects were not loaded uniquely");
+    }
+    return 0;
+}
+
+int test_repeated_and_alias_names_reuse_identity() {
+    MappedGuestMemory memory;
+    RecordingProvider provider;
+    const auto child = make_image(3, 0, false, true);
+    provider.responses = {
+        success("shared-id", child),
+        success("shared-id", child),
+        success("shared-id", child),
+    };
+
+    const auto result = load_elf32_dependency_graph(
+        memory,
+        Elf32DependencyLoadSource{
+            .identity = "root",
+            .image = make_needed_image(
+                3, 0,
+                std::vector<std::string>{"alias-a.so", "alias-b.so",
+                                         "alias-a.so"}),
+        },
+        provider,
+        options());
+
+    if (!result || result.graph.objects.size() != 2 ||
+        provider.requests.size() != 3) {
+        return fail("provider-identity reuse did not preserve occurrence calls");
+    }
+    const auto& edges = result.graph.objects[0].dependencies;
+    if (edges.size() != 3 ||
+        edges[0].requested_name != "alias-a.so" ||
+        edges[1].requested_name != "alias-b.so" ||
+        edges[2].requested_name != "alias-a.so" ||
+        edges[0].target_object != 1 ||
+        edges[1].target_object != 1 ||
+        edges[2].target_object != 1) {
+        return fail("repeated/alias edges did not reuse one object");
+    }
+    return 0;
+}
+
+int test_identity_image_mismatch_rolls_back_all() {
+    MappedGuestMemory memory;
+    const auto rw = MemoryPermission::Read | MemoryPermission::Write;
+    constexpr std::uint32_t sentinel = 0x70000;
+    if (!memory.map(sentinel, memory.page_size(), rw)) {
+        return fail("could not map identity-mismatch sentinel");
+    }
+
+    auto child_a = make_image(3, 0, false, true);
+    auto child_b = child_a;
+    child_b[0x1000] ^= 0xffU;
+
+    RecordingProvider provider;
+    provider.responses = {
+        success("same-id", child_a),
+        success("same-id", child_b),
+    };
+
+    const auto result = load_elf32_dependency_graph(
+        memory,
+        Elf32DependencyLoadSource{
+            .identity = "root",
+            .image = make_needed_image(
+                3, 0, std::vector<std::string>{"first.so", "second.so"}),
+        },
+        provider,
+        options());
+
+    if (result.error != Elf32DependencyLoadError::IdentityImageMismatch ||
+        result.failing_identity != "same-id" ||
+        result.requested_name != "second.so" ||
+        !result.graph.objects.empty()) {
+        return fail("identity/image mismatch was not classified correctly");
+    }
+    for (const std::uint32_t address :
+         {0x10000U, 0x14000U, 0x18000U, 0x1c000U}) {
+        if (memory.is_mapped(address)) {
+            return fail("identity mismatch did not roll back graph mappings");
+        }
+    }
+    if (!memory.is_mapped(sentinel) || memory.permissions(sentinel) != rw) {
+        return fail("identity mismatch rollback disturbed preexisting mapping");
+    }
+    return 0;
+}
+
+int test_exec_dependency_rejected_and_rolled_back() {
+    MappedGuestMemory memory;
+    RecordingProvider provider;
+    provider.responses = {
+        success("bad-exec", make_image(2, 0x30000, false, true)),
+    };
+
+    const auto result = load_elf32_dependency_graph(
+        memory,
+        Elf32DependencyLoadSource{
+            .identity = "root",
+            .image = make_needed_image(
+                3, 0, std::vector<std::string>{"bad.so"}),
+        },
+        provider,
+        options());
+
+    if (result.error != Elf32DependencyLoadError::DependencyNotDynamic ||
+        result.failing_identity != "bad-exec" ||
+        result.requested_name != "bad.so") {
+        return fail("ET_EXEC dependency was not rejected distinctly");
+    }
+    if (memory.is_mapped(0x10000) || memory.is_mapped(0x14000) ||
+        memory.is_mapped(0x30000)) {
+        return fail("ET_EXEC dependency failure did not roll back root");
+    }
+    return 0;
+}
+
+int test_provider_and_resource_failures_are_transactional() {
+    {
+        MappedGuestMemory memory;
+        RecordingProvider provider;
+        Elf32DependencyProviderResult missing;
+        missing.error = Elf32DependencyProviderError::NotFound;
+        provider.responses = {missing};
+
+        const auto result = load_elf32_dependency_graph(
+            memory,
+            Elf32DependencyLoadSource{
+                .identity = "root",
+                .image = make_needed_image(
+                    3, 0, std::vector<std::string>{"missing.so"}),
+            },
+            provider,
+            options());
+        if (result.error != Elf32DependencyLoadError::DependencyResolveFailed ||
+            result.dependency_error !=
+                Elf32DependencyResolveError::DependencyNotFound ||
+            memory.is_mapped(0x10000) || memory.is_mapped(0x14000)) {
+            return fail("provider failure was not surfaced transactionally");
+        }
+    }
+
+    {
+        MappedGuestMemory memory;
+        RecordingProvider provider;
+        provider.responses = {
+            success("child", make_image(3, 0, false, true)),
+        };
+        auto limited = options();
+        limited.max_objects = 1;
+
+        const auto result = load_elf32_dependency_graph(
+            memory,
+            Elf32DependencyLoadSource{
+                .identity = "root",
+                .image = make_needed_image(
+                    3, 0, std::vector<std::string>{"child.so"}),
+            },
+            provider,
+            limited);
+        if (result.error != Elf32DependencyLoadError::TooManyObjects ||
+            memory.is_mapped(0x10000) || memory.is_mapped(0x14000)) {
+            return fail("object limit failure was not transactional");
+        }
+    }
+
+    {
+        MappedGuestMemory memory;
+        RecordingProvider provider;
+        const auto child = make_image(3, 0, false, true);
+        provider.responses = {success("child", child)};
+        auto root =
+            make_needed_image(3, 0, std::vector<std::string>{"child.so"});
+        auto limited = options();
+        limited.max_total_image_bytes =
+            static_cast<std::uint64_t>(root.size()) + 8;
+
+        const auto result = load_elf32_dependency_graph(
+            memory,
+            Elf32DependencyLoadSource{
+                .identity = "root",
+                .image = std::move(root),
+            },
+            provider,
+            limited);
+        if (result.error != Elf32DependencyLoadError::DependencyResolveFailed ||
+            result.dependency_error !=
+                Elf32DependencyResolveError::TotalImageBytesExceeded ||
+            memory.is_mapped(0x10000) || memory.is_mapped(0x14000)) {
+            return fail("aggregate image budget failure was not transactional");
+        }
+    }
+
+    return 0;
+}
+
 }  // namespace
 
 int main() {
@@ -294,6 +664,23 @@ int main() {
     if (const int status = test_dynamic_root_automatic_placement(); status != 0) return status;
     if (const int status = test_preflight_failures_do_not_mutate_memory(); status != 0) return status;
     if (const int status = test_post_load_dynamic_failure_rolls_back_root_only();
+        status != 0) {
+        return status;
+    }
+    if (const int status = test_ordered_direct_dependencies(); status != 0) return status;
+    if (const int status = test_repeated_and_alias_names_reuse_identity();
+        status != 0) {
+        return status;
+    }
+    if (const int status = test_identity_image_mismatch_rolls_back_all();
+        status != 0) {
+        return status;
+    }
+    if (const int status = test_exec_dependency_rejected_and_rolled_back();
+        status != 0) {
+        return status;
+    }
+    if (const int status = test_provider_and_resource_failures_are_transactional();
         status != 0) {
         return status;
     }
