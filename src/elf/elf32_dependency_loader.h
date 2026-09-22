@@ -92,10 +92,11 @@ struct Elf32DependencyLoadResult {
     }
 };
 
-// Load one root object transactionally. T001 establishes the root transaction
-// and final result contracts. Direct dependency acquisition/loading is added by
-// T002; until then a root that materializes DT_NEEDED entries fails explicitly
-// and its graph-owned mappings are rolled back.
+// Load a root plus its direct dependency set transactionally. T002 preserves
+// ordered/repeated edges, reuses equal provider identities, and loads each
+// first-seen dependency as ET_DYN. Recursive traversal of dependency objects'
+// own DT_NEEDED entries is added by T003; encountering one currently fails
+// explicitly and rolls back all graph-owned mappings.
 [[nodiscard]] Elf32DependencyLoadResult load_elf32_dependency_graph(
     memory::MappedGuestMemory& memory,
     Elf32DependencyLoadSource root,
