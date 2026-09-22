@@ -19,9 +19,7 @@
   - invalid root/options/resource failures occur before guest mutation;
   - post-load pipeline failure removes root mappings;
   - unrelated preexisting mapping remains unchanged.
-- Status: TODO
-
-## T002 — Load direct dependencies with identity-based graph reuse
+- Status: DONE — exact-head CI #182 PASS on `9a1d5bf4e97656724fdb7d649197af0d8cdd1ed8`; Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all PASS. Focused `elf32_dependency_loading_root` coverage is included in the Linux test step.\n\n## T002 — Load direct dependencies with identity-based graph reuse
 - Requirements: R3-R8, R10-R12 / AC3, AC5, AC6, AC8-AC10, AC12, AC14
 - Depends on: T001
 - Scope:
