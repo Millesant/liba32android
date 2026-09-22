@@ -21,7 +21,7 @@
   - both-hash bounds;
   - symbol-table range/read validation;
   - existing metadata/string/dependency regressions remain green.
-- Status: READY
+- Status: ACTIVE — implementation, focused tests, and build wiring are staged for the first exact-head CI gate.
 
 ## T002 — Add exact-name per-object symbol lookup
 

@@ -12,6 +12,7 @@ namespace {
 
 constexpr std::int32_t kDtNull = 0;
 constexpr std::int32_t kDtNeeded = 1;
+constexpr std::int32_t kDtHash = 4;
 constexpr std::int32_t kDtStrtab = 5;
 constexpr std::int32_t kDtSymtab = 6;
 constexpr std::int32_t kDtStrsz = 10;
@@ -20,9 +21,12 @@ constexpr std::int32_t kDtSoname = 14;
 constexpr std::int32_t kDtRel = 17;
 constexpr std::int32_t kDtRelsz = 18;
 constexpr std::int32_t kDtRelent = 19;
+constexpr std::int32_t kDtGnuHash = 0x6ffffef5;
 
 constexpr std::uint32_t kElf32SymbolEntrySize = 16;
 constexpr std::uint32_t kElf32RelEntrySize = 8;
+constexpr std::uint32_t kSysvHashHeaderSize = 8;
+constexpr std::uint32_t kGnuHashHeaderSize = 16;
 constexpr std::uint64_t kGuestAddressSpaceSize = std::uint64_t{1} << 32;
 constexpr std::size_t kReadValidationChunkSize = 256;
 
@@ -95,6 +99,8 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
     std::optional<std::uint32_t> strsz;
     std::optional<std::uint32_t> symtab;
     std::optional<std::uint32_t> syment;
+    std::optional<std::uint32_t> sysv_hash;
+    std::optional<std::uint32_t> gnu_hash;
     std::optional<std::uint32_t> rel;
     std::optional<std::uint32_t> relsz;
     std::optional<std::uint32_t> relent;
@@ -109,6 +115,9 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
         switch (entry.tag) {
         case kDtNeeded:
             result.metadata.needed_offsets.push_back(entry.value);
+            break;
+        case kDtHash:
+            accepted = assign_singleton(sysv_hash, entry.value);
             break;
         case kDtStrtab:
             accepted = assign_singleton(strtab, entry.value);
@@ -133,6 +142,9 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
             break;
         case kDtRelent:
             accepted = assign_singleton(relent, entry.value);
+            break;
+        case kDtGnuHash:
+            accepted = assign_singleton(gnu_hash, entry.value);
             break;
         default:
             break;
@@ -170,6 +182,16 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
         result.metadata.symbol_table = Elf32CollectedSymbolTableMetadata{
             .address_value = *symtab,
             .entry_size = *syment,
+        };
+    }
+    if (sysv_hash.has_value()) {
+        result.metadata.sysv_hash_table = Elf32CollectedHashTableMetadata{
+            .address_value = *sysv_hash,
+        };
+    }
+    if (gnu_hash.has_value()) {
+        result.metadata.gnu_hash_table = Elf32CollectedHashTableMetadata{
+            .address_value = *gnu_hash,
         };
     }
     if (rel.has_value()) {
@@ -241,6 +263,41 @@ Elf32LinkerMetadataResult build_elf32_linker_metadata(
             .guest_address = guest_address,
             .entry_size = symbol_table->entry_size,
         };
+    }
+
+    const auto build_hash_descriptor =
+        [&](const std::optional<Elf32CollectedHashTableMetadata>& collected_hash,
+            std::uint32_t header_size,
+            std::optional<Elf32HashTableMetadata>& output)
+            -> std::optional<Elf32LinkerMetadataError> {
+        if (!collected_hash.has_value()) return std::nullopt;
+
+        std::uint32_t guest_address = 0;
+        if (!rebase_address(collected_hash->address_value, load_bias,
+                            guest_address)) {
+            return Elf32LinkerMetadataError::AddressOverflow;
+        }
+        if (!range_fits(guest_address, header_size)) {
+            return Elf32LinkerMetadataError::RangeOverflow;
+        }
+        if (!readable_range(memory, guest_address, header_size)) {
+            return Elf32LinkerMetadataError::ReadFailed;
+        }
+        output = Elf32HashTableMetadata{.guest_address = guest_address};
+        return std::nullopt;
+    };
+
+    if (const auto error =
+            build_hash_descriptor(collected.metadata.sysv_hash_table,
+                                  kSysvHashHeaderSize,
+                                  result.metadata.sysv_hash_table)) {
+        return validation_failure(*error);
+    }
+    if (const auto error =
+            build_hash_descriptor(collected.metadata.gnu_hash_table,
+                                  kGnuHashHeaderSize,
+                                  result.metadata.gnu_hash_table)) {
+        return validation_failure(*error);
     }
 
     if (const auto& rel_table = collected.metadata.rel_table) {

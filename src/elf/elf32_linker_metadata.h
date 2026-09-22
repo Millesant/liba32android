@@ -35,6 +35,10 @@ struct Elf32CollectedSymbolTableMetadata {
     std::uint32_t entry_size{};
 };
 
+struct Elf32CollectedHashTableMetadata {
+    std::uint32_t address_value{};
+};
+
 struct Elf32CollectedRelTableMetadata {
     std::uint32_t address_value{};
     std::uint32_t size{};
@@ -44,6 +48,8 @@ struct Elf32CollectedRelTableMetadata {
 struct Elf32CollectedLinkerMetadata {
     std::optional<Elf32CollectedStringTableMetadata> string_table;
     std::optional<Elf32CollectedSymbolTableMetadata> symbol_table;
+    std::optional<Elf32CollectedHashTableMetadata> sysv_hash_table;
+    std::optional<Elf32CollectedHashTableMetadata> gnu_hash_table;
     std::optional<Elf32CollectedRelTableMetadata> rel_table;
     std::optional<std::uint32_t> soname_offset;
     std::vector<std::uint32_t> needed_offsets;
@@ -68,6 +74,13 @@ struct Elf32SymbolTableMetadata {
     std::uint32_t entry_size{};
 };
 
+// Hash descriptors intentionally validate/rebase only the fixed table header.
+// Variable-sized buckets/chains are bounded and interpreted by
+// elf32_symbol_lookup, where caller-selected resource ceilings are available.
+struct Elf32HashTableMetadata {
+    std::uint32_t guest_address{};
+};
+
 struct Elf32RelTableMetadata {
     std::uint32_t guest_address{};
     std::uint32_t size{};
@@ -77,6 +90,8 @@ struct Elf32RelTableMetadata {
 struct Elf32LinkerMetadata {
     std::optional<Elf32StringTableMetadata> string_table;
     std::optional<Elf32SymbolTableMetadata> symbol_table;
+    std::optional<Elf32HashTableMetadata> sysv_hash_table;
+    std::optional<Elf32HashTableMetadata> gnu_hash_table;
     std::optional<Elf32RelTableMetadata> rel_table;
     std::optional<std::uint32_t> soname_offset;
     std::vector<std::uint32_t> needed_offsets;
@@ -96,10 +111,12 @@ struct Elf32LinkerMetadataResult {
 [[nodiscard]] Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
     std::span<const Elf32DynamicEntry> entries);
 
-// T002 validated metadata: rebase pointer-like fields exactly once with the
+// Validated metadata: rebase pointer-like fields exactly once with the
 // loader-provided load bias, validate declared guest ranges through GuestMemory,
-// and enforce the first ELF32 entry-size/string-offset invariants. This function
-// is read-only and never changes mappings, permissions, or guest bytes.
+// and enforce the supported ELF32 entry-size/string-offset invariants. DT_HASH
+// and DT_GNU_HASH retain only validated fixed-header guest descriptors here;
+// their variable arrays belong to elf32_symbol_lookup. This function is
+// read-only and never changes mappings, permissions, or guest bytes.
 [[nodiscard]] Elf32LinkerMetadataResult build_elf32_linker_metadata(
     const memory::GuestMemory& memory,
     std::uint32_t load_bias,

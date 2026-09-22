@@ -1,16 +1,16 @@
 # Next Work
 
-Repository state is on `bleeding` at `9bb52b1e50bf818f6326424975582372db1353cd`; PR #32 / `005-elf32-dependency-loading` remains DONE. Feature `006-elf32-symbol-resolution` is now readiness-checked.
+Repository integration is on `bleeding`; PR #32 / `005-elf32-dependency-loading` remains DONE. Feature `006-elf32-symbol-resolution` is active.
 
-1. T001 — add hash metadata and bounded dynamic-symbol indexing.
-   - Status: READY.
-   - Spec: `specs/006-elf32-symbol-resolution/{requirements,design,tasks}.md`.
-   - Scope: recognize/rebase `DT_HASH` and `DT_GNU_HASH`, add bounded SysV/GNU index parsing, derive a trustworthy dynamic-symbol count without section headers, and validate the complete implied `Elf32_Sym` range.
-   - Exact next action: implement `elf32_symbol_lookup.{h,cpp}`, extend linker metadata hash descriptors/tests, wire the focused host test into CMake/CTest, then run exact-head CI.
-   - DoD: T001 focused tests PASS, neighboring linker tests remain green, Android cross-build still compiles the new source, and durable task/state records the exact evidence.
+1. T001 — hash metadata and bounded dynamic-symbol indexing.
+   - Status: ACTIVE.
+   - Implemented scope for the pending gate: `DT_HASH` / `DT_GNU_HASH` metadata descriptors; bounded SysV/GNU index construction; hash-count/index/termination checks; complete inferred `Elf32_Sym` range validation; focused metadata/index tests; CMake/CTest wiring.
+   - Contract: `specs/006-elf32-symbol-resolution/{requirements,design,tasks}.md`; public resource/read-only guarantees are documented in `src/elf/elf32_symbol_lookup.h`.
+   - Exact next action: run CI at the exact implementation commit and require Linux `elf32_symbol_index` plus all neighboring tests, Android x86_64 probe cross-build, and Android arm64-v8a cross-build to PASS.
+   - On PASS: mark T001 DONE, make T002 READY, and implement exact-name per-object lookup.
 
 2. T002 — exact-name per-object symbol lookup.
-   - Status: BLOCKED on T001.
+   - Status: BLOCKED on T001 exact-head validation.
 
 3. T003 — deterministic graph-local BFS symbol lookup.
    - Status: BLOCKED on T002.

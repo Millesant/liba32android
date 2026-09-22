@@ -5,7 +5,7 @@ Current phase: M4 continuation; bounded ELF32 symbol resolution
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `006-elf32-symbol-resolution`; requirements/design/tasks are readiness-checked and T001 is READY. No feature-006 implementation has been validated yet.
+Active runtime work: `006-elf32-symbol-resolution`; T001 hash metadata and bounded dynamic-symbol indexing is ACTIVE. Implementation/tests/build wiring are prepared for the first exact-head CI gate; no feature-006 executable validation has passed yet.
 
 ## Working
 
@@ -41,7 +41,7 @@ Active runtime work: `006-elf32-symbol-resolution`; requirements/design/tasks ar
 
 ## Partial / not implemented
 
-- Android search-path/namespace/pathname policy, process-wide link-map lifetime across graph-loading calls, dynamic symbol-table/hash lookup semantics, and relocation application remain NOT IMPLEMENTED.
+- Feature 006 symbol work is PARTIAL: hash metadata/index construction is implemented for the pending T001 gate, while exact-name symbol lookup, graph BFS scope, version-aware semantics, and relocation application remain NOT IMPLEMENTED. Android search-path/namespace/pathname policy and process-wide link-map lifetime across graph-loading calls also remain NOT IMPLEMENTED.
 - ARM relocations: NOT IMPLEMENTED.
 - Symbol lookup/interposition: NOT IMPLEMENTED.
 - RELRO/TLS processing: NOT IMPLEMENTED.

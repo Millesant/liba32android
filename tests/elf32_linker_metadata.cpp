@@ -16,6 +16,7 @@ using liba32android::memory::LinearGuestMemory;
 
 constexpr std::int32_t kDtNull = 0;
 constexpr std::int32_t kDtNeeded = 1;
+constexpr std::int32_t kDtHash = 4;
 constexpr std::int32_t kDtStrtab = 5;
 constexpr std::int32_t kDtSymtab = 6;
 constexpr std::int32_t kDtStrsz = 10;
@@ -43,6 +44,7 @@ std::vector<Elf32DynamicEntry> full_entries() {
         {kDtSoname, 3},
         {kDtNeeded, 9},
         {kDtNeeded, 21},
+        {kDtHash, 0x480},
         {kDtGnuHash, 0x400},
         {kDtNull, 0},
     };
@@ -69,6 +71,12 @@ int test_valid_collection() {
         result.metadata.rel_table->entry_size != 8) {
         return fail("REL metadata was not collected exactly");
     }
+    if (!result.metadata.sysv_hash_table.has_value() ||
+        result.metadata.sysv_hash_table->address_value != 0x480 ||
+        !result.metadata.gnu_hash_table.has_value() ||
+        result.metadata.gnu_hash_table->address_value != 0x400) {
+        return fail("hash-table metadata was not collected exactly");
+    }
     if (!result.metadata.soname_offset.has_value() ||
         *result.metadata.soname_offset != 3) {
         return fail("SONAME offset was not collected exactly");
@@ -80,9 +88,9 @@ int test_valid_collection() {
 }
 
 int test_duplicate_singletons() {
-    constexpr std::array<std::int32_t, 8> singleton_tags{
-        kDtStrtab, kDtStrsz, kDtSymtab, kDtSyment,
-        kDtRel, kDtRelsz, kDtRelent, kDtSoname,
+    constexpr std::array<std::int32_t, 10> singleton_tags{
+        kDtHash, kDtStrtab, kDtStrsz, kDtSymtab, kDtSyment,
+        kDtRel, kDtRelsz, kDtRelent, kDtSoname, kDtGnuHash,
     };
 
     for (const std::int32_t tag : singleton_tags) {
@@ -136,7 +144,7 @@ int test_incomplete_groups() {
     return 0;
 }
 
-int test_deferred_tags_and_null_boundary() {
+int test_unknown_tags_and_null_boundary() {
     const std::array entries{
         Elf32DynamicEntry{kDtGnuHash, 0x12345678U},
         Elf32DynamicEntry{0x70000001, 0x87654321U},
@@ -144,13 +152,16 @@ int test_deferred_tags_and_null_boundary() {
         Elf32DynamicEntry{kDtStrtab, 0x100},
     };
     const auto result = collect_elf32_linker_metadata(entries);
-    if (!result) return fail("deferred/unknown tags were rejected");
-    if (result.metadata.string_table.has_value() ||
+    if (!result) return fail("recognized/unknown tags were rejected");
+    if (!result.metadata.gnu_hash_table.has_value() ||
+        result.metadata.gnu_hash_table->address_value != 0x12345678U ||
+        result.metadata.string_table.has_value() ||
         result.metadata.symbol_table.has_value() ||
+        result.metadata.sysv_hash_table.has_value() ||
         result.metadata.rel_table.has_value() ||
         result.metadata.soname_offset.has_value() ||
         !result.metadata.needed_offsets.empty()) {
-        return fail("semantic collection continued past DT_NULL");
+        return fail("semantic collection did not honor hash/DT_NULL boundary");
     }
     return 0;
 }
@@ -166,7 +177,11 @@ int test_valid_rebasing_and_zero_bias() {
         !biased.metadata.symbol_table.has_value() ||
         biased.metadata.symbol_table->guest_address != 0x1200 ||
         !biased.metadata.rel_table.has_value() ||
-        biased.metadata.rel_table->guest_address != 0x1300) {
+        biased.metadata.rel_table->guest_address != 0x1300 ||
+        !biased.metadata.sysv_hash_table.has_value() ||
+        biased.metadata.sysv_hash_table->guest_address != 0x1480 ||
+        !biased.metadata.gnu_hash_table.has_value() ||
+        biased.metadata.gnu_hash_table->guest_address != 0x1400) {
         return fail("pointer-like dynamic values were not rebased exactly once");
     }
     if (biased.metadata.needed_offsets != std::vector<std::uint32_t>{9, 21}) {
@@ -178,7 +193,9 @@ int test_valid_rebasing_and_zero_bias() {
     if (!fixed ||
         fixed.metadata.string_table->guest_address != 0x100 ||
         fixed.metadata.symbol_table->guest_address != 0x200 ||
-        fixed.metadata.rel_table->guest_address != 0x300) {
+        fixed.metadata.rel_table->guest_address != 0x300 ||
+        fixed.metadata.sysv_hash_table->guest_address != 0x480 ||
+        fixed.metadata.gnu_hash_table->guest_address != 0x400) {
         return fail("zero load bias did not preserve fixed guest addresses");
     }
     return 0;
@@ -205,6 +222,15 @@ int test_address_and_range_overflow() {
     if (build_elf32_linker_metadata(memory, 0, range_overflow).error !=
         Elf32LinkerMetadataError::RangeOverflow) {
         return fail("guest range overflow was not rejected");
+    }
+
+    const std::array hash_address_overflow{
+        Elf32DynamicEntry{kDtHash, 0xfffffff0U},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (build_elf32_linker_metadata(memory, 0x20, hash_address_overflow).error !=
+        Elf32LinkerMetadataError::AddressOverflow) {
+        return fail("hash pointer rebasing overflow was not rejected");
     }
     return 0;
 }
@@ -241,6 +267,17 @@ int test_unreadable_ranges() {
     if (build_elf32_linker_metadata(memory, 0, bad_rel).error !=
         Elf32LinkerMetadataError::ReadFailed) {
         return fail("unreadable REL table was not rejected");
+    }
+
+    for (const std::int32_t hash_tag : {kDtHash, kDtGnuHash}) {
+        const std::array bad_hash{
+            Elf32DynamicEntry{hash_tag, 0x9000},
+            Elf32DynamicEntry{kDtNull, 0},
+        };
+        if (build_elf32_linker_metadata(memory, 0, bad_hash).error !=
+            Elf32LinkerMetadataError::ReadFailed) {
+            return fail("unreadable hash header was not rejected");
+        }
     }
     return 0;
 }
@@ -337,7 +374,7 @@ int main() {
     if (const int status = test_valid_collection(); status != 0) return status;
     if (const int status = test_duplicate_singletons(); status != 0) return status;
     if (const int status = test_incomplete_groups(); status != 0) return status;
-    if (const int status = test_deferred_tags_and_null_boundary(); status != 0) return status;
+    if (const int status = test_unknown_tags_and_null_boundary(); status != 0) return status;
     if (const int status = test_valid_rebasing_and_zero_bias(); status != 0) return status;
     if (const int status = test_address_and_range_overflow(); status != 0) return status;
     if (const int status = test_unreadable_ranges(); status != 0) return status;
