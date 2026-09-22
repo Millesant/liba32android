@@ -5,7 +5,7 @@ Current phase: M4 continuation; recursive ELF32 dependency graph loading
 Integration branch: `bleeding`
 Last merged runtime PR: #31
 Runtime baseline commit: `2c3be26c05dff81be1f81c9565df5906c521a54c`
-Active runtime work: `005-elf32-dependency-loading` on `m4-elf32-dependency-loading`; requirements/design/tasks readiness-checked, implementation NOT RUN. Next task: T001 transactional root-object graph loader.
+Active runtime work: `005-elf32-dependency-loading` on `m4-elf32-dependency-loading`; T001 transactional root-object graph loader DONE / CI #182 PASS. Next task: T002 direct dependencies with provider-identity graph reuse.
 
 ## Working
 
@@ -152,3 +152,5 @@ No x86_64 16 KiB address-space blocker remains on the validated Fedora/KVM envir
 - Branch hygiene policy: keep one scoped branch per substantive feature/fix PR, avoid standalone reconciliation branches, and delete merged source branches when supported. Current connector can list/update refs but does not expose delete-ref, so remote branch deletion is externally BLOCKED in-chat.
 
 - Spec `005-elf32-dependency-loading` is readiness-checked on `m4-elf32-dependency-loading`. It defines a new graph/loading layer above the unchanged acquisition resolver: root identity/object 0, provider-identity dedup/cycles, deterministic ordered edges, ET_DYN dependency placement + explicit-base loading, identity/image mismatch rejection, graph-wide bounds, and reverse-order rollback of graph-owned mappings. T001 implementation/tests are NOT RUN.
+
+- T001 of `005-elf32-dependency-loading` added `elf32_dependency_loader.{h,cpp}`, root-object graph/result contracts, ET_EXEC fixed root loading, ET_DYN automatic placement + exact-base loading, the existing dynamic → metadata → strings pipeline, and transactional rollback for post-load root failures. Exact-head CI #182 PASSed at `9a1d5bf4e97656724fdb7d649197af0d8cdd1ed8` across Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build. T002 is next.
