@@ -53,6 +53,7 @@ struct Elf32CollectedLinkerMetadata {
     std::optional<Elf32CollectedRelTableMetadata> rel_table;
     std::optional<std::uint32_t> soname_offset;
     std::vector<std::uint32_t> needed_offsets;
+    bool has_symbol_versioning{};
 };
 
 struct Elf32CollectedLinkerMetadataResult {
@@ -95,6 +96,10 @@ struct Elf32LinkerMetadata {
     std::optional<Elf32RelTableMetadata> rel_table;
     std::optional<std::uint32_t> soname_offset;
     std::vector<std::uint32_t> needed_offsets;
+    // True when DT_VERSYM/DT_VERDEF/DT_VERNEED metadata is declared. The
+    // first symbol-lookup feature records the boundary but rejects versioned
+    // name-only lookup until version matching has its own contract.
+    bool has_symbol_versioning{};
 };
 
 struct Elf32LinkerMetadataResult {

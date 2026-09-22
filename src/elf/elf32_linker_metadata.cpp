@@ -22,6 +22,11 @@ constexpr std::int32_t kDtRel = 17;
 constexpr std::int32_t kDtRelsz = 18;
 constexpr std::int32_t kDtRelent = 19;
 constexpr std::int32_t kDtGnuHash = 0x6ffffef5;
+constexpr std::int32_t kDtVersym = 0x6ffffff0;
+constexpr std::int32_t kDtVerdef = 0x6ffffffc;
+constexpr std::int32_t kDtVerdefnum = 0x6ffffffd;
+constexpr std::int32_t kDtVerneed = 0x6ffffffe;
+constexpr std::int32_t kDtVerneednum = 0x6fffffff;
 
 constexpr std::uint32_t kElf32SymbolEntrySize = 16;
 constexpr std::uint32_t kElf32RelEntrySize = 8;
@@ -146,6 +151,13 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
         case kDtGnuHash:
             accepted = assign_singleton(gnu_hash, entry.value);
             break;
+        case kDtVersym:
+        case kDtVerdef:
+        case kDtVerdefnum:
+        case kDtVerneed:
+        case kDtVerneednum:
+            result.metadata.has_symbol_versioning = true;
+            break;
         default:
             break;
         }
@@ -216,6 +228,8 @@ Elf32LinkerMetadataResult build_elf32_linker_metadata(
     Elf32LinkerMetadataResult result;
     result.metadata.soname_offset = collected.metadata.soname_offset;
     result.metadata.needed_offsets = collected.metadata.needed_offsets;
+    result.metadata.has_symbol_versioning =
+        collected.metadata.has_symbol_versioning;
 
     if (const auto& string_table = collected.metadata.string_table) {
         if (result.metadata.soname_offset.has_value() &&

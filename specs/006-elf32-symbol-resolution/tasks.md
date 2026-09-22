@@ -21,7 +21,7 @@
   - both-hash bounds;
   - symbol-table range/read validation;
   - existing metadata/string/dependency regressions remain green.
-- Status: ACTIVE — implementation, focused tests, and build wiring are staged for the first exact-head CI gate.
+- Status: DONE — exact-head CI #203 / run `35758444356` PASSed at `45cd3e5a322263f53dc02277a9d0e801849515db`: Linux passed 40/40 CTest including `elf32_symbol_index`; Android x86_64 and arm64-v8a jobs also PASSed.
 
 ## T002 — Add exact-name per-object symbol lookup
 
@@ -45,7 +45,7 @@
   - string/read/value overflow failures;
   - unsupported matching symbol forms;
   - no guest mutation.
-- Status: BLOCKED — depends on T001
+- Status: ACTIVE — exact-name per-object lookup, eligibility/value semantics, versioning guard, and focused tests are implemented for the next exact-head gate.
 
 ## T003 — Add deterministic graph-local breadth-first lookup
 

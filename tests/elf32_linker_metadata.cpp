@@ -26,6 +26,9 @@ constexpr std::int32_t kDtRel = 17;
 constexpr std::int32_t kDtRelsz = 18;
 constexpr std::int32_t kDtRelent = 19;
 constexpr std::int32_t kDtGnuHash = 0x6ffffef5;
+constexpr std::int32_t kDtVersym = 0x6ffffff0;
+constexpr std::int32_t kDtVerdef = 0x6ffffffc;
+constexpr std::int32_t kDtVerneed = 0x6ffffffe;
 
 int fail(const char* message) {
     std::cerr << message << '\n';
@@ -162,6 +165,26 @@ int test_unknown_tags_and_null_boundary() {
         result.metadata.soname_offset.has_value() ||
         !result.metadata.needed_offsets.empty()) {
         return fail("semantic collection did not honor hash/DT_NULL boundary");
+    }
+    return 0;
+}
+
+int test_symbol_versioning_presence() {
+    for (const std::int32_t tag : {kDtVersym, kDtVerdef, kDtVerneed}) {
+        const std::array entries{
+            Elf32DynamicEntry{tag, 0x1234},
+            Elf32DynamicEntry{kDtNull, 0},
+        };
+        const auto collected = collect_elf32_linker_metadata(entries);
+        if (!collected || !collected.metadata.has_symbol_versioning) {
+            return fail("symbol-version metadata presence was not retained");
+        }
+
+        LinearGuestMemory memory(0x100, 0x1000);
+        const auto built = build_elf32_linker_metadata(memory, 0, entries);
+        if (!built || !built.metadata.has_symbol_versioning) {
+            return fail("validated metadata lost symbol-version presence");
+        }
     }
     return 0;
 }
@@ -375,6 +398,7 @@ int main() {
     if (const int status = test_duplicate_singletons(); status != 0) return status;
     if (const int status = test_incomplete_groups(); status != 0) return status;
     if (const int status = test_unknown_tags_and_null_boundary(); status != 0) return status;
+    if (const int status = test_symbol_versioning_presence(); status != 0) return status;
     if (const int status = test_valid_rebasing_and_zero_bias(); status != 0) return status;
     if (const int status = test_address_and_range_overflow(); status != 0) return status;
     if (const int status = test_unreadable_ranges(); status != 0) return status;

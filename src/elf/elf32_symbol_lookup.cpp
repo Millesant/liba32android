@@ -11,12 +11,38 @@ namespace liba32android::elf {
 namespace {
 
 constexpr std::uint32_t kElf32SymbolEntrySize = 16;
+constexpr std::uint32_t kElf32WordBits = 32;
+constexpr std::uint8_t kStbLocal = 0;
+constexpr std::uint8_t kStbGlobal = 1;
+constexpr std::uint8_t kStbWeak = 2;
+constexpr std::uint8_t kSttNotype = 0;
+constexpr std::uint8_t kSttObject = 1;
+constexpr std::uint8_t kSttFunc = 2;
+constexpr std::uint8_t kSttGnuIfunc = 10;
+constexpr std::uint8_t kStvDefault = 0;
+constexpr std::uint8_t kStvInternal = 1;
+constexpr std::uint8_t kStvHidden = 2;
+constexpr std::uint8_t kStvProtected = 3;
+constexpr std::uint16_t kShnUndef = 0;
+constexpr std::uint16_t kShnLoReserve = 0xff00;
+constexpr std::uint16_t kShnAbs = 0xfff1;
+constexpr std::uint16_t kShnCommon = 0xfff2;
+constexpr std::uint16_t kShnXindex = 0xffff;
 constexpr std::uint64_t kGuestAddressSpaceSize = std::uint64_t{1} << 32;
 constexpr std::size_t kReadValidationChunkSize = 256;
 
 [[nodiscard]] Elf32SymbolIndexResult failure(Elf32SymbolIndexError error) {
     Elf32SymbolIndexResult result;
     result.error = error;
+    return result;
+}
+
+[[nodiscard]] Elf32ObjectSymbolLookupResult lookup_failure(
+    Elf32SymbolLookupError error,
+    Elf32LinkerStringError string_error = Elf32LinkerStringError::None) {
+    Elf32ObjectSymbolLookupResult result;
+    result.error = error;
+    result.string_error = string_error;
     return result;
 }
 
@@ -87,6 +113,64 @@ constexpr std::size_t kReadValidationChunkSize = 256;
         return false;
     }
     return read_u32(memory, address, value);
+}
+
+[[nodiscard]] std::uint16_t decode_u16_le(const std::uint8_t* bytes) noexcept {
+    return static_cast<std::uint16_t>(bytes[0]) |
+           (static_cast<std::uint16_t>(bytes[1]) << 8U);
+}
+
+[[nodiscard]] std::uint32_t decode_u32_le(const std::uint8_t* bytes) noexcept {
+    return static_cast<std::uint32_t>(bytes[0]) |
+           (static_cast<std::uint32_t>(bytes[1]) << 8U) |
+           (static_cast<std::uint32_t>(bytes[2]) << 16U) |
+           (static_cast<std::uint32_t>(bytes[3]) << 24U);
+}
+
+[[nodiscard]] std::uint32_t sysv_hash(std::string_view name) noexcept {
+    std::uint32_t hash = 0;
+    for (const unsigned char byte : name) {
+        hash = (hash << 4U) + byte;
+        const std::uint32_t high = hash & 0xf0000000U;
+        if (high != 0) {
+            hash ^= high >> 24U;
+            hash &= ~high;
+        }
+    }
+    return hash;
+}
+
+[[nodiscard]] std::uint32_t gnu_hash(std::string_view name) noexcept {
+    std::uint32_t hash = 5381U;
+    for (const unsigned char byte : name) {
+        hash = hash * 33U + byte;
+    }
+    return hash;
+}
+
+[[nodiscard]] bool read_symbol(const memory::GuestMemory& memory,
+                               const Elf32SymbolTableMetadata& table,
+                               std::uint32_t symbol_index,
+                               Elf32Symbol& symbol) {
+    std::uint32_t address = 0;
+    if (!checked_add(table.guest_address,
+                     static_cast<std::uint64_t>(symbol_index) *
+                         kElf32SymbolEntrySize,
+                     address)) {
+        return false;
+    }
+
+    std::array<std::uint8_t, kElf32SymbolEntrySize> bytes{};
+    if (!memory.read(address, bytes)) return false;
+
+    symbol.name_offset = decode_u32_le(bytes.data());
+    symbol.value = decode_u32_le(bytes.data() + 4);
+    symbol.size = decode_u32_le(bytes.data() + 8);
+    symbol.binding = static_cast<std::uint8_t>(bytes[12] >> 4U);
+    symbol.type = static_cast<std::uint8_t>(bytes[12] & 0x0fU);
+    symbol.visibility = static_cast<std::uint8_t>(bytes[13] & 0x03U);
+    symbol.section_index = decode_u16_le(bytes.data() + 14);
+    return true;
 }
 
 }  // namespace
@@ -208,7 +292,8 @@ Elf32SymbolIndexResult build_elf32_symbol_index(
         const std::uint32_t bloom_shift = header[3];
 
         if (bucket_count == 0 || symbol_offset == 0 ||
-            !is_power_of_two(bloom_word_count)) {
+            !is_power_of_two(bloom_word_count) ||
+            bloom_shift >= kElf32WordBits) {
             return failure(Elf32SymbolIndexError::InvalidGnuHash);
         }
         if (bucket_count > options.max_hash_buckets ||
@@ -379,6 +464,210 @@ Elf32SymbolIndexResult build_elf32_symbol_index(
     return result;
 }
 
+Elf32ObjectSymbolLookupResult lookup_elf32_symbol(
+    const memory::GuestMemory& memory,
+    std::uint32_t load_bias,
+    const Elf32LinkerMetadata& metadata,
+    const Elf32SymbolIndex& index,
+    std::string_view name,
+    const Elf32SymbolLookupOptions& options) {
+    if (options.max_name_bytes == 0) {
+        return lookup_failure(Elf32SymbolLookupError::InvalidOptions);
+    }
+    if (name.empty()) {
+        return lookup_failure(Elf32SymbolLookupError::InvalidLookupName);
+    }
+    if (!metadata.string_table.has_value() ||
+        !metadata.symbol_table.has_value() ||
+        index.symbol_count == 0 ||
+        (!index.gnu_hash.has_value() && !index.sysv_hash.has_value())) {
+        return lookup_failure(Elf32SymbolLookupError::InvalidMetadata);
+    }
+    if (metadata.has_symbol_versioning) {
+        return lookup_failure(Elf32SymbolLookupError::UnsupportedVersioning);
+    }
+
+    const auto evaluate_candidate =
+        [&](std::uint32_t symbol_index)
+            -> std::optional<Elf32ObjectSymbolLookupResult> {
+        if (symbol_index == 0 || symbol_index >= index.symbol_count) {
+            return lookup_failure(
+                Elf32SymbolLookupError::HashIndexOutOfRange);
+        }
+
+        Elf32Symbol symbol;
+        if (!read_symbol(memory, *metadata.symbol_table, symbol_index,
+                         symbol)) {
+            return lookup_failure(Elf32SymbolLookupError::SymbolReadFailed);
+        }
+
+        const auto symbol_name = read_elf32_string_table_entry(
+            memory, *metadata.string_table, symbol.name_offset,
+            Elf32LinkerStringOptions{
+                .max_string_bytes = options.max_name_bytes,
+            });
+        if (!symbol_name) {
+            return lookup_failure(Elf32SymbolLookupError::StringReadFailed,
+                                  symbol_name.error);
+        }
+        if (symbol_name.value != name) {
+            return std::nullopt;
+        }
+
+        if (symbol.binding == kStbLocal ||
+            symbol.section_index == kShnUndef ||
+            symbol.visibility == kStvInternal ||
+            symbol.visibility == kStvHidden) {
+            return std::nullopt;
+        }
+        if (symbol.binding != kStbGlobal && symbol.binding != kStbWeak) {
+            return lookup_failure(Elf32SymbolLookupError::UnsupportedBinding);
+        }
+
+        // Only the low two visibility bits are defined for this feature.
+        std::array<std::uint8_t, kElf32SymbolEntrySize> raw{};
+        std::uint32_t raw_address = 0;
+        if (!checked_add(metadata.symbol_table->guest_address,
+                         static_cast<std::uint64_t>(symbol_index) *
+                             kElf32SymbolEntrySize,
+                         raw_address) ||
+            !memory.read(raw_address, raw)) {
+            return lookup_failure(Elf32SymbolLookupError::SymbolReadFailed);
+        }
+        if ((raw[13] & 0xfcU) != 0 ||
+            (symbol.visibility != kStvDefault &&
+             symbol.visibility != kStvProtected)) {
+            return lookup_failure(
+                Elf32SymbolLookupError::UnsupportedVisibility);
+        }
+
+        if (symbol.section_index == kShnCommon ||
+            symbol.section_index == kShnXindex ||
+            (symbol.section_index >= kShnLoReserve &&
+             symbol.section_index != kShnAbs)) {
+            return lookup_failure(
+                Elf32SymbolLookupError::UnsupportedSectionIndex);
+        }
+
+        if (symbol.type != kSttNotype &&
+            symbol.type != kSttObject &&
+            symbol.type != kSttFunc) {
+            return lookup_failure(Elf32SymbolLookupError::UnsupportedType);
+        }
+        if (symbol.type == kSttGnuIfunc) {
+            return lookup_failure(Elf32SymbolLookupError::UnsupportedType);
+        }
+
+        std::uint32_t guest_value = symbol.value;
+        if (symbol.section_index != kShnAbs) {
+            if (!checked_add(load_bias, symbol.value, guest_value)) {
+                return lookup_failure(Elf32SymbolLookupError::ValueOverflow);
+            }
+        }
+
+        Elf32ObjectSymbolLookupResult result;
+        result.symbol.symbol_index = symbol_index;
+        result.symbol.name = symbol_name.value;
+        result.symbol.symbol = symbol;
+        result.symbol.guest_value = guest_value;
+        return result;
+    };
+
+    if (index.gnu_hash.has_value()) {
+        const Elf32GnuHashIndex& hash_index = *index.gnu_hash;
+        const std::uint32_t hash = gnu_hash(name);
+
+        std::uint32_t bloom_word = 0;
+        const std::uint32_t bloom_index =
+            (hash / kElf32WordBits) &
+            (hash_index.bloom_word_count - 1U);
+        if (!read_indexed_word(memory, hash_index.bloom_guest_address,
+                               bloom_index, bloom_word)) {
+            return lookup_failure(Elf32SymbolLookupError::HashReadFailed);
+        }
+        const std::uint32_t first_bit =
+            1U << (hash % kElf32WordBits);
+        const std::uint32_t second_bit =
+            1U << ((hash >> hash_index.bloom_shift) % kElf32WordBits);
+        if ((bloom_word & first_bit) == 0 ||
+            (bloom_word & second_bit) == 0) {
+            return lookup_failure(Elf32SymbolLookupError::SymbolNotFound);
+        }
+
+        std::uint32_t symbol_index = 0;
+        if (!read_indexed_word(
+                memory, hash_index.buckets_guest_address,
+                hash % hash_index.bucket_count, symbol_index)) {
+            return lookup_failure(Elf32SymbolLookupError::HashReadFailed);
+        }
+        if (symbol_index == 0) {
+            return lookup_failure(Elf32SymbolLookupError::SymbolNotFound);
+        }
+        if (symbol_index < hash_index.symbol_offset ||
+            symbol_index >= index.symbol_count) {
+            return lookup_failure(
+                Elf32SymbolLookupError::HashIndexOutOfRange);
+        }
+
+        while (symbol_index < index.symbol_count) {
+            const std::uint32_t chain_index =
+                symbol_index - hash_index.symbol_offset;
+            std::uint32_t chain_hash = 0;
+            if (!read_indexed_word(memory, hash_index.chains_guest_address,
+                                   chain_index, chain_hash)) {
+                return lookup_failure(Elf32SymbolLookupError::HashReadFailed);
+            }
+
+            if ((chain_hash | 1U) == (hash | 1U)) {
+                if (auto candidate = evaluate_candidate(symbol_index)) {
+                    return *candidate;
+                }
+            }
+
+            if ((chain_hash & 1U) != 0) {
+                return lookup_failure(Elf32SymbolLookupError::SymbolNotFound);
+            }
+            ++symbol_index;
+        }
+
+        return lookup_failure(Elf32SymbolLookupError::InvalidHashChain);
+    }
+
+    const Elf32SysvHashIndex& hash_index = *index.sysv_hash;
+    const std::uint32_t hash = sysv_hash(name);
+    std::uint32_t symbol_index = 0;
+    if (!read_indexed_word(memory, hash_index.buckets_guest_address,
+                           hash % hash_index.bucket_count, symbol_index)) {
+        return lookup_failure(Elf32SymbolLookupError::HashReadFailed);
+    }
+    if (symbol_index >= index.symbol_count && symbol_index != 0) {
+        return lookup_failure(Elf32SymbolLookupError::HashIndexOutOfRange);
+    }
+
+    std::uint32_t hops = 0;
+    while (symbol_index != 0 && hops < index.symbol_count) {
+        if (auto candidate = evaluate_candidate(symbol_index)) {
+            return *candidate;
+        }
+
+        std::uint32_t next = 0;
+        if (!read_indexed_word(memory, hash_index.chains_guest_address,
+                               symbol_index, next)) {
+            return lookup_failure(Elf32SymbolLookupError::HashReadFailed);
+        }
+        if (next >= index.symbol_count && next != 0) {
+            return lookup_failure(
+                Elf32SymbolLookupError::HashIndexOutOfRange);
+        }
+        symbol_index = next;
+        ++hops;
+    }
+    if (symbol_index != 0) {
+        return lookup_failure(Elf32SymbolLookupError::InvalidHashChain);
+    }
+    return lookup_failure(Elf32SymbolLookupError::SymbolNotFound);
+}
+
 const char* to_string(Elf32SymbolIndexError error) noexcept {
     switch (error) {
     case Elf32SymbolIndexError::None: return "none";
@@ -397,6 +686,28 @@ const char* to_string(Elf32SymbolIndexError error) noexcept {
     case Elf32SymbolIndexError::SymbolCountExceeded: return "symbol_count_exceeded";
     case Elf32SymbolIndexError::SymbolRangeOverflow: return "symbol_range_overflow";
     case Elf32SymbolIndexError::SymbolReadFailed: return "symbol_read_failed";
+    }
+    return "unknown";
+}
+
+const char* to_string(Elf32SymbolLookupError error) noexcept {
+    switch (error) {
+    case Elf32SymbolLookupError::None: return "none";
+    case Elf32SymbolLookupError::InvalidOptions: return "invalid_options";
+    case Elf32SymbolLookupError::InvalidMetadata: return "invalid_metadata";
+    case Elf32SymbolLookupError::InvalidLookupName: return "invalid_lookup_name";
+    case Elf32SymbolLookupError::UnsupportedVersioning: return "unsupported_versioning";
+    case Elf32SymbolLookupError::HashReadFailed: return "hash_read_failed";
+    case Elf32SymbolLookupError::HashIndexOutOfRange: return "hash_index_out_of_range";
+    case Elf32SymbolLookupError::InvalidHashChain: return "invalid_hash_chain";
+    case Elf32SymbolLookupError::SymbolReadFailed: return "symbol_read_failed";
+    case Elf32SymbolLookupError::StringReadFailed: return "string_read_failed";
+    case Elf32SymbolLookupError::SymbolNotFound: return "symbol_not_found";
+    case Elf32SymbolLookupError::UnsupportedBinding: return "unsupported_binding";
+    case Elf32SymbolLookupError::UnsupportedType: return "unsupported_type";
+    case Elf32SymbolLookupError::UnsupportedVisibility: return "unsupported_visibility";
+    case Elf32SymbolLookupError::UnsupportedSectionIndex: return "unsupported_section_index";
+    case Elf32SymbolLookupError::ValueOverflow: return "value_overflow";
     }
     return "unknown";
 }

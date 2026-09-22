@@ -5,7 +5,7 @@ Current phase: M4 continuation; bounded ELF32 symbol resolution
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `006-elf32-symbol-resolution`; T001 hash metadata and bounded dynamic-symbol indexing is ACTIVE. Implementation/tests/build wiring are prepared for the first exact-head CI gate; no feature-006 executable validation has passed yet.
+Active runtime work: `006-elf32-symbol-resolution`; T001 hash metadata/indexing is DONE at exact-head CI #203. T002 exact-name per-object symbol lookup is ACTIVE and awaits its exact-head CI gate.
 
 ## Working
 
@@ -41,7 +41,7 @@ Active runtime work: `006-elf32-symbol-resolution`; T001 hash metadata and bound
 
 ## Partial / not implemented
 
-- Feature 006 symbol work is PARTIAL: hash metadata/index construction is implemented for the pending T001 gate, while exact-name symbol lookup, graph BFS scope, version-aware semantics, and relocation application remain NOT IMPLEMENTED. Android search-path/namespace/pathname policy and process-wide link-map lifetime across graph-loading calls also remain NOT IMPLEMENTED.
+- Feature 006 symbol work is PARTIAL: bounded hash metadata/index construction is validated; exact-name per-object lookup is implemented for the pending T002 gate. Graph BFS scope, version-aware lookup (version tables are explicitly rejected for now), and relocation application remain NOT IMPLEMENTED. Android search-path/namespace/pathname policy and process-wide link-map lifetime across graph-loading calls also remain NOT IMPLEMENTED.
 - ARM relocations: NOT IMPLEMENTED.
 - Symbol lookup/interposition: NOT IMPLEMENTED.
 - RELRO/TLS processing: NOT IMPLEMENTED.
@@ -50,6 +50,10 @@ Active runtime work: `006-elf32-symbol-resolution`; T001 hash metadata and bound
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### M4 ELF32 symbol resolution (active)
+
+T001 hash metadata/indexing PASSed exact-head GitHub Actions run `35758444356` (#203) at `45cd3e5a322263f53dc02277a9d0e801849515db`. Linux A32 smoke PASSed 40/40 CTest including `elf32_linker_metadata_collection` and the new `elf32_symbol_index`; Android x86_64 address-space probe and Android arm64-v8a cross-build also PASSed. T002 exact-name lookup is implemented after this gate and requires new exact-head validation.
 
 ### M4 recursive ELF32 dependency graph loading
 

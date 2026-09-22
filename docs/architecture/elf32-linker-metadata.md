@@ -52,11 +52,12 @@ The current semantic set recognizes:
 - `DT_GNU_HASH`;
 - `DT_REL` + `DT_RELSZ` + `DT_RELENT`;
 - `DT_SONAME`;
-- repeated `DT_NEEDED` offsets.
+- repeated `DT_NEEDED` offsets;
+- a presence marker for GNU/SysV symbol-version metadata (`DT_VERSYM` / `DT_VERDEF*` / `DT_VERNEED*`) so name-only lookup can reject unsupported versioning explicitly.
 
 Recognized singleton tags are unique. A duplicate is rejected even if the value matches. `DT_NEEDED` is intentionally repeatable and preserves dynamic-array order.
 
-Unknown and deferred tags remain tolerated. Their presence does not imply semantic support.
+Unknown and deferred tags remain tolerated. Their presence does not imply semantic support. Version-table contents remain deferred; only their declaration is recorded for the symbol layer's safety boundary.
 
 ## Validation policy
 
