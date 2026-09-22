@@ -69,15 +69,16 @@ GitHub Actions also builds the reproducible ARM32 Android fixture, cross-builds 
 
 ## Canonical specs / docs
 
-- Repository workflow: `AGENTS.md`.
+- Generic agent workflow/runtime/governance: external control plane `Millesant/.gpt`; intentionally not vendored here.
+- Project-specific agent overlay: `AGENTS.md`.
 - Converted implemented baseline: `specs/000-current-baseline/`.
 - Current observed state: `.agent/STATE.md`.
 - Dependency-ordered next work: `.agent/NEXT.md`.
 - Durable architecture decisions: `.agent/DECISIONS.md`.
 - Detailed subsystem design/evidence: `docs/architecture/` and `docs/research/`.
 
-For new feature-scale work, create a focused `specs/<id>-<feature>/requirements.md`, `design.md`, and `tasks.md` package before substantial implementation. Tiny/routine changes should not receive unnecessary spec ceremony.
+When the routed central workflow calls for feature-scale project specification, use a focused `specs/<id>-<feature>/requirements.md`, `design.md`, and `tasks.md` package. Tiny/routine changes do not need a package solely for ceremony.
 
-## Evidence labels
+## Evidence records
 
-Use `PASS`, `FAIL`, `BLOCKED`, and `NOT RUN` for execution status. Architecture/research prose may additionally distinguish observed facts from inference/hypothesis. Never turn inspection, inference, or an unexecuted test into PASS.
+Durable validation records use the central `PASS` / `FAIL` / `BLOCKED` / `NOT RUN` vocabulary and keep source/revision/environment limitations explicit. Do not persist transient connector or host capability availability as project state.

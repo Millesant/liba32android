@@ -1,11 +1,11 @@
 # Current State
 
-Last updated: 2026-09-21
+Last updated: 2026-09-22
 Current phase: M4 continuation; recursive ELF32 dependency graph loading
 Integration branch: `bleeding`
 Last merged runtime PR: #31
 Runtime baseline commit: `2c3be26c05dff81be1f81c9565df5906c521a54c`
-Active runtime work: `005-elf32-dependency-loading` on `m4-elf32-dependency-loading`; T001 DONE / CI #182 PASS, T002 DONE / CI #187 PASS. T003 recursion/cycle/rollback implementation and focused tests are committed through `9bfbdd7e99a5daed6cfa6ee4b6c58c5c85cef2af`; CI #191 queued, final result NOT YET OBSERVED.
+Active runtime work: `005-elf32-dependency-loading` on existing draft PR #32 / `m4-elf32-dependency-loading`; T001 DONE / CI #182 PASS, T002 DONE / CI #187 PASS, T003 DONE / latest containing-head CI #193 PASS. T004 real-fixture graph integration is next.
 
 ## Working
 
@@ -36,11 +36,11 @@ Active runtime work: `005-elf32-dependency-loading` on `m4-elf32-dependency-load
 - `src/elf/elf32_linker_strings.*` now materializes bounded STRTAB entries plus optional SONAME and ordered/repeated NEEDED names. Every call requires an explicit caller-selected payload ceiling; reads remain through `GuestMemory`, use checked guest-address arithmetic, preserve raw bytes, and never mutate guest memory. Aggregate failure is all-or-nothing.
 - `src/elf/elf32_dependency_resolver.*` now acquires host-owned dependency image inputs through a caller-owned provider. It preserves ordered/repeated `DT_NEEDED` occurrences, forwards non-empty name bytes unchanged, distinguishes not-found from provider failure, validates non-empty provider identity/image, enforces explicit dependency-count/per-image/total-image ceilings, and returns no partial successful aggregate on failure. It deliberately does not choose guest bases or map dependency ELF images.
 - The reproducible real ARMv7/Android fixture remains generated with pinned NDK r27d / API 26 inputs. It has four `PT_LOAD` segments with `p_align=0x4000`, BSS, one `PT_DYNAMIC`, and observed SONAME/REL/SYMTAB/STRTAB/GNU_HASH-related tags with no `DT_NEEDED`; the linker-string integration validates SONAME `liba32android_loader_fixture.so` with an explicit 64-byte ceiling and zero NEEDED names.
-- Repository workflow state uses root `AGENTS.md`, durable `.agent/` files, and `specs/<id>-<feature>/{requirements,design,tasks}.md` for feature-scale work. `specs/000-current-baseline/` converts the already implemented work through PR #11 into that structure.
+- Project-local agent material is limited to the root `AGENTS.md` project overlay, durable `.agent/` project state/decisions, and project-owned `specs/<id>-<feature>/{requirements,design,tasks}.md` packages. Generic workflow/runtime/governance is centralized in `Millesant/.gpt` rather than copied into this repository.
 
 ## Partial / not implemented
 
-- Dependency graph loading is ACTIVE on PR #32: direct loading is CI-validated; bounded recursion/cycle/shared-object/aggregate-rollback code and tests are implemented but not yet CI-validated. Android search-path/namespace/pathname policy and full dynamic symbol-table semantics remain NOT IMPLEMENTED.
+- Dependency graph loading is ACTIVE on PR #32: direct loading plus bounded recursion/cycle/shared-object/aggregate rollback are CI-validated through latest containing-head CI #193. Real-fixture graph integration (T004) and final convergence (T005) remain pending. Android search-path/namespace/pathname policy and full dynamic symbol-table semantics remain NOT IMPLEMENTED.
 - ARM relocations: NOT IMPLEMENTED.
 - Symbol lookup/interposition: NOT IMPLEMENTED.
 - RELRO/TLS processing: NOT IMPLEMENTED.

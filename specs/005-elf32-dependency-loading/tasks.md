@@ -60,7 +60,7 @@
   - max-depth failure is deterministic;
   - later transitive acquisition/parse/placement/load failure removes all earlier graph-owned mappings;
   - unrelated preexisting guest mappings remain mapped with original permissions.
-- Status: ACTIVE — recursive graph implementation committed at `b6c286f69516bcfd6f85c4a3e2b00e754c29bb38`; focused recursion/cycle/rollback tests committed at `9bfbdd7e99a5daed6cfa6ee4b6c58c5c85cef2af`. CI #191 was queued on that exact test head; final result not yet observed. Do not mark DONE until all three CI jobs PASS.
+- Status: DONE — recursive graph implementation and focused recursion/cycle/rollback coverage are contained in head `61c9ee214d1d8a965be9a1f187b76b894b942002`; CI #193 PASSed Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build.
 
 ## T004 — Integrate the pinned real ARM32 fixture
 - Requirements: R5, R6, R11-R13 / AC15
@@ -77,7 +77,7 @@
   - zero provider calls PASS;
   - required alignment remains `0x4000`;
   - existing real-fixture loader/dynamic/metadata/string/resolver tests remain PASS.
-- Status: TODO
+- Status: READY — T003 validation gate satisfied by CI #193.
 
 ## T005 — Converge architecture, durable state, and exact-head CI
 - Requirements: all / AC1-AC16

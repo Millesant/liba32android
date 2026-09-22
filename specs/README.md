@@ -18,17 +18,11 @@ specs/<id>-<feature>/
 
 Do not create optional files unless they preserve information that would otherwise need to be rediscovered.
 
-## Lifecycle
+## Use
 
-1. Define requirements and acceptance criteria.
-2. Resolve only the research needed to remove material uncertainty.
-3. Record the chosen design and invariants.
-4. Break implementation into dependency-ordered tasks with validation.
-5. Check that every acceptance criterion has an implementation/validation path.
-6. Implement and validate coherent slices.
-7. Converge code/docs/state against the spec, then keep `.agent/STATE.md` and `.agent/NEXT.md` current.
+This directory stores project-owned specification artifacts, not the generic agent workflow. When the routed control-plane workflow or project requirements call for feature-scale specification, create the smallest package that preserves requirements, design decisions, dependency-ordered tasks, and their validation paths.
 
-Tiny and routine changes do not need a full package.
+Tiny and routine changes do not need a package solely for ceremony. `.agent/NEXT.md` owns project priority, and `.agent/STATE.md` records current observed reality.
 
 ## Current baseline
 
