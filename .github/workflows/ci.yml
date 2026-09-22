@@ -75,10 +75,16 @@ jobs:
           build/elf32_real_fixture_test "$ARM32_FIXTURE" | tee build-fixtures/loader-evidence.txt
           build/elf32_dynamic_placement_real_fixture_test "$ARM32_FIXTURE" |
             tee build-fixtures/auto-placement-evidence.txt
+          build/elf32_dependency_loader_real_fixture_test "$ARM32_FIXTURE" |
+            tee build-fixtures/dependency-graph-evidence.txt
           readelf -lW "$ARM32_FIXTURE" > build-fixtures/program-headers.txt
           grep -F 'fixture.status=PASS' build-fixtures/loader-evidence.txt
           grep -F 'fixture.auto_placement.required_alignment=0x4000'             build-fixtures/auto-placement-evidence.txt
           grep -F 'fixture.auto_placement.status=PASS'             build-fixtures/auto-placement-evidence.txt
+          grep -F 'fixture.dependency_graph.required_alignment=0x4000' build-fixtures/dependency-graph-evidence.txt
+          grep -F 'fixture.dependency_graph.needed_count=0' build-fixtures/dependency-graph-evidence.txt
+          grep -F 'fixture.dependency_graph.provider_calls=0' build-fixtures/dependency-graph-evidence.txt
+          grep -F 'fixture.dependency_graph.status=PASS' build-fixtures/dependency-graph-evidence.txt
       - name: Upload real ARM32 fixture evidence
         uses: actions/upload-artifact@v4
         with:
@@ -87,6 +93,7 @@ jobs:
             build-fixtures/liba32android_loader_fixture.so
             build-fixtures/loader-evidence.txt
             build-fixtures/auto-placement-evidence.txt
+            build-fixtures/dependency-graph-evidence.txt
             build-fixtures/program-headers.txt
           if-no-files-found: error
           retention-days: 14
