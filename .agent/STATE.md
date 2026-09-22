@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-22
-Current phase: M4 continuation; automatic ET_DYN guest placement merged
+Current phase: M4 continuation; recursive ELF32 dependency graph loading
 Integration branch: `bleeding`
 Last merged runtime PR: #31
 Runtime baseline commit: `2c3be26c05dff81be1f81c9565df5906c521a54c`
-Active runtime work: none selected; `004-elf32-dynamic-placement` is DONE and merged. T001 #156 PASS, T002 #162 PASS, T003 #166 PASS, T004 #169 PASS, T005 feature-gate #173 PASS, persistence-only exact-head #175 PASS.
+Active runtime work: `005-elf32-dependency-loading` on existing draft PR #32 / `m4-elf32-dependency-loading`; T001-T004 PASSed pre-convergence CI #198 at `78665e000a67b559c694aef5b1e22f0742f360c0` after corrected CMake/CTest wiring, including the real fixture graph integration. T005 convergence is active and requires a new exact-head gate after code/docs/state cleanup.
 
 ## Working
 
@@ -40,7 +40,7 @@ Active runtime work: none selected; `004-elf32-dynamic-placement` is DONE and me
 
 ## Partial / not implemented
 
-- Wiring acquired dependency images through placement/loading plus recursive graph/link-map/cycle/dedup semantics, Android search-path/namespace/pathname policy, and full dynamic symbol-table semantics: NOT IMPLEMENTED.
+- Dependency graph loading is ACTIVE on PR #32: T001-T004 implementation and real-fixture integration PASSed corrected pre-convergence CI #198 with 39/39 CTest plus both Android jobs. T005 final convergence/exact-head validation remains pending. Android search-path/namespace/pathname policy and full dynamic symbol-table semantics remain NOT IMPLEMENTED.
 - ARM relocations: NOT IMPLEMENTED.
 - Symbol lookup/interposition: NOT IMPLEMENTED.
 - RELRO/TLS processing: NOT IMPLEMENTED.
@@ -49,6 +49,10 @@ Active runtime work: none selected; `004-elf32-dynamic-placement` is DONE and me
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### M4 recursive ELF32 dependency graph loading (active)
+
+Draft PR #32 pre-convergence implementation head `78665e000a67b559c694aef5b1e22f0742f360c0` PASSed GitHub Actions run `35708717172` (#198). Linux A32 smoke compiled `src/elf/elf32_dependency_loader.cpp`, `tests/elf32_dependency_loader.cpp`, and the real-fixture graph test, then PASSed 39/39 CTest including `elf32_dependency_loading` and `elf32_real_dependency_loading`. Android x86_64 address-space probe and Android arm64-v8a cross-build jobs also PASSed. This validates T001-T004 at that SHA. T005 now converges public error surface, provider-identity indexing, README/architecture/spec/state; a new exact-head CI gate is required because these convergence edits change source and documentation.
 
 ### M4 automatic ET_DYN guest placement
 
@@ -149,4 +153,11 @@ No x86_64 16 KiB address-space blocker remains on the validated Fedora/KVM envir
 - Real Android/AArch64 runtime behavior still requires Termux/device execution; the user prefers downloading the CI-produced runtime-smoke artifact for those runs.
 - The next feature-scale implementation must get a new `specs/<id>-<feature>/` requirements/design/tasks chain instead of extending `specs/000-current-baseline/`.
 
-- Branch model: `bleeding` is the integration branch. There is no project-level branch-per-feature or PR-per-change mandate; branch/PR decisions defer to current user instruction, repository protection/conventions, and central guardrails. Transient connector capabilities are not durable project state.
+
+- Spec `005-elf32-dependency-loading` is readiness-checked on `m4-elf32-dependency-loading`. It defines a new graph/loading layer above the unchanged acquisition resolver: root identity/object 0, provider-identity dedup/cycles, deterministic ordered edges, ET_DYN dependency placement + explicit-base loading, identity/image mismatch rejection, graph-wide bounds, and reverse-order rollback of graph-owned mappings. T001 implementation/tests are NOT RUN.
+
+- T001 of `005-elf32-dependency-loading` added `elf32_dependency_loader.{h,cpp}`, root-object graph/result contracts, ET_EXEC fixed root loading, ET_DYN automatic placement + exact-base loading, the existing dynamic → metadata → strings pipeline, and transactional rollback for post-load root failures. Previous CI #182 was green but did not compile the new loader because CMake wiring was absent; validation is superseded by the corrected wiring gate.
+
+- T002 adds ordered direct dependency acquisition through the unchanged resolver, provider-identity object reuse/aliasing, one ET_DYN mapping per first-seen identity, identity/image mismatch rejection, ET_EXEC dependency rejection, graph-wide direct object/occurrence/image limits, and aggregate rollback. Focused tests cover ordered/repeated edges, aliases, mismatch, provider/resource failures, and rollback. Earlier CI did not compile the new loader target; corrected exact-head validation is pending.
+
+- T003 implementation uses call-local Discovered/Loading/Loaded state, acquires each object's full direct dependency set before depth-first traversal, reuses Loading/Loaded identities for cycles/shared transitives, counts duplicate provider acquisitions against graph-wide image/occurrence budgets, and rolls back all successful graph-owned mappings in reverse load order on failure. Focused tests cover A→B→C, A→B→A, shared C reuse, max-depth failure, transitive ET_EXEC failure, recursive occurrence limits, recursive total-image limits, and preexisting-mapping preservation. CI #193 was green but ran only the existing 37 tests and did not exercise this loader; corrected exact-head validation is pending.
