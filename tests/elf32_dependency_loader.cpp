@@ -73,7 +73,7 @@ std::vector<std::uint8_t> make_image(std::uint16_t type,
                                      std::uint32_t virtual_base,
                                      bool with_dynamic,
                                      bool terminate_dynamic) {
-    std::vector<std::uint8_t> image(0x1010, 0);
+    std::vector<std::uint8_t> image(0x4010, 0);
     image[0] = 0x7f;
     image[1] = 'E';
     image[2] = 'L';
@@ -100,17 +100,17 @@ std::vector<std::uint8_t> make_image(std::uint16_t type,
     write_u32(image, kFirstProgramHeader + 28, 0x4000);
 
     write_u32(image, kSecondProgramHeader + 0, kPtLoad);
-    write_u32(image, kSecondProgramHeader + 4, 0x1000);
+    write_u32(image, kSecondProgramHeader + 4, 0x4000);
     write_u32(image, kSecondProgramHeader + 8, virtual_base + 0x4000);
     write_u32(image, kSecondProgramHeader + 16, 4);
     write_u32(image, kSecondProgramHeader + 20, 0x20);
     write_u32(image, kSecondProgramHeader + 24, 6);
     write_u32(image, kSecondProgramHeader + 28, 0x4000);
 
-    image[0x1000] = 0x78;
-    image[0x1001] = 0x56;
-    image[0x1002] = 0x34;
-    image[0x1003] = 0x12;
+    image[0x4000] = 0x78;
+    image[0x4001] = 0x56;
+    image[0x4002] = 0x34;
+    image[0x4003] = 0x12;
 
     if (with_dynamic) {
         write_u32(image, kThirdProgramHeader + 0, kPtDynamic);
@@ -133,7 +133,7 @@ std::vector<std::uint8_t> make_needed_image(
     std::uint16_t type,
     std::uint32_t virtual_base,
     const std::vector<std::string>& needed) {
-    std::vector<std::uint8_t> image(0x1010, 0);
+    std::vector<std::uint8_t> image(0x4010, 0);
     image[0] = 0x7f;
     image[1] = 'E';
     image[2] = 'L';
@@ -160,17 +160,17 @@ std::vector<std::uint8_t> make_needed_image(
     write_u32(image, kFirstProgramHeader + 28, 0x4000);
 
     write_u32(image, kSecondProgramHeader + 0, kPtLoad);
-    write_u32(image, kSecondProgramHeader + 4, 0x1000);
+    write_u32(image, kSecondProgramHeader + 4, 0x4000);
     write_u32(image, kSecondProgramHeader + 8, virtual_base + 0x4000);
     write_u32(image, kSecondProgramHeader + 16, 4);
     write_u32(image, kSecondProgramHeader + 20, 0x20);
     write_u32(image, kSecondProgramHeader + 24, 6);
     write_u32(image, kSecondProgramHeader + 28, 0x4000);
 
-    image[0x1000] = 0x78;
-    image[0x1001] = 0x56;
-    image[0x1002] = 0x34;
-    image[0x1003] = 0x12;
+    image[0x4000] = 0x78;
+    image[0x4001] = 0x56;
+    image[0x4002] = 0x34;
+    image[0x4003] = 0x12;
 
     constexpr std::size_t dynamic_offset = 0x100;
     constexpr std::size_t string_offset = 0x200;
