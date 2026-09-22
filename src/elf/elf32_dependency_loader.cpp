@@ -1,6 +1,5 @@
 #include "elf/elf32_dependency_loader.h"
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -12,6 +11,12 @@
 
 namespace liba32android::elf {
 namespace {
+
+enum class ObjectState : std::uint8_t {
+    Discovered = 0,
+    Loading,
+    Loaded,
+};
 
 [[nodiscard]] Elf32DependencyLoadResult failure(
     Elf32DependencyLoadError error,
@@ -60,30 +65,29 @@ namespace {
 
 [[nodiscard]] Elf32DependencyLoadResult load_object(
     memory::MappedGuestMemory& memory,
-    Elf32DependencyLoadSource source,
+    Elf32LoadedDependencyObject& object,
     const Elf32DependencyLoadOptions& options,
-    bool require_dynamic,
-    Elf32LoadedDependencyObject& object) {
-    const auto plan_result = plan_elf32_load(memory, source.image);
+    bool require_dynamic) {
+    const auto plan_result = plan_elf32_load(memory, object.image);
     if (!plan_result) {
         auto result =
-            failure(Elf32DependencyLoadError::InvalidImage, source.identity);
+            failure(Elf32DependencyLoadError::InvalidImage, object.identity);
         result.load_error = plan_result.error;
         return result;
     }
     if (require_dynamic && plan_result.plan.type != Elf32ImageType::Dynamic) {
         return failure(Elf32DependencyLoadError::DependencyNotDynamic,
-                       source.identity);
+                       object.identity);
     }
 
     Elf32LoadResult load;
     if (plan_result.plan.type == Elf32ImageType::Dynamic) {
         const auto placement =
-            place_elf32_dynamic(memory, source.image, options.placement);
+            place_elf32_dynamic(memory, object.image, options.placement);
         if (!placement) {
             auto result =
                 failure(Elf32DependencyLoadError::PlacementFailed,
-                        source.identity);
+                        object.identity);
             result.placement_error = placement.error;
             result.load_error = placement.load_error;
             return result;
@@ -91,20 +95,18 @@ namespace {
 
         Elf32LoadOptions load_options;
         load_options.dynamic_base = placement.dynamic_base;
-        load = load_elf32(memory, source.image, load_options);
+        load = load_elf32(memory, object.image, load_options);
     } else {
-        load = load_elf32(memory, source.image);
+        load = load_elf32(memory, object.image);
     }
 
     if (!load) {
         auto result =
-            failure(Elf32DependencyLoadError::LoadFailed, source.identity);
+            failure(Elf32DependencyLoadError::LoadFailed, object.identity);
         result.load_error = load.error;
         return result;
     }
 
-    object.identity = std::move(source.identity);
-    object.image = std::move(source.image);
     object.load = std::move(load);
     return {};
 }
@@ -167,6 +169,170 @@ namespace {
     return graph.objects.size();
 }
 
+struct GraphLoadContext {
+    memory::MappedGuestMemory& memory;
+    Elf32DependencyProvider& provider;
+    const Elf32DependencyLoadOptions& options;
+
+    Elf32DependencyGraph graph;
+    std::vector<ObjectState> states;
+    std::vector<Elf32LoadResult> successful_loads;
+    std::uint64_t dependency_occurrences{};
+    std::uint64_t total_image_bytes{};
+
+    [[nodiscard]] Elf32DependencyLoadResult process_object(
+        std::size_t index,
+        std::uint64_t depth,
+        bool require_dynamic) {
+        if (states[index] == ObjectState::Loaded ||
+            states[index] == ObjectState::Loading) {
+            return {};
+        }
+
+        if (depth > options.max_depth) {
+            return failure(Elf32DependencyLoadError::MaxDepthExceeded,
+                           graph.objects[index].identity);
+        }
+
+        states[index] = ObjectState::Loading;
+
+        auto load_result =
+            load_object(memory, graph.objects[index], options, require_dynamic);
+        if (!load_result) {
+            return load_result;
+        }
+        successful_loads.push_back(graph.objects[index].load);
+
+        auto inspect_result =
+            inspect_object(memory, graph.objects[index], options);
+        if (!inspect_result) {
+            return inspect_result;
+        }
+
+        const std::size_t direct_size =
+            graph.objects[index].linker_strings.needed.size();
+        if (direct_size > std::numeric_limits<std::uint32_t>::max()) {
+            return failure(
+                Elf32DependencyLoadError::TooManyDependencyOccurrences,
+                graph.objects[index].identity);
+        }
+
+        const std::uint64_t direct_occurrences =
+            static_cast<std::uint64_t>(direct_size);
+        if (direct_occurrences >
+            options.max_dependency_occurrences - dependency_occurrences) {
+            return failure(
+                Elf32DependencyLoadError::TooManyDependencyOccurrences,
+                graph.objects[index].identity);
+        }
+
+        if (direct_size == 0) {
+            states[index] = ObjectState::Loaded;
+            return {};
+        }
+
+        const std::uint64_t remaining_total =
+            options.max_total_image_bytes - total_image_bytes;
+        const auto resolved = resolve_elf32_dependencies(
+            graph.objects[index].linker_strings,
+            provider,
+            Elf32DependencyResolveOptions{
+                .max_dependencies = static_cast<std::uint32_t>(direct_size),
+                .max_image_bytes = options.max_image_bytes,
+                .max_total_image_bytes = remaining_total,
+            });
+        if (!resolved) {
+            auto result =
+                failure(Elf32DependencyLoadError::DependencyResolveFailed,
+                        graph.objects[index].identity);
+            result.dependency_error = resolved.error;
+            return result;
+        }
+
+        dependency_occurrences += direct_occurrences;
+
+        std::uint64_t acquired_bytes = 0;
+        for (const auto& dependency : resolved.dependencies.ordered) {
+            const std::uint64_t image_bytes =
+                static_cast<std::uint64_t>(dependency.image.size());
+            if (image_bytes > remaining_total - acquired_bytes) {
+                return failure(
+                    Elf32DependencyLoadError::TotalImageBytesExceeded,
+                    graph.objects[index].identity);
+            }
+            acquired_bytes += image_bytes;
+        }
+        total_image_bytes += acquired_bytes;
+
+        for (const auto& dependency : resolved.dependencies.ordered) {
+            std::size_t target_index =
+                find_identity(graph, dependency.identity);
+
+            if (target_index != graph.objects.size()) {
+                if (graph.objects[target_index].image != dependency.image) {
+                    auto result =
+                        failure(Elf32DependencyLoadError::IdentityImageMismatch,
+                                dependency.identity);
+                    result.requested_name = dependency.requested_name;
+                    return result;
+                }
+
+                graph.objects[index].dependencies.push_back(
+                    Elf32DependencyEdge{
+                        .requested_name = dependency.requested_name,
+                        .target_object = target_index,
+                    });
+
+                if (states[target_index] == ObjectState::Discovered) {
+                    auto nested =
+                        process_object(target_index, depth + 1U, true);
+                    if (!nested) {
+                        if (nested.requested_name.empty()) {
+                            nested.requested_name =
+                                dependency.requested_name;
+                        }
+                        return nested;
+                    }
+                }
+                continue;
+            }
+
+            if (graph.objects.size() >=
+                static_cast<std::size_t>(options.max_objects)) {
+                auto result =
+                    failure(Elf32DependencyLoadError::TooManyObjects,
+                            dependency.identity);
+                result.requested_name = dependency.requested_name;
+                return result;
+            }
+
+            target_index = graph.objects.size();
+            Elf32LoadedDependencyObject child;
+            child.identity = dependency.identity;
+            child.image = dependency.image;
+            graph.objects.push_back(std::move(child));
+            states.push_back(ObjectState::Discovered);
+
+            graph.objects[index].dependencies.push_back(
+                Elf32DependencyEdge{
+                    .requested_name = dependency.requested_name,
+                    .target_object = target_index,
+                });
+
+            auto nested = process_object(target_index, depth + 1U, true);
+            if (!nested) {
+                if (nested.requested_name.empty()) {
+                    nested.requested_name = dependency.requested_name;
+                }
+                return nested;
+            }
+        }
+
+        states[index] = ObjectState::Loaded;
+        return {};
+    }
+};
+
 }  // namespace
 
 Elf32DependencyLoadResult load_elf32_dependency_graph(
@@ -194,131 +360,26 @@ Elf32DependencyLoadResult load_elf32_dependency_graph(
                        root.identity);
     }
 
-    std::vector<Elf32LoadResult> successful_loads;
-    successful_loads.reserve(options.max_objects);
-
-    Elf32DependencyGraph graph;
-    graph.objects.reserve(options.max_objects);
+    GraphLoadContext context{
+        .memory = memory,
+        .provider = provider,
+        .options = options,
+        .total_image_bytes = root_image_bytes,
+    };
 
     Elf32LoadedDependencyObject root_object;
-    auto root_load =
-        load_object(memory, std::move(root), options, false, root_object);
-    if (!root_load) {
-        return root_load;
-    }
-    successful_loads.push_back(root_object.load);
+    root_object.identity = std::move(root.identity);
+    root_object.image = std::move(root.image);
+    context.graph.objects.push_back(std::move(root_object));
+    context.states.push_back(ObjectState::Discovered);
 
-    auto root_inspect = inspect_object(memory, root_object, options);
-    if (!root_inspect) {
-        return rollback_failure(memory, successful_loads,
-                                std::move(root_inspect));
+    auto result = context.process_object(0, 0, false);
+    if (!result) {
+        return rollback_failure(memory, context.successful_loads,
+                                std::move(result));
     }
 
-    const std::uint64_t direct_occurrences =
-        static_cast<std::uint64_t>(root_object.linker_strings.needed.size());
-    if (direct_occurrences > options.max_dependency_occurrences ||
-        root_object.linker_strings.needed.size() >
-            std::numeric_limits<std::uint32_t>::max()) {
-        auto result =
-            failure(Elf32DependencyLoadError::TooManyDependencyOccurrences,
-                    root_object.identity);
-        return rollback_failure(memory, successful_loads, std::move(result));
-    }
-
-    graph.objects.push_back(std::move(root_object));
-    if (graph.objects[0].linker_strings.needed.empty()) {
-        Elf32DependencyLoadResult result;
-        result.graph = std::move(graph);
-        return result;
-    }
-
-    const std::uint64_t remaining_total =
-        options.max_total_image_bytes - root_image_bytes;
-    const auto resolved = resolve_elf32_dependencies(
-        graph.objects[0].linker_strings,
-        provider,
-        Elf32DependencyResolveOptions{
-            .max_dependencies = static_cast<std::uint32_t>(
-                graph.objects[0].linker_strings.needed.size()),
-            .max_image_bytes = options.max_image_bytes,
-            .max_total_image_bytes = remaining_total,
-        });
-    if (!resolved) {
-        auto result =
-            failure(Elf32DependencyLoadError::DependencyResolveFailed,
-                    graph.objects[0].identity);
-        result.dependency_error = resolved.error;
-        return rollback_failure(memory, successful_loads, std::move(result));
-    }
-
-    for (const auto& dependency : resolved.dependencies.ordered) {
-        const std::size_t known_index =
-            find_identity(graph, dependency.identity);
-        if (known_index != graph.objects.size()) {
-            if (graph.objects[known_index].image != dependency.image) {
-                auto result =
-                    failure(Elf32DependencyLoadError::IdentityImageMismatch,
-                            dependency.identity);
-                result.requested_name = dependency.requested_name;
-                return rollback_failure(memory, successful_loads,
-                                        std::move(result));
-            }
-            graph.objects[0].dependencies.push_back(Elf32DependencyEdge{
-                .requested_name = dependency.requested_name,
-                .target_object = known_index,
-            });
-            continue;
-        }
-
-        if (graph.objects.size() >= options.max_objects) {
-            auto result =
-                failure(Elf32DependencyLoadError::TooManyObjects,
-                        dependency.identity);
-            result.requested_name = dependency.requested_name;
-            return rollback_failure(memory, successful_loads,
-                                    std::move(result));
-        }
-
-        Elf32LoadedDependencyObject child;
-        auto child_load = load_object(
-            memory,
-            Elf32DependencyLoadSource{
-                .identity = dependency.identity,
-                .image = dependency.image,
-            },
-            options, true, child);
-        if (!child_load) {
-            child_load.requested_name = dependency.requested_name;
-            return rollback_failure(memory, successful_loads,
-                                    std::move(child_load));
-        }
-        successful_loads.push_back(child.load);
-
-        auto child_inspect = inspect_object(memory, child, options);
-        if (!child_inspect) {
-            child_inspect.requested_name = dependency.requested_name;
-            return rollback_failure(memory, successful_loads,
-                                    std::move(child_inspect));
-        }
-        if (!child.linker_strings.needed.empty()) {
-            auto result =
-                failure(Elf32DependencyLoadError::DependenciesNotImplemented,
-                        child.identity);
-            result.requested_name = child.linker_strings.needed.front();
-            return rollback_failure(memory, successful_loads,
-                                    std::move(result));
-        }
-
-        const std::size_t child_index = graph.objects.size();
-        graph.objects.push_back(std::move(child));
-        graph.objects[0].dependencies.push_back(Elf32DependencyEdge{
-            .requested_name = dependency.requested_name,
-            .target_object = child_index,
-        });
-    }
-
-    Elf32DependencyLoadResult result;
-    result.graph = std::move(graph);
+    result.graph = std::move(context.graph);
     return result;
 }
 
