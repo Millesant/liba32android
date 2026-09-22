@@ -38,7 +38,7 @@
   - equal identity + different bytes -> explicit failure + rollback;
   - ET_EXEC dependency rejection + rollback;
   - provider/resource failures expose no partial graph.
-- Status: ACTIVE — implementation + focused tests committed at `8a852f6ec328aa3acf8add6d13f0b7ec51f74482`; exact implementation-head CI #185 PENDING. Do not mark PASS/DONE until Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all complete successfully.
+- Status: DONE — implementation committed at `8a852f6ec328aa3acf8add6d13f0b7ec51f74482`; superseded implementation-head CI #185 was cancelled after checkpoint commits advanced the PR head. Latest containing head `1d85b223fe8fb6ef4fd1c89806c17afd2811e219` PASSed CI #187: Linux A32 smoke (including Test), Android x86_64 address-space probe, and Android arm64-v8a cross-build all PASS.
 
 ## T003 — Add bounded recursion, cycles, and aggregate rollback
 - Requirements: R3, R4, R8-R11 / AC4, AC7, AC10, AC11
