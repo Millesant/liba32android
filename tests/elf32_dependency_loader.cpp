@@ -657,6 +657,280 @@ int test_provider_and_resource_failures_are_transactional() {
     return 0;
 }
 
+
+int test_transitive_dependency_loading() {
+    MappedGuestMemory memory;
+    RecordingProvider provider;
+    provider.responses = {
+        success("id-b", make_needed_image(
+            3, 0, std::vector<std::string>{"c.so"})),
+        success("id-c", make_image(3, 0, false, true)),
+    };
+
+    const auto result = load_elf32_dependency_graph(
+        memory,
+        Elf32DependencyLoadSource{
+            .identity = "root",
+            .image = make_needed_image(
+                3, 0, std::vector<std::string>{"b.so"}),
+        },
+        provider,
+        options());
+
+    if (!result || result.graph.objects.size() != 3) {
+        return fail("transitive dependency graph did not load");
+    }
+    if (provider.requests != std::vector<std::string>{"b.so", "c.so"}) {
+        return fail("transitive provider order was not depth-first");
+    }
+    if (result.graph.objects[0].dependencies.size() != 1 ||
+        result.graph.objects[0].dependencies[0].target_object != 1 ||
+        result.graph.objects[1].identity != "id-b" ||
+        result.graph.objects[1].dependencies.size() != 1 ||
+        result.graph.objects[1].dependencies[0].requested_name != "c.so" ||
+        result.graph.objects[1].dependencies[0].target_object != 2 ||
+        result.graph.objects[2].identity != "id-c") {
+        return fail("transitive graph edges/objects were incorrect");
+    }
+    return 0;
+}
+
+int test_cycle_reuses_loading_root() {
+    MappedGuestMemory memory;
+    RecordingProvider provider;
+
+    const auto root_image =
+        make_needed_image(3, 0, std::vector<std::string>{"b.so"});
+    const auto child_image =
+        make_needed_image(3, 0, std::vector<std::string>{"root.so"});
+    provider.responses = {
+        success("id-b", child_image),
+        success("root", root_image),
+    };
+
+    const auto result = load_elf32_dependency_graph(
+        memory,
+        Elf32DependencyLoadSource{
+            .identity = "root",
+            .image = root_image,
+        },
+        provider,
+        options());
+
+    if (!result || result.graph.objects.size() != 2) {
+        return fail("cycle did not terminate with two unique objects");
+    }
+    if (provider.requests != std::vector<std::string>{"b.so", "root.so"}) {
+        return fail("cycle provider request order was incorrect");
+    }
+    if (result.graph.objects[0].dependencies.size() != 1 ||
+        result.graph.objects[0].dependencies[0].target_object != 1 ||
+        result.graph.objects[1].dependencies.size() != 1 ||
+        result.graph.objects[1].dependencies[0].target_object != 0) {
+        return fail("cycle edges did not reuse the loading root");
+    }
+    return 0;
+}
+
+int test_shared_transitive_dependency_reused() {
+    MappedGuestMemory memory;
+    RecordingProvider provider;
+
+    const auto c_image = make_image(3, 0, false, true);
+    provider.responses = {
+        success("id-b", make_needed_image(
+            3, 0, std::vector<std::string>{"c.so"})),
+        success("id-c", c_image),
+        success("id-c", c_image),
+    };
+
+    const auto result = load_elf32_dependency_graph(
+        memory,
+        Elf32DependencyLoadSource{
+            .identity = "root",
+            .image = make_needed_image(
+                3, 0, std::vector<std::string>{"b.so", "c.so"}),
+        },
+        provider,
+        options());
+
+    if (!result || result.graph.objects.size() != 3) {
+        return fail("shared transitive dependency graph did not load");
+    }
+    if (provider.requests !=
+        std::vector<std::string>{"b.so", "c.so", "c.so"}) {
+        return fail("direct-set acquisition/depth-first traversal order changed");
+    }
+    const auto& root_edges = result.graph.objects[0].dependencies;
+    const auto& b_edges = result.graph.objects[1].dependencies;
+    if (root_edges.size() != 2 || b_edges.size() != 1 ||
+        root_edges[0].target_object != 1 ||
+        root_edges[1].target_object != 2 ||
+        b_edges[0].target_object != 2) {
+        return fail("shared transitive dependency was not reused");
+    }
+    return 0;
+}
+
+int test_depth_limit_rolls_back_graph() {
+    MappedGuestMemory memory;
+    const auto rw = MemoryPermission::Read | MemoryPermission::Write;
+    constexpr std::uint32_t sentinel = 0x70000;
+    if (!memory.map(sentinel, memory.page_size(), rw)) {
+        return fail("could not map depth-limit sentinel");
+    }
+
+    RecordingProvider provider;
+    provider.responses = {
+        success("id-b", make_needed_image(
+            3, 0, std::vector<std::string>{"c.so"})),
+        success("id-c", make_image(3, 0, false, true)),
+    };
+    auto limited = options();
+    limited.max_depth = 1;
+
+    const auto result = load_elf32_dependency_graph(
+        memory,
+        Elf32DependencyLoadSource{
+            .identity = "root",
+            .image = make_needed_image(
+                3, 0, std::vector<std::string>{"b.so"}),
+        },
+        provider,
+        limited);
+
+    if (result.error != Elf32DependencyLoadError::MaxDepthExceeded ||
+        result.failing_identity != "id-c" ||
+        result.requested_name != "c.so" ||
+        !result.graph.objects.empty()) {
+        return fail("max-depth failure was not classified correctly");
+    }
+    for (const std::uint32_t address :
+         {0x10000U, 0x14000U, 0x18000U, 0x1c000U, 0x20000U}) {
+        if (memory.is_mapped(address)) {
+            return fail("max-depth failure left graph-owned mappings behind");
+        }
+    }
+    if (!memory.is_mapped(sentinel) || memory.permissions(sentinel) != rw) {
+        return fail("max-depth rollback disturbed preexisting mapping");
+    }
+    return 0;
+}
+
+int test_transitive_load_failure_rolls_back_graph() {
+    MappedGuestMemory memory;
+    const auto rw = MemoryPermission::Read | MemoryPermission::Write;
+    constexpr std::uint32_t sentinel = 0x70000;
+    if (!memory.map(sentinel, memory.page_size(), rw)) {
+        return fail("could not map transitive-failure sentinel");
+    }
+
+    RecordingProvider provider;
+    provider.responses = {
+        success("id-b", make_needed_image(
+            3, 0, std::vector<std::string>{"bad.so"})),
+        success("bad-exec", make_image(2, 0x30000, false, true)),
+    };
+
+    const auto result = load_elf32_dependency_graph(
+        memory,
+        Elf32DependencyLoadSource{
+            .identity = "root",
+            .image = make_needed_image(
+                3, 0, std::vector<std::string>{"b.so"}),
+        },
+        provider,
+        options());
+
+    if (result.error != Elf32DependencyLoadError::DependencyNotDynamic ||
+        result.failing_identity != "bad-exec" ||
+        result.requested_name != "bad.so") {
+        return fail("transitive dependency failure was not surfaced");
+    }
+    for (const std::uint32_t address :
+         {0x10000U, 0x14000U, 0x18000U, 0x1c000U, 0x30000U}) {
+        if (memory.is_mapped(address)) {
+            return fail("transitive failure did not roll back prior objects");
+        }
+    }
+    if (!memory.is_mapped(sentinel) || memory.permissions(sentinel) != rw) {
+        return fail("transitive rollback disturbed preexisting mapping");
+    }
+    return 0;
+}
+
+int test_recursive_occurrence_and_image_budgets() {
+    {
+        MappedGuestMemory memory;
+        RecordingProvider provider;
+        provider.responses = {
+            success("id-b", make_needed_image(
+                3, 0, std::vector<std::string>{"c.so"})),
+        };
+        auto limited = options();
+        limited.max_dependency_occurrences = 1;
+
+        const auto result = load_elf32_dependency_graph(
+            memory,
+            Elf32DependencyLoadSource{
+                .identity = "root",
+                .image = make_needed_image(
+                    3, 0, std::vector<std::string>{"b.so"}),
+            },
+            provider,
+            limited);
+
+        if (result.error !=
+                Elf32DependencyLoadError::TooManyDependencyOccurrences ||
+            result.failing_identity != "id-b" ||
+            provider.requests != std::vector<std::string>{"b.so"} ||
+            memory.is_mapped(0x10000) || memory.is_mapped(0x14000) ||
+            memory.is_mapped(0x18000) || memory.is_mapped(0x1c000)) {
+            return fail("recursive occurrence budget was not enforced globally");
+        }
+    }
+
+    {
+        MappedGuestMemory memory;
+        RecordingProvider provider;
+        const auto child =
+            make_needed_image(3, 0, std::vector<std::string>{"c.so"});
+        const auto grandchild = make_image(3, 0, false, true);
+        provider.responses = {
+            success("id-b", child),
+            success("id-c", grandchild),
+        };
+
+        auto root =
+            make_needed_image(3, 0, std::vector<std::string>{"b.so"});
+        auto limited = options();
+        limited.max_total_image_bytes =
+            static_cast<std::uint64_t>(root.size()) +
+            static_cast<std::uint64_t>(child.size()) + 8U;
+
+        const auto result = load_elf32_dependency_graph(
+            memory,
+            Elf32DependencyLoadSource{
+                .identity = "root",
+                .image = std::move(root),
+            },
+            provider,
+            limited);
+
+        if (result.error != Elf32DependencyLoadError::DependencyResolveFailed ||
+            result.dependency_error !=
+                Elf32DependencyResolveError::TotalImageBytesExceeded ||
+            result.failing_identity != "id-b" ||
+            provider.requests != std::vector<std::string>{"b.so", "c.so"} ||
+            memory.is_mapped(0x10000) || memory.is_mapped(0x14000) ||
+            memory.is_mapped(0x18000) || memory.is_mapped(0x1c000)) {
+            return fail("recursive image budget was not enforced globally");
+        }
+    }
+
+    return 0;
+}
+
 }  // namespace
 
 int main() {
@@ -684,5 +958,11 @@ int main() {
         status != 0) {
         return status;
     }
+    if (const int status = test_transitive_dependency_loading(); status != 0) return status;
+    if (const int status = test_cycle_reuses_loading_root(); status != 0) return status;
+    if (const int status = test_shared_transitive_dependency_reused(); status != 0) return status;
+    if (const int status = test_depth_limit_rolls_back_graph(); status != 0) return status;
+    if (const int status = test_transitive_load_failure_rolls_back_graph(); status != 0) return status;
+    if (const int status = test_recursive_occurrence_and_image_budgets(); status != 0) return status;
     return 0;
 }
