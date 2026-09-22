@@ -60,7 +60,7 @@
   - max-depth failure is deterministic;
   - later transitive acquisition/parse/placement/load failure removes all earlier graph-owned mappings;
   - unrelated preexisting guest mappings remain mapped with original permissions.
-- Status: TODO
+- Status: ACTIVE — recursive graph implementation committed at `b6c286f69516bcfd6f85c4a3e2b00e754c29bb38`; focused recursion/cycle/rollback tests committed at `9bfbdd7e99a5daed6cfa6ee4b6c58c5c85cef2af`. CI #191 was queued on that exact test head; final result not yet observed. Do not mark DONE until all three CI jobs PASS.
 
 ## T004 — Integrate the pinned real ARM32 fixture
 - Requirements: R5, R6, R11-R13 / AC15
