@@ -5,7 +5,7 @@ Current phase: M4 continuation; recursive ELF32 dependency graph loading
 Integration branch: `bleeding`
 Last merged runtime PR: #31
 Runtime baseline commit: `2c3be26c05dff81be1f81c9565df5906c521a54c`
-Active runtime work: `005-elf32-dependency-loading` on `m4-elf32-dependency-loading`; T001 DONE / CI #182 PASS, T002 DONE / latest containing-head CI #187 PASS. Next task: T003 bounded recursion, cycles, shared transitive objects, and aggregate rollback.
+Active runtime work: `005-elf32-dependency-loading` on `m4-elf32-dependency-loading`; T001 DONE / CI #182 PASS, T002 DONE / CI #187 PASS. T003 recursion/cycle/rollback implementation and focused tests are committed through `9bfbdd7e99a5daed6cfa6ee4b6c58c5c85cef2af`; CI #191 queued, final result NOT YET OBSERVED.
 
 ## Working
 
@@ -40,7 +40,7 @@ Active runtime work: `005-elf32-dependency-loading` on `m4-elf32-dependency-load
 
 ## Partial / not implemented
 
-- Wiring acquired dependency images through placement/loading plus recursive graph/link-map/cycle/dedup semantics, Android search-path/namespace/pathname policy, and full dynamic symbol-table semantics: NOT IMPLEMENTED.
+- Dependency graph loading is ACTIVE on PR #32: direct loading is CI-validated; bounded recursion/cycle/shared-object/aggregate-rollback code and tests are implemented but not yet CI-validated. Android search-path/namespace/pathname policy and full dynamic symbol-table semantics remain NOT IMPLEMENTED.
 - ARM relocations: NOT IMPLEMENTED.
 - Symbol lookup/interposition: NOT IMPLEMENTED.
 - RELRO/TLS processing: NOT IMPLEMENTED.
@@ -156,3 +156,5 @@ No x86_64 16 KiB address-space blocker remains on the validated Fedora/KVM envir
 - T001 of `005-elf32-dependency-loading` added `elf32_dependency_loader.{h,cpp}`, root-object graph/result contracts, ET_EXEC fixed root loading, ET_DYN automatic placement + exact-base loading, the existing dynamic → metadata → strings pipeline, and transactional rollback for post-load root failures. Exact-head CI #182 PASSed at `9a1d5bf4e97656724fdb7d649197af0d8cdd1ed8` across Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build. T002 is next.
 
 - T002 adds ordered direct dependency acquisition through the unchanged resolver, provider-identity object reuse/aliasing, one ET_DYN mapping per first-seen identity, identity/image mismatch rejection, ET_EXEC dependency rejection, graph-wide direct object/occurrence/image limits, and aggregate rollback. Focused tests cover ordered/repeated edges, aliases, mismatch, provider/resource failures, and rollback. CI #185 on the implementation head was cancelled after checkpoint commits advanced the PR; latest containing head `1d85b223fe8fb6ef4fd1c89806c17afd2811e219` PASSed CI #187 across Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build.
+
+- T003 implementation uses call-local Discovered/Loading/Loaded state, acquires each object's full direct dependency set before depth-first traversal, reuses Loading/Loaded identities for cycles/shared transitives, counts duplicate provider acquisitions against graph-wide image/occurrence budgets, and rolls back all successful graph-owned mappings in reverse load order on failure. Focused tests cover A→B→C, A→B→A, shared C reuse, max-depth failure, transitive ET_EXEC failure, recursive occurrence limits, recursive total-image limits, and preexisting-mapping preservation. Implementation/test head `9bfbdd7e99a5daed6cfa6ee4b6c58c5c85cef2af`; CI #191 queued, result NOT YET OBSERVED.
