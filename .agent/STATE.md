@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-23
-Current phase: M4 continuation; bounded ELF32 ARM REL relocation application closeout
+Current phase: M4 continuation; feature 007 bounded ELF32 ARM REL relocation application DONE
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `007-elf32-relocations`; T001-T004 are validated at CI #210/#212/#214/#216. T005 documentation/state/spec convergence is prepared; R1-R15 / AC1-AC14 review found no blocking semantic gap and AC15 final exact-head CI remains pending.
+Active runtime work: none selected. Feature `007-elf32-relocations` is DONE at exact-head CI #218 / run `35918899544` on `8efe792cfa58a3f34e02dfe0c8bb01fbc3949766`; the next M4 linker/runtime slice remains to be selected and specified.
 
 ## Working
 
@@ -44,7 +44,7 @@ Active runtime work: `007-elf32-relocations`; T001-T004 are validated at CI #210
 ## Partial / not implemented
 
 - Feature 006 bounded graph-local unversioned symbol resolution is DONE at exact-head CI #207. Version-aware lookup remains intentionally unsupported (version tables are rejected). Feature 007 now implements bounded main-`DT_REL` relocation application; Android search-path/namespace/pathname policy plus process-wide link-map lifetime across graph-loading calls remain NOT IMPLEMENTED.
-- ARM relocation application: IMPLEMENTED for the bounded feature-007 main-`DT_REL` scope. T001-T004 are validated, including bounded planning/reference resolution, transactional NONE/RELATIVE/GLOB_DAT/ABS32 writes with rollback, and pinned real ARM32 GLOB_DAT application. T005 documentation/spec convergence is prepared; only the final exact-head feature gate remains.
+- Broader ARM relocation/linker compatibility remains PARTIAL beyond the completed feature-007 main-`DT_REL` set: PLT/JMPREL, JUMP_SLOT, REL32/COPY/instruction relocations, packed/RELA/RELR forms, version-aware/protected requester semantics, TLS/IFUNC, RELRO, and process-wide/global-group policy remain NOT IMPLEMENTED.
 - Version-aware and process-wide/global-group symbol interposition policy: NOT IMPLEMENTED; bounded graph-local unversioned lookup is implemented.
 - RELRO/TLS processing: NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.
@@ -63,7 +63,7 @@ T003 transactional relocation application PASSed exact-head GitHub Actions run `
 
 T004 pinned real ARM32 GLOB_DAT application PASSed exact-head GitHub Actions run `35891830738` (#216) at `5d74af22c16a7bc99eee7038dfb9f137b22807c2`. Linux PASSed 45/45 CTest including `elf32_real_relocation_apply`; Android x86_64 and arm64-v8a also PASSed. The test resolves `fixture_bss` / `fixture_data` through feature 006, applies the two main GLOB_DAT entries, verifies target words equal those logical guest values, keeps provider calls at zero, preserves initialized data/BSS, preserves every loaded mapping permission, and detects any changed segment byte outside the two relocation target words.
 
-T005 convergence review at the T004-derived head found no blocking semantic gap across R1-R15 / AC1-AC14: public relocation contracts, implementation formulas/error boundaries, synthetic rollback/failure coverage, and the pinned real-fixture oracle agree. Documentation/spec/state closeout is being committed next; AC15 exact-head Linux/Android CI is NOT RUN until that closeout head is pushed.
+T005 documentation/state/spec convergence and the final feature-head gate PASSed exact-head GitHub Actions run `35918899544` (#218) at `8efe792cfa58a3f34e02dfe0c8bb01fbc3949766`. Linux PASSed 45/45 CTest including `elf32_relocation_plan`, `elf32_relocation_apply`, `elf32_real_relocation_plan`, and `elf32_real_relocation_apply`; Android x86_64 address-space probe and Android arm64-v8a cross-build also PASSed. R1-R15 / AC1-AC15 are reconciled with no recorded semantic gap blocking feature 007.
 
 ### M4 ELF32 symbol resolution (complete)
 

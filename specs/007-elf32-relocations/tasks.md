@@ -91,7 +91,7 @@
   - Android x86_64 address-space probe PASS;
   - Android arm64-v8a cross-build PASS;
   - docs/contracts match implemented mutation/rollback semantics.
-- Status: ACTIVE — implementation/test/spec review found no blocking R1-R15 / AC1-AC14 semantic gap; documentation/state/spec convergence is prepared and AC15 final exact-head CI remains pending.
+- Status: DONE — R1-R15 / AC1-AC15 converged; exact-head CI #218 / run `35918899544` PASSed at `8efe792cfa58a3f34e02dfe0c8bb01fbc3949766` with Linux 45/45 CTest, Android x86_64 PASS, and Android arm64-v8a PASS.
 
 ## Readiness check
 

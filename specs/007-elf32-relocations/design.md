@@ -1,6 +1,6 @@
 # Design — ELF32 ARM REL Relocation Application
 
-Status: implemented; T001-T004 validated; T005 convergence/final gate pending
+Status: DONE — T005 exact-head CI #218 / run `35918899544` PASSed at `8efe792cfa58a3f34e02dfe0c8bb01fbc3949766`
 
 ## Context
 

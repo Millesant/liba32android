@@ -1,6 +1,6 @@
 # ELF32 ARM REL relocation application
 
-Status: feature 007 implemented through T004; T005 final exact-head CI pending
+Status: complete; feature 007 final exact-head gate PASSed
 
 ## Boundary
 
@@ -83,7 +83,7 @@ T003 synthetic coverage locks NONE no-write behavior, RELATIVE `B+A`, bionic-com
 
 The pinned NDK r27d / API 26 ARMv7 fixture contains exactly two main `.rel.dyn` `R_ARM_GLOB_DAT` entries at linked offsets `0x82cc` / `0x82d0` for `fixture_bss` / `fixture_data`. T004 resolves both through feature 006, applies them, verifies each target equals the resolved guest value, preserves initialized data/BSS, keeps dependency-provider calls at zero, and verifies mapping permissions and all non-target segment bytes remain unchanged.
 
-The T005 R1-R15 / AC1-AC14 implementation/test/documentation convergence review found no blocking semantic gap. AC15 remains the final exact-head Linux CTest, Android x86_64 address-space probe, and Android arm64-v8a cross-build gate for the closeout head.
+The T005 R1-R15 / AC1-AC15 convergence gate PASSed exact-head CI #218 / run `35918899544` at `8efe792cfa58a3f34e02dfe0c8bb01fbc3949766`. Linux passed 45/45 CTest including all four relocation plan/apply synthetic and real-fixture tests; Android x86_64 address-space probe and Android arm64-v8a cross-build also passed. No blocking semantic gap remains in the bounded feature-007 contract.
 
 ## Deliberate limits
 
