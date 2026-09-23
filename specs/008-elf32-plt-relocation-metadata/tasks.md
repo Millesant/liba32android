@@ -1,12 +1,12 @@
 # Tasks — ELF32 PLT REL Metadata
 
-Status: ACTIVE — T001 implementation prepared; validation NOT RUN
+Status: ACTIVE — T001 implementation CI #221 PASSed; AC8 real-fixture absence oracle added and revalidation pending
 
 Base revision: `ef5f08eb6d184c12b252ac6f59994e8efed21d5b`
 
 ## T001 — Validate and expose PLT REL metadata
 
-- Status: ACTIVE — implementation prepared; exact-head validation NOT RUN
+- Status: ACTIVE — implementation exact-head CI #221 / run `35933289817` PASSed at `47070bef73acd14464137789585abd4972878ab4`; convergence review found AC8 lacked an explicit real-fixture no-PLT assertion, which is now prepared and requires exact-head revalidation
 - Requirements: R1-R9; AC1-AC8
 - Depends on: none
 - Scope:
@@ -31,4 +31,4 @@ Base revision: `ef5f08eb6d184c12b252ac6f59994e8efed21d5b`
 
 PASS: acceptance and negative cases are explicit; main-REL semantics remain unchanged; PLT metadata remains read-only and guest-only; dependencies are acyclic; T001 fits one bounded round; GitHub source/CI capabilities are available.
 
-Exact next action: commit the prepared T001 implementation on `bleeding`, then verify exact-head Linux CTest + Android x86_64 + Android arm64-v8a CI. On PASS, mark T001 PASS and begin T002 convergence.
+Exact next action: commit the AC8 real-fixture assertion, re-run exact-head Linux CTest + Android x86_64 + Android arm64-v8a CI, and mark T001 PASS only if all three jobs PASS.

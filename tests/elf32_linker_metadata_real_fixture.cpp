@@ -22,6 +22,7 @@ using liba32android::memory::MappedGuestMemory;
 
 constexpr std::uint32_t kFixtureDynamicBase = 0x02000000U;
 constexpr std::int32_t kDtNeeded = 1;
+constexpr std::int32_t kDtPltrelsz = 2;
 constexpr std::int32_t kDtStrtab = 5;
 constexpr std::int32_t kDtSymtab = 6;
 constexpr std::int32_t kDtStrsz = 10;
@@ -30,6 +31,8 @@ constexpr std::int32_t kDtSoname = 14;
 constexpr std::int32_t kDtRel = 17;
 constexpr std::int32_t kDtRelsz = 18;
 constexpr std::int32_t kDtRelent = 19;
+constexpr std::int32_t kDtPltrel = 20;
+constexpr std::int32_t kDtJmprel = 23;
 
 int fail(const std::string& message) {
     std::cerr << message << '\n';
@@ -146,6 +149,13 @@ int main(int argc, char** argv) {
         return fail("freestanding real fixture unexpectedly gained DT_NEEDED metadata");
     }
 
+    if (has_tag(dynamic_result.entries, kDtJmprel) ||
+        has_tag(dynamic_result.entries, kDtPltrelsz) ||
+        has_tag(dynamic_result.entries, kDtPltrel) ||
+        metadata_result.metadata.plt_rel_table.has_value()) {
+        return fail("freestanding real fixture unexpectedly gained PLT REL metadata");
+    }
+
     std::cout << "fixture.linker_metadata.strtab_guest=0x" << std::hex
               << metadata_result.metadata.string_table->guest_address << '\n'
               << "fixture.linker_metadata.symtab_guest=0x"
@@ -157,6 +167,7 @@ int main(int argc, char** argv) {
               << metadata_result.metadata.rel_table->size << '\n'
               << "fixture.linker_metadata.has_soname=true\n"
               << "fixture.linker_metadata.has_needed=false\n"
+              << "fixture.linker_metadata.has_plt_rel=false\n"
               << "fixture.linker_metadata.status=PASS\n";
     return 0;
 }

@@ -5,7 +5,7 @@ Current phase: M4 continuation; feature 008 ELF32 PLT REL metadata selected
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `008-elf32-plt-relocation-metadata` T001; the additive linker-metadata implementation and focused synthetic coverage are prepared against spec head `deaa2f09d00de578953a381e4b3b0389868767ff`. Exact-head validation is NOT RUN.
+Active runtime work: `008-elf32-plt-relocation-metadata` T001. Implementation exact-head CI #221 / run `35933289817` PASSed at `47070bef73acd14464137789585abd4972878ab4` across Linux, Android x86_64, and Android arm64-v8a. Convergence review found AC8 lacked an explicit real-fixture no-PLT assertion; that REQUIRED_NOW test update is prepared and exact-head revalidation is pending.
 
 ## Working
 
@@ -32,7 +32,7 @@ Active runtime work: `008-elf32-plt-relocation-metadata` T001; the additive link
   - retains the first `DT_NULL` and ignores later padding;
   - rejects invalid ranges, non-8-byte file-backed sizes, unreadable guest bytes and unterminated arrays;
   - does not rebase/dereference pointer-like values or begin dynamic linking.
-- `src/elf/elf32_linker_metadata.*` validates STRTAB/STRSZ, SYMTAB/SYMENT, main REL/RELSZ/RELENT, SONAME, and ordered NEEDED offsets. Feature 008 T001 prepares additive PLT REL metadata for `DT_JMPREL` / `DT_PLTRELSZ` / `DT_PLTREL=DT_REL`, with a separate guest-only descriptor, checked rebasing/range/readability, and explicit malformed-group/type/size failures. This prepared PLT extension is NOT YET VALIDATED.
+- `src/elf/elf32_linker_metadata.*` validates STRTAB/STRSZ, SYMTAB/SYMENT, main REL/RELSZ/RELENT, SONAME, and ordered NEEDED offsets. Feature 008 T001 prepares additive PLT REL metadata for `DT_JMPREL` / `DT_PLTRELSZ` / `DT_PLTREL=DT_REL`, with a separate guest-only descriptor, checked rebasing/range/readability, and explicit malformed-group/type/size failures. The PLT extension passed CI #221; an explicit pinned-fixture no-PLT oracle was then identified as REQUIRED_NOW for AC8 and is pending revalidation.
 - `src/elf/elf32_linker_strings.*` now materializes bounded STRTAB entries plus optional SONAME and ordered/repeated NEEDED names. Every call requires an explicit caller-selected payload ceiling; reads remain through `GuestMemory`, use checked guest-address arithmetic, preserve raw bytes, and never mutate guest memory. Aggregate failure is all-or-nothing.
 - `src/elf/elf32_dependency_resolver.*` now acquires host-owned dependency image inputs through a caller-owned provider. It preserves ordered/repeated `DT_NEEDED` occurrences, forwards non-empty name bytes unchanged, distinguishes not-found from provider failure, validates non-empty provider identity/image, enforces explicit dependency-count/per-image/total-image ceilings, and returns no partial successful aggregate on failure. It deliberately does not choose guest bases or map dependency ELF images.
 - `src/elf/elf32_dependency_loader.*` now owns one transactional recursive loaded-object graph: provider identity is the per-call object key, ordered/repeated dependency edges are preserved, cycles/shared objects reuse existing mappings, first-seen dependencies are automatically placed and loaded as `ET_DYN`, graph-wide object/depth/occurrence/image/string limits are enforced, and aggregate failure rolls back graph-owned mappings in reverse load order.
