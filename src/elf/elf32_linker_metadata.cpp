@@ -12,6 +12,7 @@ namespace {
 
 constexpr std::int32_t kDtNull = 0;
 constexpr std::int32_t kDtNeeded = 1;
+constexpr std::int32_t kDtPltrelsz = 2;
 constexpr std::int32_t kDtHash = 4;
 constexpr std::int32_t kDtStrtab = 5;
 constexpr std::int32_t kDtSymtab = 6;
@@ -21,6 +22,8 @@ constexpr std::int32_t kDtSoname = 14;
 constexpr std::int32_t kDtRel = 17;
 constexpr std::int32_t kDtRelsz = 18;
 constexpr std::int32_t kDtRelent = 19;
+constexpr std::int32_t kDtPltrel = 20;
+constexpr std::int32_t kDtJmprel = 23;
 constexpr std::int32_t kDtGnuHash = 0x6ffffef5;
 constexpr std::int32_t kDtVersym = 0x6ffffff0;
 constexpr std::int32_t kDtVerdef = 0x6ffffffc;
@@ -109,6 +112,9 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
     std::optional<std::uint32_t> rel;
     std::optional<std::uint32_t> relsz;
     std::optional<std::uint32_t> relent;
+    std::optional<std::uint32_t> jmprel;
+    std::optional<std::uint32_t> pltrelsz;
+    std::optional<std::uint32_t> pltrel;
     std::optional<std::uint32_t> soname;
 
     Elf32CollectedLinkerMetadataResult result;
@@ -120,6 +126,9 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
         switch (entry.tag) {
         case kDtNeeded:
             result.metadata.needed_offsets.push_back(entry.value);
+            break;
+        case kDtPltrelsz:
+            accepted = assign_singleton(pltrelsz, entry.value);
             break;
         case kDtHash:
             accepted = assign_singleton(sysv_hash, entry.value);
@@ -147,6 +156,12 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
             break;
         case kDtRelent:
             accepted = assign_singleton(relent, entry.value);
+            break;
+        case kDtPltrel:
+            accepted = assign_singleton(pltrel, entry.value);
+            break;
+        case kDtJmprel:
+            accepted = assign_singleton(jmprel, entry.value);
             break;
         case kDtGnuHash:
             accepted = assign_singleton(gnu_hash, entry.value);
@@ -184,6 +199,17 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
         return collection_failure(Elf32LinkerMetadataError::IncompleteRelTable);
     }
 
+    const unsigned plt_rel_fields =
+        static_cast<unsigned>(jmprel.has_value()) +
+        static_cast<unsigned>(pltrelsz.has_value()) +
+        static_cast<unsigned>(pltrel.has_value());
+    if (plt_rel_fields != 0 && plt_rel_fields != 3) {
+        return collection_failure(Elf32LinkerMetadataError::IncompletePltRelTable);
+    }
+    if (pltrel.has_value() && *pltrel != static_cast<std::uint32_t>(kDtRel)) {
+        return collection_failure(Elf32LinkerMetadataError::InvalidPltRelType);
+    }
+
     if (strtab.has_value()) {
         result.metadata.string_table = Elf32CollectedStringTableMetadata{
             .address_value = *strtab,
@@ -211,6 +237,13 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
             .address_value = *rel,
             .size = *relsz,
             .entry_size = *relent,
+        };
+    }
+    if (jmprel.has_value()) {
+        result.metadata.plt_rel_table = Elf32CollectedRelTableMetadata{
+            .address_value = *jmprel,
+            .size = *pltrelsz,
+            .entry_size = kElf32RelEntrySize,
         };
     }
     result.metadata.soname_offset = soname;
@@ -339,6 +372,29 @@ Elf32LinkerMetadataResult build_elf32_linker_metadata(
         };
     }
 
+    if (const auto& plt_rel_table = collected.metadata.plt_rel_table) {
+        if ((plt_rel_table->size % kElf32RelEntrySize) != 0) {
+            return validation_failure(Elf32LinkerMetadataError::InvalidPltRelSize);
+        }
+
+        std::uint32_t guest_address = 0;
+        if (!rebase_address(plt_rel_table->address_value, load_bias,
+                            guest_address)) {
+            return validation_failure(Elf32LinkerMetadataError::AddressOverflow);
+        }
+        if (!range_fits(guest_address, plt_rel_table->size)) {
+            return validation_failure(Elf32LinkerMetadataError::RangeOverflow);
+        }
+        if (!readable_range(memory, guest_address, plt_rel_table->size)) {
+            return validation_failure(Elf32LinkerMetadataError::ReadFailed);
+        }
+        result.metadata.plt_rel_table = Elf32RelTableMetadata{
+            .guest_address = guest_address,
+            .size = plt_rel_table->size,
+            .entry_size = kElf32RelEntrySize,
+        };
+    }
+
     return result;
 }
 
@@ -349,12 +405,15 @@ const char* to_string(Elf32LinkerMetadataError error) noexcept {
     case Elf32LinkerMetadataError::IncompleteStringTable: return "incomplete_string_table";
     case Elf32LinkerMetadataError::IncompleteSymbolTable: return "incomplete_symbol_table";
     case Elf32LinkerMetadataError::IncompleteRelTable: return "incomplete_rel_table";
+    case Elf32LinkerMetadataError::IncompletePltRelTable: return "incomplete_plt_rel_table";
     case Elf32LinkerMetadataError::AddressOverflow: return "address_overflow";
     case Elf32LinkerMetadataError::RangeOverflow: return "range_overflow";
     case Elf32LinkerMetadataError::ReadFailed: return "read_failed";
     case Elf32LinkerMetadataError::InvalidSymbolEntrySize: return "invalid_symbol_entry_size";
     case Elf32LinkerMetadataError::InvalidRelEntrySize: return "invalid_rel_entry_size";
     case Elf32LinkerMetadataError::InvalidRelSize: return "invalid_rel_size";
+    case Elf32LinkerMetadataError::InvalidPltRelType: return "invalid_plt_rel_type";
+    case Elf32LinkerMetadataError::InvalidPltRelSize: return "invalid_plt_rel_size";
     case Elf32LinkerMetadataError::StringOffsetOutOfRange: return "string_offset_out_of_range";
     }
     return "unknown";

@@ -5,7 +5,7 @@ Current phase: M4 continuation; feature 008 ELF32 PLT REL metadata selected
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `008-elf32-plt-relocation-metadata`; readiness is complete at base `ef5f08eb6d184c12b252ac6f59994e8efed21d5b`, T001 is READY, and implementation validation is NOT RUN.
+Active runtime work: `008-elf32-plt-relocation-metadata` T001; the additive linker-metadata implementation and focused synthetic coverage are prepared against spec head `deaa2f09d00de578953a381e4b3b0389868767ff`. Exact-head validation is NOT RUN.
 
 ## Working
 
@@ -32,7 +32,7 @@ Active runtime work: `008-elf32-plt-relocation-metadata`; readiness is complete 
   - retains the first `DT_NULL` and ignores later padding;
   - rejects invalid ranges, non-8-byte file-backed sizes, unreadable guest bytes and unterminated arrays;
   - does not rebase/dereference pointer-like values or begin dynamic linking.
-- `src/elf/elf32_linker_metadata.*` now validates the first linker-facing metadata set: STRTAB/STRSZ, SYMTAB/SYMENT, REL/RELSZ/RELENT, SONAME, and ordered NEEDED offsets. Pointer-like STRTAB/SYMTAB/REL values are rebased exactly once with checked 32-bit arithmetic; declared guest ranges are validated read-only through `GuestMemory`; malformed duplicates/groups, entry sizes, REL sizes, offsets, overflows, and unreadable ranges are rejected.
+- `src/elf/elf32_linker_metadata.*` validates STRTAB/STRSZ, SYMTAB/SYMENT, main REL/RELSZ/RELENT, SONAME, and ordered NEEDED offsets. Feature 008 T001 prepares additive PLT REL metadata for `DT_JMPREL` / `DT_PLTRELSZ` / `DT_PLTREL=DT_REL`, with a separate guest-only descriptor, checked rebasing/range/readability, and explicit malformed-group/type/size failures. This prepared PLT extension is NOT YET VALIDATED.
 - `src/elf/elf32_linker_strings.*` now materializes bounded STRTAB entries plus optional SONAME and ordered/repeated NEEDED names. Every call requires an explicit caller-selected payload ceiling; reads remain through `GuestMemory`, use checked guest-address arithmetic, preserve raw bytes, and never mutate guest memory. Aggregate failure is all-or-nothing.
 - `src/elf/elf32_dependency_resolver.*` now acquires host-owned dependency image inputs through a caller-owned provider. It preserves ordered/repeated `DT_NEEDED` occurrences, forwards non-empty name bytes unchanged, distinguishes not-found from provider failure, validates non-empty provider identity/image, enforces explicit dependency-count/per-image/total-image ceilings, and returns no partial successful aggregate on failure. It deliberately does not choose guest bases or map dependency ELF images.
 - `src/elf/elf32_dependency_loader.*` now owns one transactional recursive loaded-object graph: provider identity is the per-call object key, ordered/repeated dependency edges are preserved, cycles/shared objects reuse existing mappings, first-seen dependencies are automatically placed and loaded as `ET_DYN`, graph-wide object/depth/occurrence/image/string limits are enforced, and aggregate failure rolls back graph-owned mappings in reverse load order.
@@ -44,7 +44,7 @@ Active runtime work: `008-elf32-plt-relocation-metadata`; readiness is complete 
 ## Partial / not implemented
 
 - Feature 006 bounded graph-local unversioned symbol resolution is DONE at exact-head CI #207. Version-aware lookup remains intentionally unsupported (version tables are rejected). Feature 007 now implements bounded main-`DT_REL` relocation application; Android search-path/namespace/pathname policy plus process-wide link-map lifetime across graph-loading calls remain NOT IMPLEMENTED.
-- Broader ARM relocation/linker compatibility remains PARTIAL beyond the completed feature-007 main-`DT_REL` set. Feature 008 now specifies read-only PLT/JMPREL metadata validation but it is NOT YET IMPLEMENTED; JUMP_SLOT application, REL32/COPY/instruction relocations, packed/RELA/RELR forms, version-aware/protected requester semantics, TLS/IFUNC, RELRO, and process-wide/global-group policy remain NOT IMPLEMENTED.
+- Broader ARM relocation/linker compatibility remains PARTIAL beyond the completed feature-007 main-`DT_REL` set. Feature 008 T001 PLT/JMPREL metadata code is prepared but validation is NOT RUN; JUMP_SLOT application, REL32/COPY/instruction relocations, packed/RELA/RELR forms, version-aware/protected requester semantics, TLS/IFUNC, RELRO, and process-wide/global-group policy remain NOT IMPLEMENTED.
 - Version-aware and process-wide/global-group symbol interposition policy: NOT IMPLEMENTED; bounded graph-local unversioned lookup is implemented.
 - RELRO/TLS processing: NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.

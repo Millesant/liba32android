@@ -1,12 +1,12 @@
 # Tasks — ELF32 PLT REL Metadata
 
-Status: READY
+Status: ACTIVE — T001 implementation prepared; validation NOT RUN
 
 Base revision: `ef5f08eb6d184c12b252ac6f59994e8efed21d5b`
 
 ## T001 — Validate and expose PLT REL metadata
 
-- Status: READY
+- Status: ACTIVE — implementation prepared; exact-head validation NOT RUN
 - Requirements: R1-R9; AC1-AC8
 - Depends on: none
 - Scope:
@@ -31,4 +31,4 @@ Base revision: `ef5f08eb6d184c12b252ac6f59994e8efed21d5b`
 
 PASS: acceptance and negative cases are explicit; main-REL semantics remain unchanged; PLT metadata remains read-only and guest-only; dependencies are acyclic; T001 fits one bounded round; GitHub source/CI capabilities are available.
 
-Exact next action: implement T001 against `ef5f08eb6d184c12b252ac6f59994e8efed21d5b`.
+Exact next action: commit the prepared T001 implementation on `bleeding`, then verify exact-head Linux CTest + Android x86_64 + Android arm64-v8a CI. On PASS, mark T001 PASS and begin T002 convergence.

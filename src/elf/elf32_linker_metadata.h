@@ -16,12 +16,15 @@ enum class Elf32LinkerMetadataError : std::uint8_t {
     IncompleteStringTable,
     IncompleteSymbolTable,
     IncompleteRelTable,
+    IncompletePltRelTable,
     AddressOverflow,
     RangeOverflow,
     ReadFailed,
     InvalidSymbolEntrySize,
     InvalidRelEntrySize,
     InvalidRelSize,
+    InvalidPltRelType,
+    InvalidPltRelSize,
     StringOffsetOutOfRange,
 };
 
@@ -51,6 +54,9 @@ struct Elf32CollectedLinkerMetadata {
     std::optional<Elf32CollectedHashTableMetadata> sysv_hash_table;
     std::optional<Elf32CollectedHashTableMetadata> gnu_hash_table;
     std::optional<Elf32CollectedRelTableMetadata> rel_table;
+    // AArch32 PLT relocations are accepted only in Elf32_Rel form. This is a
+    // validated descriptor only; JUMP_SLOT/lazy-binding semantics are downstream.
+    std::optional<Elf32CollectedRelTableMetadata> plt_rel_table;
     std::optional<std::uint32_t> soname_offset;
     std::vector<std::uint32_t> needed_offsets;
     bool has_symbol_versioning{};
@@ -94,6 +100,9 @@ struct Elf32LinkerMetadata {
     std::optional<Elf32HashTableMetadata> sysv_hash_table;
     std::optional<Elf32HashTableMetadata> gnu_hash_table;
     std::optional<Elf32RelTableMetadata> rel_table;
+    // Guest-only DT_JMPREL/DT_PLTRELSZ descriptor after DT_PLTREL == DT_REL
+    // validation. No relocation-entry or JUMP_SLOT semantics are implied.
+    std::optional<Elf32RelTableMetadata> plt_rel_table;
     std::optional<std::uint32_t> soname_offset;
     std::vector<std::uint32_t> needed_offsets;
     // True when DT_VERSYM/DT_VERDEF/DT_VERNEED metadata is declared. The
@@ -119,9 +128,11 @@ struct Elf32LinkerMetadataResult {
 // Validated metadata: rebase pointer-like fields exactly once with the
 // loader-provided load bias, validate declared guest ranges through GuestMemory,
 // and enforce the supported ELF32 entry-size/string-offset invariants. DT_HASH
-// and DT_GNU_HASH retain only validated fixed-header guest descriptors here;
-// their variable arrays belong to elf32_symbol_lookup. This function is
-// read-only and never changes mappings, permissions, or guest bytes.
+// and DT_GNU_HASH retain only validated fixed-header guest descriptors here.
+// AArch32 DT_JMPREL/DT_PLTRELSZ/DT_PLTREL metadata is validated as a separate
+// Elf32_Rel descriptor; entries are not decoded or applied here. Variable hash
+// arrays belong to elf32_symbol_lookup. This function is read-only and never
+// changes mappings, permissions, or guest bytes.
 [[nodiscard]] Elf32LinkerMetadataResult build_elf32_linker_metadata(
     const memory::GuestMemory& memory,
     std::uint32_t load_bias,

@@ -16,6 +16,7 @@ using liba32android::memory::LinearGuestMemory;
 
 constexpr std::int32_t kDtNull = 0;
 constexpr std::int32_t kDtNeeded = 1;
+constexpr std::int32_t kDtPltrelsz = 2;
 constexpr std::int32_t kDtHash = 4;
 constexpr std::int32_t kDtStrtab = 5;
 constexpr std::int32_t kDtSymtab = 6;
@@ -25,6 +26,8 @@ constexpr std::int32_t kDtSoname = 14;
 constexpr std::int32_t kDtRel = 17;
 constexpr std::int32_t kDtRelsz = 18;
 constexpr std::int32_t kDtRelent = 19;
+constexpr std::int32_t kDtPltrel = 20;
+constexpr std::int32_t kDtJmprel = 23;
 constexpr std::int32_t kDtGnuHash = 0x6ffffef5;
 constexpr std::int32_t kDtVersym = 0x6ffffff0;
 constexpr std::int32_t kDtVerdef = 0x6ffffffc;
@@ -44,6 +47,9 @@ std::vector<Elf32DynamicEntry> full_entries() {
         {kDtRel, 0x300},
         {kDtRelsz, 0x20},
         {kDtRelent, 8},
+        {kDtJmprel, 0x380},
+        {kDtPltrelsz, 0x10},
+        {kDtPltrel, static_cast<std::uint32_t>(kDtRel)},
         {kDtSoname, 3},
         {kDtNeeded, 9},
         {kDtNeeded, 21},
@@ -74,6 +80,12 @@ int test_valid_collection() {
         result.metadata.rel_table->entry_size != 8) {
         return fail("REL metadata was not collected exactly");
     }
+    if (!result.metadata.plt_rel_table.has_value() ||
+        result.metadata.plt_rel_table->address_value != 0x380 ||
+        result.metadata.plt_rel_table->size != 0x10 ||
+        result.metadata.plt_rel_table->entry_size != 8) {
+        return fail("PLT REL metadata was not collected exactly");
+    }
     if (!result.metadata.sysv_hash_table.has_value() ||
         result.metadata.sysv_hash_table->address_value != 0x480 ||
         !result.metadata.gnu_hash_table.has_value() ||
@@ -91,9 +103,10 @@ int test_valid_collection() {
 }
 
 int test_duplicate_singletons() {
-    constexpr std::array<std::int32_t, 10> singleton_tags{
-        kDtHash, kDtStrtab, kDtStrsz, kDtSymtab, kDtSyment,
-        kDtRel, kDtRelsz, kDtRelent, kDtSoname, kDtGnuHash,
+    constexpr std::array<std::int32_t, 13> singleton_tags{
+        kDtPltrelsz, kDtHash, kDtStrtab, kDtStrsz, kDtSymtab, kDtSyment,
+        kDtRel, kDtRelsz, kDtRelent, kDtPltrel, kDtJmprel, kDtSoname,
+        kDtGnuHash,
     };
 
     for (const std::int32_t tag : singleton_tags) {
@@ -144,6 +157,35 @@ int test_incomplete_groups() {
         Elf32LinkerMetadataError::IncompleteRelTable) {
         return fail("incomplete REL/RELSZ/RELENT group was not rejected");
     }
+
+    for (unsigned mask = 1; mask < 7; ++mask) {
+        std::vector<Elf32DynamicEntry> plt_partial;
+        if ((mask & 1U) != 0) plt_partial.push_back({kDtJmprel, 0x380});
+        if ((mask & 2U) != 0) plt_partial.push_back({kDtPltrelsz, 0x10});
+        if ((mask & 4U) != 0) {
+            plt_partial.push_back(
+                {kDtPltrel, static_cast<std::uint32_t>(kDtRel)});
+        }
+        plt_partial.push_back({kDtNull, 0});
+        if (collect_elf32_linker_metadata(plt_partial).error !=
+            Elf32LinkerMetadataError::IncompletePltRelTable) {
+            return fail("partial PLT REL group was not rejected");
+        }
+    }
+    return 0;
+}
+
+int test_invalid_plt_rel_type() {
+    const std::array entries{
+        Elf32DynamicEntry{kDtJmprel, 0x380},
+        Elf32DynamicEntry{kDtPltrelsz, 0x10},
+        Elf32DynamicEntry{kDtPltrel, 7},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (collect_elf32_linker_metadata(entries).error !=
+        Elf32LinkerMetadataError::InvalidPltRelType) {
+        return fail("non-REL DT_PLTREL was not rejected");
+    }
     return 0;
 }
 
@@ -162,6 +204,7 @@ int test_unknown_tags_and_null_boundary() {
         result.metadata.symbol_table.has_value() ||
         result.metadata.sysv_hash_table.has_value() ||
         result.metadata.rel_table.has_value() ||
+        result.metadata.plt_rel_table.has_value() ||
         result.metadata.soname_offset.has_value() ||
         !result.metadata.needed_offsets.empty()) {
         return fail("semantic collection did not honor hash/DT_NULL boundary");
@@ -201,6 +244,8 @@ int test_valid_rebasing_and_zero_bias() {
         biased.metadata.symbol_table->guest_address != 0x1200 ||
         !biased.metadata.rel_table.has_value() ||
         biased.metadata.rel_table->guest_address != 0x1300 ||
+        !biased.metadata.plt_rel_table.has_value() ||
+        biased.metadata.plt_rel_table->guest_address != 0x1380 ||
         !biased.metadata.sysv_hash_table.has_value() ||
         biased.metadata.sysv_hash_table->guest_address != 0x1480 ||
         !biased.metadata.gnu_hash_table.has_value() ||
@@ -217,6 +262,7 @@ int test_valid_rebasing_and_zero_bias() {
         fixed.metadata.string_table->guest_address != 0x100 ||
         fixed.metadata.symbol_table->guest_address != 0x200 ||
         fixed.metadata.rel_table->guest_address != 0x300 ||
+        fixed.metadata.plt_rel_table->guest_address != 0x380 ||
         fixed.metadata.sysv_hash_table->guest_address != 0x480 ||
         fixed.metadata.gnu_hash_table->guest_address != 0x400) {
         return fail("zero load bias did not preserve fixed guest addresses");
@@ -255,6 +301,28 @@ int test_address_and_range_overflow() {
         Elf32LinkerMetadataError::AddressOverflow) {
         return fail("hash pointer rebasing overflow was not rejected");
     }
+
+    const std::array plt_address_overflow{
+        Elf32DynamicEntry{kDtJmprel, 0xfffffff0U},
+        Elf32DynamicEntry{kDtPltrelsz, 8},
+        Elf32DynamicEntry{kDtPltrel, static_cast<std::uint32_t>(kDtRel)},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (build_elf32_linker_metadata(memory, 0x20, plt_address_overflow).error !=
+        Elf32LinkerMetadataError::AddressOverflow) {
+        return fail("PLT REL pointer rebasing overflow was not rejected");
+    }
+
+    const std::array plt_range_overflow{
+        Elf32DynamicEntry{kDtJmprel, 0xfffffff8U},
+        Elf32DynamicEntry{kDtPltrelsz, 16},
+        Elf32DynamicEntry{kDtPltrel, static_cast<std::uint32_t>(kDtRel)},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (build_elf32_linker_metadata(memory, 0, plt_range_overflow).error !=
+        Elf32LinkerMetadataError::RangeOverflow) {
+        return fail("PLT REL range overflow was not rejected");
+    }
     return 0;
 }
 
@@ -290,6 +358,17 @@ int test_unreadable_ranges() {
     if (build_elf32_linker_metadata(memory, 0, bad_rel).error !=
         Elf32LinkerMetadataError::ReadFailed) {
         return fail("unreadable REL table was not rejected");
+    }
+
+    const std::array bad_plt_rel{
+        Elf32DynamicEntry{kDtJmprel, 0x9000},
+        Elf32DynamicEntry{kDtPltrelsz, 8},
+        Elf32DynamicEntry{kDtPltrel, static_cast<std::uint32_t>(kDtRel)},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (build_elf32_linker_metadata(memory, 0, bad_plt_rel).error !=
+        Elf32LinkerMetadataError::ReadFailed) {
+        return fail("unreadable PLT REL table was not rejected");
     }
 
     for (const std::int32_t hash_tag : {kDtHash, kDtGnuHash}) {
@@ -338,6 +417,35 @@ int test_entry_sizes_and_rel_size() {
     if (build_elf32_linker_metadata(memory, 0x1000, bad_relsz).error !=
         Elf32LinkerMetadataError::InvalidRelSize) {
         return fail("non-integral REL byte size was not rejected");
+    }
+
+    const std::array bad_pltrelsz{
+        Elf32DynamicEntry{kDtJmprel, 0x380},
+        Elf32DynamicEntry{kDtPltrelsz, 10},
+        Elf32DynamicEntry{kDtPltrel, static_cast<std::uint32_t>(kDtRel)},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (build_elf32_linker_metadata(memory, 0x1000, bad_pltrelsz).error !=
+        Elf32LinkerMetadataError::InvalidPltRelSize) {
+        return fail("non-integral PLT REL byte size was not rejected");
+    }
+    return 0;
+}
+
+int test_zero_length_plt_rel() {
+    LinearGuestMemory memory(0x100, 0x1000);
+    const std::array entries{
+        Elf32DynamicEntry{kDtJmprel, 0x9000},
+        Elf32DynamicEntry{kDtPltrelsz, 0},
+        Elf32DynamicEntry{kDtPltrel, static_cast<std::uint32_t>(kDtRel)},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    const auto result = build_elf32_linker_metadata(memory, 0, entries);
+    if (!result || !result.metadata.plt_rel_table.has_value() ||
+        result.metadata.plt_rel_table->guest_address != 0x9000 ||
+        result.metadata.plt_rel_table->size != 0 ||
+        result.metadata.plt_rel_table->entry_size != 8) {
+        return fail("zero-length PLT REL table was not accepted");
     }
     return 0;
 }
@@ -397,12 +505,14 @@ int main() {
     if (const int status = test_valid_collection(); status != 0) return status;
     if (const int status = test_duplicate_singletons(); status != 0) return status;
     if (const int status = test_incomplete_groups(); status != 0) return status;
+    if (const int status = test_invalid_plt_rel_type(); status != 0) return status;
     if (const int status = test_unknown_tags_and_null_boundary(); status != 0) return status;
     if (const int status = test_symbol_versioning_presence(); status != 0) return status;
     if (const int status = test_valid_rebasing_and_zero_bias(); status != 0) return status;
     if (const int status = test_address_and_range_overflow(); status != 0) return status;
     if (const int status = test_unreadable_ranges(); status != 0) return status;
     if (const int status = test_entry_sizes_and_rel_size(); status != 0) return status;
+    if (const int status = test_zero_length_plt_rel(); status != 0) return status;
     if (const int status = test_string_offsets(); status != 0) return status;
     if (const int status = test_failure_does_not_mutate_guest_memory(); status != 0) return status;
     return 0;
