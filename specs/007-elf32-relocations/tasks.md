@@ -20,7 +20,7 @@
   - pinned real fixture plan reports exactly two GLOB_DAT entries with symbol indexes 2/3, linked offsets 0x82cc/0x82d0, and zero original words.
 - Documentation:
   - public header must state guest-address, limits, supported-type, addend, and read-only plan contracts.
-- Status: READY.
+- Status: ACTIVE — implementation is committed for the next exact-head CI gate.
 
 ## T002 — Add bounded relocation-reference symbol decoding/resolution
 

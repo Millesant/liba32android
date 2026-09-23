@@ -50,6 +50,7 @@ add_library(liba32android SHARED
     src/elf/elf32_dynamic_placement.cpp
     src/elf/elf32_linker_metadata.cpp
     src/elf/elf32_linker_strings.cpp
+    src/elf/elf32_relocation.cpp
     src/elf/elf32_symbol_lookup.cpp
     src/elf/elf32_load_plan.cpp
     src/elf/elf32_loader.cpp
@@ -149,6 +150,10 @@ if(LIBA32ANDROID_BUILD_TESTS)
     target_include_directories(elf32_symbol_lookup_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(elf32_symbol_lookup_test PRIVATE liba32android)
 
+    add_executable(elf32_relocation_test tests/elf32_relocation.cpp)
+    target_include_directories(elf32_relocation_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(elf32_relocation_test PRIVATE liba32android)
+
     add_executable(elf32_dependency_resolver_test tests/elf32_dependency_resolver.cpp)
     target_include_directories(elf32_dependency_resolver_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(elf32_dependency_resolver_test PRIVATE liba32android)
@@ -201,6 +206,12 @@ if(LIBA32ANDROID_BUILD_TESTS)
                                PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(elf32_symbol_lookup_real_fixture_test PRIVATE liba32android)
 
+    add_executable(elf32_relocation_real_fixture_test
+                   tests/elf32_relocation_real_fixture.cpp)
+    target_include_directories(elf32_relocation_real_fixture_test
+                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(elf32_relocation_real_fixture_test PRIVATE liba32android)
+
     add_test(NAME guest_arm_return_42 COMMAND cpu_smoke arm)
     add_test(NAME guest_thumb_return_42 COMMAND cpu_smoke thumb)
     add_test(NAME guest_register_state COMMAND cpu_execution registers)
@@ -232,6 +243,7 @@ if(LIBA32ANDROID_BUILD_TESTS)
     add_test(NAME elf32_linker_metadata_collection COMMAND elf32_linker_metadata_test)
     add_test(NAME elf32_linker_string_entry COMMAND elf32_linker_strings_test)
     add_test(NAME elf32_symbol_index COMMAND elf32_symbol_lookup_test)
+    add_test(NAME elf32_relocation_plan COMMAND elf32_relocation_test)
     add_test(NAME elf32_dependency_resolution COMMAND elf32_dependency_resolver_test)
     add_test(NAME elf32_dependency_loading COMMAND elf32_dependency_loader_test)
 
@@ -261,6 +273,9 @@ if(LIBA32ANDROID_BUILD_TESTS)
                          "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
         add_test(NAME elf32_real_symbol_lookup
                  COMMAND elf32_symbol_lookup_real_fixture_test
+                         "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
+        add_test(NAME elf32_real_relocation_plan
+                 COMMAND elf32_relocation_real_fixture_test
                          "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
     endif()
 endif()

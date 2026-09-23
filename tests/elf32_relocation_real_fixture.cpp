@@ -1,0 +1,153 @@
+#include <cstdint>
+#include <fstream>
+#include <iostream>
+#include <limits>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "elf/elf32_dependency_loader.h"
+#include "elf/elf32_relocation.h"
+#include "memory/guest_memory.h"
+
+namespace {
+
+using liba32android::elf::Elf32DependencyLoadOptions;
+using liba32android::elf::Elf32DependencyLoadSource;
+using liba32android::elf::Elf32DependencyProvider;
+using liba32android::elf::Elf32DependencyProviderError;
+using liba32android::elf::Elf32DependencyProviderResult;
+using liba32android::elf::Elf32RelocationOptions;
+using liba32android::elf::build_elf32_rel_relocation_plan;
+using liba32android::elf::kRArmGlobDat;
+using liba32android::elf::load_elf32_dependency_graph;
+using liba32android::memory::MappedGuestMemory;
+
+constexpr std::uint64_t kMaxFixtureImageBytes = 4U << 20;
+constexpr std::uint64_t kMaxTotalImageBytes = 8U << 20;
+constexpr std::uint32_t kExpectedBssOffset = 0x82cc;
+constexpr std::uint32_t kExpectedDataOffset = 0x82d0;
+
+int fail(const std::string& message) {
+    std::cerr << message << '\n';
+    return 1;
+}
+
+std::vector<std::uint8_t> read_file(const char* path) {
+    std::ifstream input(path, std::ios::binary | std::ios::ate);
+    if (!input) return {};
+
+    const std::streamoff end = input.tellg();
+    if (end <= 0 ||
+        static_cast<std::uint64_t>(end) >
+            std::numeric_limits<std::size_t>::max()) {
+        return {};
+    }
+
+    std::vector<std::uint8_t> bytes(static_cast<std::size_t>(end));
+    input.seekg(0, std::ios::beg);
+    if (!input.read(reinterpret_cast<char*>(bytes.data()), end)) return {};
+    return bytes;
+}
+
+class FailIfCalledProvider final : public Elf32DependencyProvider {
+public:
+    std::size_t calls{};
+
+    Elf32DependencyProviderResult resolve(
+        std::string_view,
+        std::uint64_t) override {
+        ++calls;
+        Elf32DependencyProviderResult result;
+        result.error = Elf32DependencyProviderError::Failed;
+        return result;
+    }
+};
+
+}  // namespace
+
+int main(int argc, char** argv) {
+    if (argc != 2) {
+        return fail("expected path to generated ARM32 fixture");
+    }
+
+    const std::vector<std::uint8_t> image = read_file(argv[1]);
+    if (image.empty()) {
+        return fail("generated ARM32 fixture is missing or empty");
+    }
+
+    MappedGuestMemory memory;
+    FailIfCalledProvider provider;
+
+    Elf32DependencyLoadOptions load_options;
+    load_options.max_objects = 8;
+    load_options.max_depth = 8;
+    load_options.max_dependency_occurrences = 8;
+    load_options.max_image_bytes = kMaxFixtureImageBytes;
+    load_options.max_total_image_bytes = kMaxTotalImageBytes;
+    load_options.max_string_bytes = 128;
+
+    const auto graph_result = load_elf32_dependency_graph(
+        memory,
+        Elf32DependencyLoadSource{
+            .identity = "real-arm32-fixture",
+            .image = image,
+        },
+        provider,
+        load_options);
+    if (!graph_result) {
+        return fail(
+            std::string("real ARM32 fixture dependency graph load failed: ") +
+            liba32android::elf::to_string(graph_result.error));
+    }
+    if (graph_result.graph.objects.size() != 1 || provider.calls != 0) {
+        return fail("real fixture did not remain a one-object zero-dependency graph");
+    }
+
+    Elf32RelocationOptions relocation_options;
+    relocation_options.max_relocations = 16;
+    const auto plan = build_elf32_rel_relocation_plan(
+        memory, graph_result.graph, 0, relocation_options);
+    if (!plan) {
+        return fail(
+            std::string("real ARM32 fixture relocation plan failed: ") +
+            liba32android::elf::to_string(plan.error));
+    }
+    if (plan.plan.entries.size() != 2) {
+        return fail("real fixture did not expose exactly two main REL entries");
+    }
+
+    const auto& bss = plan.plan.entries[0];
+    const auto& data = plan.plan.entries[1];
+    const std::uint32_t load_bias =
+        graph_result.graph.objects[0].load.load_bias;
+
+    if (bss.type != kRArmGlobDat ||
+        bss.symbol_index != 2 ||
+        bss.offset != kExpectedBssOffset ||
+        bss.place_guest_address != load_bias + kExpectedBssOffset ||
+        !bss.original_word.has_value() ||
+        *bss.original_word != 0) {
+        return fail("real fixture first GLOB_DAT plan entry did not match pinned evidence");
+    }
+    if (data.type != kRArmGlobDat ||
+        data.symbol_index != 3 ||
+        data.offset != kExpectedDataOffset ||
+        data.place_guest_address != load_bias + kExpectedDataOffset ||
+        !data.original_word.has_value() ||
+        *data.original_word != 0) {
+        return fail("real fixture second GLOB_DAT plan entry did not match pinned evidence");
+    }
+
+    std::cout << "fixture.relocation.count=2\n"
+              << "fixture.relocation.0.type=R_ARM_GLOB_DAT\n"
+              << "fixture.relocation.0.symbol_index=2\n"
+              << "fixture.relocation.0.offset=0x" << std::hex
+              << bss.offset << '\n'
+              << "fixture.relocation.1.type=R_ARM_GLOB_DAT\n"
+              << "fixture.relocation.1.symbol_index=3\n"
+              << "fixture.relocation.1.offset=0x" << data.offset << std::dec
+              << '\n'
+              << "fixture.relocation.status=PASS\n";
+    return 0;
+}
