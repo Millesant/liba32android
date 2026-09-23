@@ -39,7 +39,7 @@
   - bounds/name/binding/visibility/version/unsupported-form failures;
   - graph-local success;
   - weak unresolved behavior.
-- Status: ACTIVE — reference decoding/resolution implementation is committed for the next exact-head CI gate.
+- Status: DONE — exact-head CI #212 / run `35889244367` PASSed at `650d7b262540360ba2395a802ba7d7766566d544`: Linux passed 43/43 CTest including the expanded `elf32_relocation_plan` and `elf32_real_relocation_plan`; Android x86_64 and arm64-v8a jobs also PASSed.
 
 ## T003 — Apply NONE/RELATIVE/GLOB_DAT/ABS32 transactionally
 
@@ -59,7 +59,7 @@
   - pre-write failure leaves memory unchanged;
   - later write failure restores earlier words;
   - rollback-failure backend when practical.
-- Status: BLOCKED on T002.
+- Status: READY — T002 exact-head validation is PASS.
 
 ## T004 — Integrate pinned real ARM32 GLOB_DAT fixture
 
