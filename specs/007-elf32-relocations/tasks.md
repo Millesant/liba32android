@@ -75,7 +75,7 @@
 - Validation:
   - new real-fixture relocation CTest PASS;
   - all neighboring real loader/dynamic/metadata/string/dependency/symbol tests PASS.
-- Status: ACTIVE — pinned real-fixture application integration is committed for the next exact-head CI gate.
+- Status: DONE — exact-head CI #216 / run `35891830738` PASSed at `5d74af22c16a7bc99eee7038dfb9f137b22807c2`: Linux passed 45/45 CTest including `elf32_real_relocation_apply`; Android x86_64 and arm64-v8a jobs also PASSed.
 
 ## T005 — Converge docs/state/spec and final exact-head gate
 
@@ -91,7 +91,7 @@
   - Android x86_64 address-space probe PASS;
   - Android arm64-v8a cross-build PASS;
   - docs/contracts match implemented mutation/rollback semantics.
-- Status: BLOCKED on T004.
+- Status: READY — T004 exact-head validation is PASS.
 
 ## Readiness check
 
