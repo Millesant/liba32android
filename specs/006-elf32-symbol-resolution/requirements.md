@@ -1,6 +1,6 @@
 # Requirements — ELF32 Symbol Resolution
 
-Status: readiness-checked; T001 ready for implementation
+Status: implementation validated through T004; T005 convergence and final exact-head gate active
 
 ## Goal
 

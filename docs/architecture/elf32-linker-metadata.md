@@ -1,6 +1,6 @@
 # ELF32 linker metadata
 
-Status: M4 validated metadata layer implemented through T003
+Status: M4 validated metadata layer, including feature-006 hash/version-presence descriptors
 
 ## Boundary
 
@@ -88,10 +88,10 @@ This layer does not yet:
 - interpret variable SysV/GNU hash arrays or consume symbol entries;
 - decode or apply ARM relocations;
 - handle PLT/JMPREL;
-- implement symbol lookup/interposition/versioning;
+- perform symbol lookup itself or implement version-aware/process-wide interposition policy;
 - process RELRO, TLS, constructors/destructors, or Android packed relocations.
 
-Bounded SONAME/NEEDED string consumption lives in `elf32_linker_strings`; bounded hash/dynsym indexing begins in `elf32_symbol_lookup`; exact lookup, graph scope, and relocation/runtime behavior remain separate slices.
+Bounded SONAME/NEEDED string consumption lives in `elf32_linker_strings`; bounded hash/dynsym indexing, exact per-object lookup, and graph-local BFS scope live in `elf32_symbol_lookup`; relocation/runtime behavior remains downstream.
 
 ## Validation evidence
 
@@ -99,4 +99,4 @@ Synthetic coverage exercises semantic collection, duplicate and incomplete-group
 
 The reproducible NDK-generated ARM32 `ET_DYN` fixture is also loaded through `elf32_loader`, parsed through `elf32_dynamic`, then validated through `elf32_linker_metadata`. The integration test checks that STRTAB/SYMTAB/REL guest addresses equal the raw dynamic pointer values plus the loader's actual load bias, preserves SONAME, and confirms the freestanding fixture has no `DT_NEEDED`.
 
-GitHub Actions run `35332054239` (#87) passed the T003 implementation head on both the Linux test job and Android `arm64-v8a` cross-build. A later exact-head CI run is still required after documentation/state convergence before the feature is considered complete.
+The original linker-metadata T003 integration passed GitHub Actions run `35332054239` (#87). Feature 006 then extended this layer with fixed `DT_HASH` / `DT_GNU_HASH` descriptors and version-presence marking; exact-head CI #203 / run `35758444356` PASSed that extension at `45cd3e5a322263f53dc02277a9d0e801849515db`, and T004 real-fixture CI #206 / run `35837480789` remained green with 41/41 Linux CTest plus both Android jobs.

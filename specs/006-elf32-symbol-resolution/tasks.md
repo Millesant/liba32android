@@ -86,7 +86,7 @@
 - Validation:
   - new fixture-backed symbol-resolution CTest PASS;
   - neighboring real fixture loader/dynamic/metadata/string/dependency tests PASS.
-- Status: ACTIVE — pinned real ARM32 GNU-hash graph lookup, resolved data/BSS/function checks, executable-segment validation, and read-only snapshot coverage are implemented for the next exact-head gate.
+- Status: DONE — exact-head CI #206 / run `35837480789` PASSed at `2fdba16a13e34370483701345de2605df06811e6`: Linux passed 41/41 CTest including `elf32_real_symbol_lookup` and the neighboring real fixture/linker/dependency tests; Android x86_64 and arm64-v8a jobs also PASSed.
 
 ## T005 — Converge docs/state/spec and run exact-head CI
 
@@ -102,7 +102,7 @@
   - Android x86_64 address-space probe cross-build PASS;
   - Android arm64-v8a runtime/diagnostics cross-build PASS;
   - docs/contracts match implemented lookup/hash/scope semantics.
-- Status: BLOCKED — depends on T004
+- Status: ACTIVE — T004 exact-head validation is PASS; documentation/state/spec convergence is being committed and the final exact-head feature gate remains pending.
 
 ## Readiness Check
 

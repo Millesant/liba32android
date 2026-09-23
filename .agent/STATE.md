@@ -1,11 +1,11 @@
 # Current State
 
-Last updated: 2026-09-22
+Last updated: 2026-09-23
 Current phase: M4 continuation; bounded ELF32 symbol resolution
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `006-elf32-symbol-resolution`; T001-T003 are DONE at exact-head CI #203/#204/#205. T004 pinned real ARM32 GNU-hash fixture integration is ACTIVE and awaits its exact-head CI gate.
+Active runtime work: `006-elf32-symbol-resolution`; T001-T004 are DONE at exact-head CI #203/#204/#205/#206. T005 documentation/state/spec convergence and final exact-head feature gate are ACTIVE.
 
 ## Working
 
@@ -36,14 +36,15 @@ Active runtime work: `006-elf32-symbol-resolution`; T001-T003 are DONE at exact-
 - `src/elf/elf32_linker_strings.*` now materializes bounded STRTAB entries plus optional SONAME and ordered/repeated NEEDED names. Every call requires an explicit caller-selected payload ceiling; reads remain through `GuestMemory`, use checked guest-address arithmetic, preserve raw bytes, and never mutate guest memory. Aggregate failure is all-or-nothing.
 - `src/elf/elf32_dependency_resolver.*` now acquires host-owned dependency image inputs through a caller-owned provider. It preserves ordered/repeated `DT_NEEDED` occurrences, forwards non-empty name bytes unchanged, distinguishes not-found from provider failure, validates non-empty provider identity/image, enforces explicit dependency-count/per-image/total-image ceilings, and returns no partial successful aggregate on failure. It deliberately does not choose guest bases or map dependency ELF images.
 - `src/elf/elf32_dependency_loader.*` now owns one transactional recursive loaded-object graph: provider identity is the per-call object key, ordered/repeated dependency edges are preserved, cycles/shared objects reuse existing mappings, first-seen dependencies are automatically placed and loaded as `ET_DYN`, graph-wide object/depth/occurrence/image/string limits are enforced, and aggregate failure rolls back graph-owned mappings in reverse load order.
+- `src/elf/elf32_symbol_lookup.*` now implements bounded SysV/GNU hash metadata interpretation and dynamic-symbol indexing, exact byte-name per-object lookup, checked logical 32-bit guest-value computation, explicit unsupported version/TLS/common/XINDEX/IFUNC boundaries, and deterministic graph-local breadth-first lookup from dependency edges. The layer is read-only and never treats guest values as host pointers.
 - The reproducible real ARMv7/Android fixture remains generated with pinned NDK r27d / API 26 inputs. It has four `PT_LOAD` segments with `p_align=0x4000`, BSS, one `PT_DYNAMIC`, and observed SONAME/REL/SYMTAB/STRTAB/GNU_HASH-related tags with no `DT_NEEDED`; the linker-string integration validates SONAME `liba32android_loader_fixture.so` with an explicit 64-byte ceiling and zero NEEDED names.
 - Project-local agent material is limited to the root `AGENTS.md` project overlay, durable `.agent/` project state/decisions, and project-owned `specs/<id>-<feature>/{requirements,design,tasks}.md` packages. Generic workflow/runtime/governance is centralized in `Millesant/.gpt` rather than copied into this repository.
 
 ## Partial / not implemented
 
-- Feature 006 symbol work is PARTIAL: bounded hash metadata/index construction, exact-name per-object lookup, and deterministic graph-local BFS lookup are validated. Pinned real ARM32 GNU-hash fixture integration is implemented for the pending T004 gate. Version-aware lookup remains intentionally unsupported (version tables are rejected), and relocation application remains NOT IMPLEMENTED. Android search-path/namespace/pathname policy and process-wide link-map lifetime across graph-loading calls also remain NOT IMPLEMENTED.
+- Feature 006 implementation through T004 is validated: bounded hash/dynsym indexing, exact-name per-object lookup, deterministic graph-local BFS lookup, and pinned real ARM32 GNU-hash integration are PASS. T005 documentation/state/spec convergence plus the final exact-head feature gate remain ACTIVE. Version-aware lookup remains intentionally unsupported (version tables are rejected), and relocation application remains NOT IMPLEMENTED. Android search-path/namespace/pathname policy and process-wide link-map lifetime across graph-loading calls also remain NOT IMPLEMENTED.
 - ARM relocations: NOT IMPLEMENTED.
-- Symbol lookup/interposition: NOT IMPLEMENTED.
+- Version-aware and process-wide/global-group symbol interposition policy: NOT IMPLEMENTED; bounded graph-local unversioned lookup is implemented.
 - RELRO/TLS processing: NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.
 - Actual 16 KiB Android host-page behavior: PARTIAL by architecture — x86_64 Android 15 emulator probe PASS with 4 GiB reservation/commit, exact sampled low-VA `MAP_FIXED_NOREPLACE`, collision `EEXIST`, RW->RX, and generated-code return 42; AArch64 runtime on 16 KiB pages remains NOT RUN.
@@ -57,7 +58,9 @@ T001 hash metadata/indexing PASSed exact-head GitHub Actions run `35758444356` (
 
 T002 exact-name per-object lookup PASSed exact-head GitHub Actions run `35759553586` (#204) at `5f21c8ed48f458f7f3d909fff39523d9ebf9b7e0`. Linux again PASSed 40/40 CTest with the expanded `elf32_symbol_index`; both Android jobs PASSed.
 
-T003 deterministic graph-local BFS lookup PASSed exact-head GitHub Actions run `35760283793` (#205) at `f3997d037f7f5a29b1666dd9a6f5a566b249a2cc`. Linux PASSed 40/40 CTest including the graph-scope cases in `elf32_symbol_index`; Android x86_64 address-space probe and Android arm64-v8a cross-build also PASSed. T004 pinned real ARM32 GNU-hash fixture integration is implemented after this gate and requires new exact-head validation.
+T003 deterministic graph-local BFS lookup PASSed exact-head GitHub Actions run `35760283793` (#205) at `f3997d037f7f5a29b1666dd9a6f5a566b249a2cc`. Linux PASSed 40/40 CTest including the graph-scope cases in `elf32_symbol_index`; Android x86_64 address-space probe and Android arm64-v8a cross-build also PASSed.
+
+T004 pinned real ARM32 GNU-hash fixture integration PASSed exact-head GitHub Actions run `35837480789` (#206) at `2fdba16a13e34370483701345de2605df06811e6`. Linux PASSed 41/41 CTest including `elf32_real_symbol_lookup` and all neighboring real ELF/linker/dependency fixture tests; Android x86_64 address-space probe and Android arm64-v8a cross-build also PASSed. The fixture resolves `fixture_add`, `fixture_data`, and `fixture_bss` from object 0 through GNU hash, reads back initialized data/BSS through resolved guest values, verifies the function value lies in an executable segment, and confirms lookup leaves loaded mappings/permissions/bytes unchanged.
 
 ### M4 recursive ELF32 dependency graph loading
 
