@@ -91,7 +91,7 @@
   - Android x86_64 address-space probe PASS;
   - Android arm64-v8a cross-build PASS;
   - docs/contracts match implemented mutation/rollback semantics.
-- Status: READY — T004 exact-head validation is PASS.
+- Status: ACTIVE — implementation/test/spec review found no blocking R1-R15 / AC1-AC14 semantic gap; documentation/state/spec convergence is prepared and AC15 final exact-head CI remains pending.
 
 ## Readiness check
 

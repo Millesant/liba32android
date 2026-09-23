@@ -91,7 +91,7 @@ This layer does not yet:
 - perform symbol lookup itself or implement version-aware/process-wide interposition policy;
 - process RELRO, TLS, constructors/destructors, or Android packed relocations.
 
-Bounded SONAME/NEEDED string consumption lives in `elf32_linker_strings`; bounded hash/dynsym indexing, exact per-object lookup, and graph-local BFS scope live in `elf32_symbol_lookup`; relocation/runtime behavior remains downstream.
+Bounded SONAME/NEEDED string consumption lives in `elf32_linker_strings`; bounded hash/dynsym indexing, exact per-object lookup, and graph-local BFS scope live in `elf32_symbol_lookup`; bounded main-`DT_REL` ARM relocation planning/application now lives downstream in `elf32_relocation`. PLT/JMPREL, version-aware/global-group policy, RELRO, TLS, and broader runtime behavior remain separate downstream contracts.
 
 ## Validation evidence
 

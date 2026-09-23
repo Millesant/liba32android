@@ -1,5 +1,7 @@
 # Design — ELF32 ARM REL Relocation Application
 
+Status: implemented; T001-T004 validated; T005 convergence/final gate pending
+
 ## Context
 
 Feature 001 already validates and rebases the main `DT_REL` table but intentionally stops before decoding entries or writing guest memory.

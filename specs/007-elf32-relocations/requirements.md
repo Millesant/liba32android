@@ -1,6 +1,6 @@
 # Requirements — ELF32 ARM REL Relocation Application
 
-Status: readiness-checked; T001 ready for implementation
+Status: implemented; T001-T004 validated; T005 final exact-head gate pending
 
 ## Goal
 

@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-23
-Current phase: M4 continuation; bounded ELF32 ARM REL relocation application
+Current phase: M4 continuation; bounded ELF32 ARM REL relocation application closeout
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `007-elf32-relocations`; T001-T004 are validated at CI #210/#212/#214/#216. T005 documentation/state/spec convergence and final exact-head feature gate are READY.
+Active runtime work: `007-elf32-relocations`; T001-T004 are validated at CI #210/#212/#214/#216. T005 documentation/state/spec convergence is prepared; R1-R15 / AC1-AC14 review found no blocking semantic gap and AC15 final exact-head CI remains pending.
 
 ## Working
 
@@ -37,13 +37,14 @@ Active runtime work: `007-elf32-relocations`; T001-T004 are validated at CI #210
 - `src/elf/elf32_dependency_resolver.*` now acquires host-owned dependency image inputs through a caller-owned provider. It preserves ordered/repeated `DT_NEEDED` occurrences, forwards non-empty name bytes unchanged, distinguishes not-found from provider failure, validates non-empty provider identity/image, enforces explicit dependency-count/per-image/total-image ceilings, and returns no partial successful aggregate on failure. It deliberately does not choose guest bases or map dependency ELF images.
 - `src/elf/elf32_dependency_loader.*` now owns one transactional recursive loaded-object graph: provider identity is the per-call object key, ordered/repeated dependency edges are preserved, cycles/shared objects reuse existing mappings, first-seen dependencies are automatically placed and loaded as `ET_DYN`, graph-wide object/depth/occurrence/image/string limits are enforced, and aggregate failure rolls back graph-owned mappings in reverse load order.
 - `src/elf/elf32_symbol_lookup.*` now implements bounded SysV/GNU hash metadata interpretation and dynamic-symbol indexing, exact byte-name per-object lookup, checked logical 32-bit guest-value computation, explicit unsupported version/TLS/common/XINDEX/IFUNC boundaries, and deterministic graph-local breadth-first lookup from dependency edges. The layer is read-only and never treats guest values as host pointers.
+- `src/elf/elf32_relocation.*` now implements bounded main-`DT_REL` ARM relocation planning, reference-symbol resolution through feature 006, and transactional application for `R_ARM_NONE`, `R_ARM_RELATIVE`, `R_ARM_GLOB_DAT`, and `R_ARM_ABS32`. Planning is byte-explicit and bounded, duplicate write targets are rejected, protected/versioned/TLS/IFUNC/common/XINDEX reference forms remain explicit failures, unresolved weak references map to `S=0` only in relocation policy, Android `GLOB_DAT` writes `S` without the in-place REL addend, and late write failures roll back earlier relocation-owned writes in reverse order without broadening page permissions.
 - The reproducible real ARMv7/Android fixture remains generated with pinned NDK r27d / API 26 inputs. It has four `PT_LOAD` segments with `p_align=0x4000`, BSS, one `PT_DYNAMIC`, and observed SONAME/REL/SYMTAB/STRTAB/GNU_HASH-related tags with no `DT_NEEDED`; the linker-string integration validates SONAME `liba32android_loader_fixture.so` with an explicit 64-byte ceiling and zero NEEDED names.
 - Project-local agent material is limited to the root `AGENTS.md` project overlay, durable `.agent/` project state/decisions, and project-owned `specs/<id>-<feature>/{requirements,design,tasks}.md` packages. Generic workflow/runtime/governance is centralized in `Millesant/.gpt` rather than copied into this repository.
 
 ## Partial / not implemented
 
-- Feature 006 bounded graph-local unversioned symbol resolution is DONE at exact-head CI #207. Version-aware lookup remains intentionally unsupported (version tables are rejected), relocation application remains NOT IMPLEMENTED, and Android search-path/namespace/pathname policy plus process-wide link-map lifetime across graph-loading calls remain NOT IMPLEMENTED.
-- ARM relocation application: PARTIAL pending feature closeout only. Feature 007 T001-T004 are validated, including bounded main-`DT_REL` planning/reference resolution, transactional NONE/RELATIVE/GLOB_DAT/ABS32 writes with rollback, and pinned real ARM32 GLOB_DAT application. T005 docs/state/spec convergence plus the final exact-head feature gate remain.
+- Feature 006 bounded graph-local unversioned symbol resolution is DONE at exact-head CI #207. Version-aware lookup remains intentionally unsupported (version tables are rejected). Feature 007 now implements bounded main-`DT_REL` relocation application; Android search-path/namespace/pathname policy plus process-wide link-map lifetime across graph-loading calls remain NOT IMPLEMENTED.
+- ARM relocation application: IMPLEMENTED for the bounded feature-007 main-`DT_REL` scope. T001-T004 are validated, including bounded planning/reference resolution, transactional NONE/RELATIVE/GLOB_DAT/ABS32 writes with rollback, and pinned real ARM32 GLOB_DAT application. T005 documentation/spec convergence is prepared; only the final exact-head feature gate remains.
 - Version-aware and process-wide/global-group symbol interposition policy: NOT IMPLEMENTED; bounded graph-local unversioned lookup is implemented.
 - RELRO/TLS processing: NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.
@@ -61,6 +62,8 @@ T002 bounded relocation-reference dynsym decoding/name materialization and graph
 T003 transactional relocation application PASSed exact-head GitHub Actions run `35890660951` (#214) at `41a93348c29fb884befba5ba8bad51ecf0d49665`. Linux PASSed 44/44 CTest including the dedicated `elf32_relocation_apply` suite; Android x86_64 and arm64-v8a also PASSed. Synthetic coverage proves NONE no-write behavior, RELATIVE B+A modulo 2^32, Android-compatible GLOB_DAT S with a nonzero in-place addend ignored, ABS32 S+A modulo 2^32, all-semantic-checks-before-write, late-write reverse rollback, and explicit injected rollback-failure reporting.
 
 T004 pinned real ARM32 GLOB_DAT application PASSed exact-head GitHub Actions run `35891830738` (#216) at `5d74af22c16a7bc99eee7038dfb9f137b22807c2`. Linux PASSed 45/45 CTest including `elf32_real_relocation_apply`; Android x86_64 and arm64-v8a also PASSed. The test resolves `fixture_bss` / `fixture_data` through feature 006, applies the two main GLOB_DAT entries, verifies target words equal those logical guest values, keeps provider calls at zero, preserves initialized data/BSS, preserves every loaded mapping permission, and detects any changed segment byte outside the two relocation target words.
+
+T005 convergence review at the T004-derived head found no blocking semantic gap across R1-R15 / AC1-AC14: public relocation contracts, implementation formulas/error boundaries, synthetic rollback/failure coverage, and the pinned real-fixture oracle agree. Documentation/spec/state closeout is being committed next; AC15 exact-head Linux/Android CI is NOT RUN until that closeout head is pushed.
 
 ### M4 ELF32 symbol resolution (complete)
 

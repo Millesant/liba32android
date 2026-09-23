@@ -38,7 +38,7 @@ loader -> dynamic -> linker metadata -> linker strings
           logical 32-bit guest value
                       |
                       v
-             future relocation layer
+                 elf32_relocation
 ```
 
 ## Hash metadata and symbol extent
@@ -98,6 +98,10 @@ Objects without a symbol table are skipped. A malformed/versioned searchable obj
 
 This scope is intentionally local to one loaded dependency graph. Android global groups, namespaces, preloads, requester-sensitive policy, and process-wide link-map lifetime remain outside this feature.
 
+## Downstream relocation policy
+
+Feature 007 consumes this layer without widening its lookup contract. `elf32_relocation` starts graph-local BFS lookup at the relocating object, preserves returned logical guest symbol values, rejects protected requester semantics and versioned/TLS/IFUNC/common/XINDEX reference forms explicitly, and maps an unresolved weak reference to `S = 0` only in the relocation context. Those mutation/reference-policy decisions do not belong in this read-only symbol layer.
+
 ## Resource and failure model
 
 Every operation uses caller-selected finite ceilings:
@@ -119,7 +123,7 @@ The entire symbol layer is read-only.
 - Hash, symbol, and string bytes are read only through `GuestMemory`.
 - Guest mappings, permissions, bytes, dependency edges, and provider state are unchanged on success and failure.
 - Returned addresses/values are logical 32-bit guest values, never host pointers.
-- Relocation writes remain a downstream responsibility.
+- Relocation writes are implemented by downstream `elf32_relocation`; this symbol layer remains read-only.
 
 The real-fixture integration snapshots loaded segment bytes, mappings, and permissions before lookup and verifies they are unchanged afterward.
 
@@ -140,7 +144,7 @@ T005 documentation/state/spec convergence and the final feature-head gate PASSed
 
 This feature does not implement:
 
-- ARM relocation writes, PLT/GOT/JMPREL, or lazy binding;
+- relocation writes are outside this layer and live in `elf32_relocation`; PLT/GOT/JMPREL and lazy binding remain unimplemented;
 - symbol version matching;
 - Android/global-group/namespace/preload/process-wide interposition policy;
 - requester-specific `DT_SYMBOLIC` / protected self-binding relocation semantics;

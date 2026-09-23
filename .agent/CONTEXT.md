@@ -21,7 +21,7 @@ Current dependency direction is intentionally one-way:
 ```text
 ELF image -> ELF32 loader -> GuestMemory
                           -> structural Elf32_Dyn metadata
-                          -> linker metadata/strings -> dependency graph -> symbol lookup
+                          -> linker metadata/strings -> dependency graph -> symbol lookup -> relocation application
 GuestMemory -> CPU adapter -> Dynarmic
 ```
 
@@ -29,7 +29,7 @@ ELF/ABI/runtime APIs operate on logical 32-bit guest VAs and must not expose hos
 
 ## Current phase
 
-The M2 guest-address-space scope is implemented. M3 ELF32 mapping plus structural dynamic-array metadata is implemented. M4 now includes validated linker metadata, bounded linker-string materialization, bounded provider-backed dependency image acquisition, deterministic automatic `ET_DYN` guest placement, transactional recursive dependency graph loading, bounded SysV/GNU dynamic-symbol indexing, exact per-object lookup, and deterministic graph-local breadth-first symbol resolution. Version-aware/process-wide interposition policy and ARM relocation application remain unimplemented.
+The M2 guest-address-space scope is implemented. M3 ELF32 mapping plus structural dynamic-array metadata is implemented. M4 now includes validated linker metadata, bounded linker-string materialization, bounded provider-backed dependency image acquisition, deterministic automatic `ET_DYN` guest placement, transactional recursive dependency graph loading, bounded SysV/GNU dynamic-symbol indexing, exact per-object lookup, deterministic graph-local breadth-first symbol resolution, and bounded transactional main-`DT_REL` ARM relocation application. Version-aware/process-wide interposition policy, PLT/JMPREL, RELRO, and TLS remain unimplemented.
 
 ## Current stack
 
@@ -39,7 +39,7 @@ The M2 guest-address-space scope is implemented. M3 ELF32 mapping plus structura
 - Correctness memory: `LinearGuestMemory`.
 - Mapped memory: `MappedGuestMemory`, logical 32-bit guest VAs, contiguous high-host-VA 4 GiB reservation, page map/protect/unmap lifecycle; `guest_va_allocator` provides bounded non-mutating free-range search.
 - CPU acceleration: internal mapped-memory `fastmem_base()` capability plus Dynarmic fastmem; callbacks remain the mandatory correctness fallback.
-- ELF: `src/elf/elf32_load_plan.*` for shared pre-mutation validation/layout planning, `src/elf/elf32_loader.*` for explicit-base validated mapping, `src/elf/elf32_dynamic_placement.*` for deterministic automatic `ET_DYN` base selection, `src/elf/elf32_dynamic.*` for structural raw dynamic entries, `src/elf/elf32_linker_metadata.*` / `elf32_linker_strings.*` for validated linker inputs, `src/elf/elf32_dependency_resolver.*` for bounded provider-backed dependency image acquisition, `src/elf/elf32_dependency_loader.*` for transactional recursive loaded-object graph ownership, and `src/elf/elf32_symbol_lookup.*` for bounded hash/dynsym indexing plus graph-local exact-name resolution.
+- ELF: `src/elf/elf32_load_plan.*` for shared pre-mutation validation/layout planning, `src/elf/elf32_loader.*` for explicit-base validated mapping, `src/elf/elf32_dynamic_placement.*` for deterministic automatic `ET_DYN` base selection, `src/elf/elf32_dynamic.*` for structural raw dynamic entries, `src/elf/elf32_linker_metadata.*` / `elf32_linker_strings.*` for validated linker inputs, `src/elf/elf32_dependency_resolver.*` for bounded provider-backed dependency image acquisition, `src/elf/elf32_dependency_loader.*` for transactional recursive loaded-object graph ownership, `src/elf/elf32_symbol_lookup.*` for bounded hash/dynsym indexing plus graph-local exact-name resolution, and `src/elf/elf32_relocation.*` for bounded main-`DT_REL` planning, reference resolution, transactional writes, and rollback.
 - Android cross-build: `arm64-v8a`, NDK `27.3.13750724`.
 
 D-0003 and D-0004 remain central: guest VAs are independent from host pointer identity, and high-base contiguous fastmem is the preferred first Android acceleration path when available.
