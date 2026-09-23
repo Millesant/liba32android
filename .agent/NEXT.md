@@ -2,17 +2,15 @@
 
 Repository integration is on `bleeding`. Feature `006-elf32-symbol-resolution` is DONE. Feature `007-elf32-relocations` is active.
 
-1. T003 — transactional `R_ARM_NONE` / `R_ARM_RELATIVE` / `R_ARM_GLOB_DAT` / `R_ARM_ABS32` application.
-   - Status: ACTIVE.
-   - Dependency gate: T002 PASSed exact-head CI #212 / run `35889244367` at `650d7b262540360ba2395a802ba7d7766566d544`; Linux passed 43/43 CTest, Android x86_64 PASSed, and Android arm64-v8a PASSed.
-   - Existing contracts: T001 builds a complete read-only bounded REL plan with original-word snapshots; T002 resolves symbol-bearing references read-only, including unresolved WEAK -> `S=0`.
-   - Implemented scope for the pending gate: complete final-word calculation before mutation; RELATIVE symbol-index-zero enforcement; `RELATIVE = B + A`, `GLOB_DAT = S`, `ABS32 = S + A` modulo 2^32; NONE no-write behavior; table-order writes; failed-target state check; reverse restoration of earlier writes with readback verification; explicit rollback-failure reporting; no permission changes.
-   - Validation added: dedicated `elf32_relocation_apply` CTest covering formulas, nonzero-addend GLOB_DAT suppression, pre-write failures, successful late-write rollback, and injected rollback failure.
-   - Exact next action: run exact-head CI and require the new apply CTest, existing plan/real-plan tests, all neighboring ELF/linker/symbol tests, Android x86_64, and Android arm64-v8a to PASS.
-   - Stop condition: T003 synthetic mutation/rollback behavior is validated and persisted. Do not begin real-fixture relocation application until the T003 gate is green.
+1. T004 — pinned real ARM32 `R_ARM_GLOB_DAT` application.
+   - Status: READY.
+   - Dependency gate: T003 PASSed exact-head CI #214 / run `35890660951` at `41a93348c29fb884befba5ba8bad51ecf0d49665`; Linux passed 44/44 CTest including `elf32_relocation_apply`, Android x86_64 PASSed, and Android arm64-v8a PASSed.
+   - Existing real-fixture oracle: main `.rel.dyn` has exactly two GLOB_DAT entries at linked offsets `0x82cc` / `0x82d0`, symbol indexes 2 / 3 for `fixture_bss` / `fixture_data`, and zero original words.
+   - Exact next action in a fresh bounded round: apply object-0 relocations through `apply_elf32_rel_relocations`; require the two target words to equal feature-006 resolved guest values; preserve zero provider calls, initialized data/BSS contents, and all mapping permissions.
+   - Stop condition: real-fixture relocation application is exact-head validated and persisted. Do not start final T005 convergence until T004 is green.
 
-2. T004-T005 remain dependency-ordered in `specs/007-elf32-relocations/tasks.md`.
-   - Pinned real-fixture mutation and final feature convergence are not admitted into T003 until its exact-head gate passes.
+2. T005 remains blocked on T004.
+   - Final architecture/README/spec/state convergence and exact-head feature gate are not admitted until the real-fixture mutation oracle passes.
 
 Independent FOLLOW_UP items remain unchanged:
 

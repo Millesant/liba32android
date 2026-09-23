@@ -5,7 +5,7 @@ Current phase: M4 continuation; bounded ELF32 ARM REL relocation application
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `007-elf32-relocations`; T001 is DONE at CI #210 and T002 at CI #212. T003 transactional NONE/RELATIVE/GLOB_DAT/ABS32 application with verified reverse rollback is implemented and awaits exact-head CI validation.
+Active runtime work: `007-elf32-relocations`; T001 is DONE at CI #210, T002 at CI #212, and T003 transactional application/rollback at CI #214. T004 pinned real ARM32 GLOB_DAT application is READY.
 
 ## Working
 
@@ -43,7 +43,7 @@ Active runtime work: `007-elf32-relocations`; T001 is DONE at CI #210 and T002 a
 ## Partial / not implemented
 
 - Feature 006 bounded graph-local unversioned symbol resolution is DONE at exact-head CI #207. Version-aware lookup remains intentionally unsupported (version tables are rejected), relocation application remains NOT IMPLEMENTED, and Android search-path/namespace/pathname policy plus process-wide link-map lifetime across graph-loading calls remain NOT IMPLEMENTED.
-- ARM relocation application: PARTIAL. Feature 007 T001/T002 are validated; T003 now implements the first transactional main-`DT_REL` writes for NONE/RELATIVE/GLOB_DAT/ABS32 with precomputed final words, Android/bionic GLOB_DAT addend suppression, reverse rollback, rollback verification, and explicit rollback failure. T003 awaits its exact-head CI gate; real-fixture mutation remains blocked on T004.
+- ARM relocation application: PARTIAL. Feature 007 T001-T003 are validated, including transactional main-`DT_REL` writes for NONE/RELATIVE/GLOB_DAT/ABS32, Android/bionic GLOB_DAT addend suppression, reverse rollback, rollback verification, and explicit rollback failure. T004 pinned real-fixture mutation is next.
 - Version-aware and process-wide/global-group symbol interposition policy: NOT IMPLEMENTED; bounded graph-local unversioned lookup is implemented.
 - RELRO/TLS processing: NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.
@@ -57,6 +57,8 @@ Active runtime work: `007-elf32-relocations`; T001 is DONE at CI #210 and T002 a
 T001 bounded read-only main-`DT_REL` decoding/planning PASSed exact-head GitHub Actions run `35850236188` (#210) at `2b4e9185bac43fe9bb46ddf8c7da9b73e0146837`. Linux PASSed 43/43 CTest including `elf32_relocation_plan` and `elf32_real_relocation_plan`; Android x86_64 address-space probe and Android arm64-v8a cross-build also PASSed. The pinned real fixture plan reports exactly two `R_ARM_GLOB_DAT` entries at linked offsets `0x82cc` / `0x82d0`, symbol indexes 2 / 3, with zero original words. T001 remains read-only and performs no relocation writes.
 
 T002 bounded relocation-reference dynsym decoding/name materialization and graph-local resolution PASSed exact-head GitHub Actions run `35889244367` (#212) at `650d7b262540360ba2395a802ba7d7766566d544`. Linux PASSed 43/43 CTest; Android x86_64 and arm64-v8a also PASSed. Coverage includes symbol-index/name bounds, default-visibility GLOBAL/WEAK references, protected/versioned/TLS/IFUNC/common/XINDEX rejection, graph-local definition selection, strong-not-found failure, unresolved weak `S=0`, nested error preservation, and pinned real-fixture resolution of `fixture_bss` / `fixture_data`. T002 remains read-only and performs no relocation writes.
+
+T003 transactional relocation application PASSed exact-head GitHub Actions run `35890660951` (#214) at `41a93348c29fb884befba5ba8bad51ecf0d49665`. Linux PASSed 44/44 CTest including the dedicated `elf32_relocation_apply` suite; Android x86_64 and arm64-v8a also PASSed. Synthetic coverage proves NONE no-write behavior, RELATIVE B+A modulo 2^32, Android-compatible GLOB_DAT S with a nonzero in-place addend ignored, ABS32 S+A modulo 2^32, all-semantic-checks-before-write, late-write reverse rollback, and explicit injected rollback-failure reporting.
 
 ### M4 ELF32 symbol resolution (complete)
 

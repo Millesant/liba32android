@@ -59,7 +59,7 @@
   - pre-write failure leaves memory unchanged;
   - later write failure restores earlier words;
   - rollback-failure backend when practical.
-- Status: ACTIVE — transactional application/rollback implementation is committed for the next exact-head CI gate.
+- Status: DONE — exact-head CI #214 / run `35890660951` PASSed at `41a93348c29fb884befba5ba8bad51ecf0d49665`: Linux passed 44/44 CTest including `elf32_relocation_apply`; Android x86_64 and arm64-v8a jobs also PASSed.
 
 ## T004 — Integrate pinned real ARM32 GLOB_DAT fixture
 
@@ -75,7 +75,7 @@
 - Validation:
   - new real-fixture relocation CTest PASS;
   - all neighboring real loader/dynamic/metadata/string/dependency/symbol tests PASS.
-- Status: BLOCKED on T003.
+- Status: READY — T003 exact-head validation is PASS.
 
 ## T005 — Converge docs/state/spec and final exact-head gate
 
