@@ -5,7 +5,7 @@ Current phase: M4 continuation; bounded ELF32 ARM REL relocation application
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `007-elf32-relocations`; T001 bounded read-only REL decoding/planning is implemented and awaits exact-head CI validation.
+Active runtime work: `007-elf32-relocations`; T001 bounded read-only REL decoding/planning is DONE at exact-head CI #210. T002 relocation-reference symbol decoding/resolution is READY.
 
 ## Working
 
@@ -43,7 +43,7 @@ Active runtime work: `007-elf32-relocations`; T001 bounded read-only REL decodin
 ## Partial / not implemented
 
 - Feature 006 bounded graph-local unversioned symbol resolution is DONE at exact-head CI #207. Version-aware lookup remains intentionally unsupported (version tables are rejected), relocation application remains NOT IMPLEMENTED, and Android search-path/namespace/pathname policy plus process-wide link-map lifetime across graph-loading calls remain NOT IMPLEMENTED.
-- ARM relocation application: NOT IMPLEMENTED. Feature 007 T001 read-only main-`DT_REL` decoding/planning is implemented for the pending exact-head gate; no relocation writes exist yet.
+- ARM relocation application: NOT IMPLEMENTED. Feature 007 T001 read-only main-`DT_REL` decoding/planning is validated; T002 symbol-reference resolution is next. No relocation writes exist yet.
 - Version-aware and process-wide/global-group symbol interposition policy: NOT IMPLEMENTED; bounded graph-local unversioned lookup is implemented.
 - RELRO/TLS processing: NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.
@@ -51,6 +51,10 @@ Active runtime work: `007-elf32-relocations`; T001 bounded read-only REL decodin
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### M4 ELF32 ARM REL relocation application (active)
+
+T001 bounded read-only main-`DT_REL` decoding/planning PASSed exact-head GitHub Actions run `35850236188` (#210) at `2b4e9185bac43fe9bb46ddf8c7da9b73e0146837`. Linux PASSed 43/43 CTest including `elf32_relocation_plan` and `elf32_real_relocation_plan`; Android x86_64 address-space probe and Android arm64-v8a cross-build also PASSed. The pinned real fixture plan reports exactly two `R_ARM_GLOB_DAT` entries at linked offsets `0x82cc` / `0x82d0`, symbol indexes 2 / 3, with zero original words. T001 remains read-only and performs no relocation writes.
 
 ### M4 ELF32 symbol resolution (complete)
 

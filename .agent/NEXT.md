@@ -2,18 +2,15 @@
 
 Repository integration is on `bleeding`. Feature `006-elf32-symbol-resolution` is DONE. Feature `007-elf32-relocations` is active.
 
-1. T001 — bounded read-only main-`DT_REL` decoding/planning.
-   - Status: ACTIVE.
-   - Base revision for specification/readiness: `ecdae1cea991ecd079487e1cda0bc2fe3c7fff99`.
-   - Accepted first relocation set: `R_ARM_NONE`, `R_ARM_ABS32`, `R_ARM_GLOB_DAT`, `R_ARM_RELATIVE`.
-   - Android compatibility decision: `R_ARM_GLOB_DAT` will write `S` and ignore the REL in-place addend, matching current bionic.
-   - Pinned real-fixture oracle: CI #208 artifact ID `10745105004` contains exactly two `R_ARM_GLOB_DAT` entries at linked offsets `0x82cc` / `0x82d0`, symbol indexes 2 / 3 (`fixture_bss` / `fixture_data`), with zero original words.
-   - Implemented scope for the pending gate: `src/elf/elf32_relocation.{h,cpp}`, explicit bounded REL decoding, checked guest-place calculation, supported-type classification, original-word capture, duplicate-target rejection, synthetic coverage, CMake wiring, and pinned real-fixture read-only plan coverage.
-   - Exact next action: run exact-head CI and require `elf32_relocation_plan`, `elf32_real_relocation_plan`, all neighboring ELF/linker/symbol tests, Android x86_64, and Android arm64-v8a to PASS.
-   - Stop condition: T001 plan/decode behavior is validated and persisted. Do not begin symbol-resolution/application writes until the T001 gate is green.
+1. T002 — bounded relocation-reference symbol decoding/resolution.
+   - Status: READY.
+   - Dependency gate: T001 PASSed exact-head CI #210 / run `35850236188` at `2b4e9185bac43fe9bb46ddf8c7da9b73e0146837`; Linux passed 43/43 CTest including `elf32_relocation_plan` and `elf32_real_relocation_plan`, Android x86_64 PASSed, and Android arm64-v8a PASSed.
+   - Existing T001 contract: main-`DT_REL` is decoded read-only with explicit count bounds, checked guest places, supported-type classification, original-word snapshots, and duplicate write-target rejection.
+   - Exact next action in a fresh bounded round: add bounded relocation-reference dynsym decoding/name materialization and graph-local resolution; cover symbol-index bounds, strong/weak behavior, protected/versioned/unsupported forms, and preserve zero guest mutation.
+   - Stop condition: T002 resolution behavior is validated and persisted. Do not begin transactional relocation writes until the T002 gate is green.
 
-2. T002-T005 remain dependency-ordered in `specs/007-elf32-relocations/tasks.md`.
-   - Symbol-reference resolution, transactional writes/rollback, real-fixture application, and final convergence are not admitted into the T001 round.
+2. T003-T005 remain dependency-ordered in `specs/007-elf32-relocations/tasks.md`.
+   - Transactional writes/rollback, real-fixture application, and final convergence are not admitted into T002 until its dependency gate passes.
 
 Independent FOLLOW_UP items remain unchanged:
 

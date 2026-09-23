@@ -20,7 +20,7 @@
   - pinned real fixture plan reports exactly two GLOB_DAT entries with symbol indexes 2/3, linked offsets 0x82cc/0x82d0, and zero original words.
 - Documentation:
   - public header must state guest-address, limits, supported-type, addend, and read-only plan contracts.
-- Status: ACTIVE — implementation is committed for the next exact-head CI gate.
+- Status: DONE — exact-head CI #210 / run `35850236188` PASSed at `2b4e9185bac43fe9bb46ddf8c7da9b73e0146837`: Linux passed 43/43 CTest including `elf32_relocation_plan` and `elf32_real_relocation_plan`; Android x86_64 and arm64-v8a jobs also PASSed.
 
 ## T002 — Add bounded relocation-reference symbol decoding/resolution
 
@@ -39,7 +39,7 @@
   - bounds/name/binding/visibility/version/unsupported-form failures;
   - graph-local success;
   - weak unresolved behavior.
-- Status: BLOCKED on T001.
+- Status: READY — T001 exact-head validation is PASS.
 
 ## T003 — Apply NONE/RELATIVE/GLOB_DAT/ABS32 transactionally
 
