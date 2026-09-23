@@ -75,7 +75,7 @@
 - Validation:
   - new real-fixture relocation CTest PASS;
   - all neighboring real loader/dynamic/metadata/string/dependency/symbol tests PASS.
-- Status: READY — T003 exact-head validation is PASS.
+- Status: ACTIVE — pinned real-fixture application integration is committed for the next exact-head CI gate.
 
 ## T005 — Converge docs/state/spec and final exact-head gate
 

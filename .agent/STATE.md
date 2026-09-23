@@ -5,7 +5,7 @@ Current phase: M4 continuation; bounded ELF32 ARM REL relocation application
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `007-elf32-relocations`; T001 is DONE at CI #210, T002 at CI #212, and T003 transactional application/rollback at CI #214. T004 pinned real ARM32 GLOB_DAT application is READY.
+Active runtime work: `007-elf32-relocations`; T001-T003 are validated at CI #210/#212/#214. T004 pinned real ARM32 GLOB_DAT application is implemented and awaits exact-head CI validation.
 
 ## Working
 
@@ -43,7 +43,7 @@ Active runtime work: `007-elf32-relocations`; T001 is DONE at CI #210, T002 at C
 ## Partial / not implemented
 
 - Feature 006 bounded graph-local unversioned symbol resolution is DONE at exact-head CI #207. Version-aware lookup remains intentionally unsupported (version tables are rejected), relocation application remains NOT IMPLEMENTED, and Android search-path/namespace/pathname policy plus process-wide link-map lifetime across graph-loading calls remain NOT IMPLEMENTED.
-- ARM relocation application: PARTIAL. Feature 007 T001-T003 are validated, including transactional main-`DT_REL` writes for NONE/RELATIVE/GLOB_DAT/ABS32, Android/bionic GLOB_DAT addend suppression, reverse rollback, rollback verification, and explicit rollback failure. T004 pinned real-fixture mutation is next.
+- ARM relocation application: PARTIAL. Feature 007 T001-T003 are validated and T004 pinned real-fixture GLOB_DAT mutation is implemented for the pending exact-head gate. The integration resolves expected values through feature 006, applies exactly two GOT writes, and verifies provider state, data/BSS, segment mappings/permissions, and all non-target segment bytes remain unchanged.
 - Version-aware and process-wide/global-group symbol interposition policy: NOT IMPLEMENTED; bounded graph-local unversioned lookup is implemented.
 - RELRO/TLS processing: NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.
