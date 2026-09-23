@@ -1,16 +1,23 @@
 # Next Work
 
-Repository integration is on `bleeding`. Feature `006-elf32-symbol-resolution` is DONE.
+Repository integration is on `bleeding`. Feature `006-elf32-symbol-resolution` is DONE. Feature `007-elf32-relocations` is active.
 
-1. Next feature-scale M4 linker slice — ARM relocation application.
-   - Status: READY FOR SPECIFICATION; implementation has not started.
-   - Dependency basis: feature 006 final T005 gate PASSed exact-head CI #207 / run `35847914558` at `ad022c2cc569c3175ad1cef0140f964817f5a820`; Linux passed 41/41 CTest including `elf32_real_symbol_lookup`, Android x86_64 PASSed, and Android arm64-v8a PASSed.
-   - Exact next action in a fresh bounded round: verify the next unused feature ID, then create a focused `specs/<next-id>-elf32-relocations/{requirements,design,tasks}.md` package before implementation.
-   - Initial boundary: consume the validated REL metadata, loaded dependency graph, and graph-local symbol lookup contract; keep version matching, Android global-group/namespace policy, TLS, IFUNC execution, PLT/lazy binding, and unrelated compatibility layers outside the first relocation slice unless the new requirements prove one is REQUIRED_NOW.
+1. T001 — bounded read-only main-`DT_REL` decoding/planning.
+   - Status: READY.
+   - Base revision for specification/readiness: `ecdae1cea991ecd079487e1cda0bc2fe3c7fff99`.
+   - Accepted first relocation set: `R_ARM_NONE`, `R_ARM_ABS32`, `R_ARM_GLOB_DAT`, `R_ARM_RELATIVE`.
+   - Android compatibility decision: `R_ARM_GLOB_DAT` will write `S` and ignore the REL in-place addend, matching current bionic.
+   - Pinned real-fixture oracle: CI #208 artifact ID `10745105004` contains exactly two `R_ARM_GLOB_DAT` entries at linked offsets `0x82cc` / `0x82d0`, symbol indexes 2 / 3 (`fixture_bss` / `fixture_data`), with zero original words.
+   - Exact next action: add `src/elf/elf32_relocation.{h,cpp}`, focused synthetic plan tests, CMake wiring, and a read-only real-fixture plan test; run exact-head CI.
+   - Stop condition: T001 plan/decode behavior is validated and persisted. Do not begin symbol-resolution/application writes until the T001 gate is green.
 
-2. Remaining independent evidence/policy gaps.
-   - Android native tombstone/backtrace coexistence remains BLOCKED on an accessible device environment.
-   - AArch64 runtime execution on a 16 KiB Android host remains NOT RUN.
-   - Project license remains BLOCKED on maintainer choice.
+2. T002-T005 remain dependency-ordered in `specs/007-elf32-relocations/tasks.md`.
+   - Symbol-reference resolution, transactional writes/rollback, real-fixture application, and final convergence are not admitted into the T001 round.
 
-Do not fold these independent follow-ups into the relocation feature unless their own requirements become dependencies.
+Independent FOLLOW_UP items remain unchanged:
+
+- Android native tombstone/backtrace coexistence: BLOCKED on accessible device environment.
+- AArch64 runtime execution on a 16 KiB Android host: NOT RUN.
+- Project license: BLOCKED on maintainer choice.
+
+Do not fold these independent items into feature 007 unless a relocation acceptance criterion makes one REQUIRED_NOW.

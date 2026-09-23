@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-23
-Current phase: M4 continuation; bounded ELF32 symbol resolution
+Current phase: M4 continuation; bounded ELF32 ARM REL relocation application
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: none. Feature `006-elf32-symbol-resolution` is DONE through T005 exact-head CI #207; the next feature-scale M4 slice has not yet started.
+Active runtime work: `007-elf32-relocations`; requirements/design/tasks are readiness-checked and T001 bounded read-only REL decoding/planning is READY.
 
 ## Working
 
