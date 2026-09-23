@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-23
-Current phase: M4 continuation; feature 007 bounded ELF32 ARM REL relocation application DONE
+Current phase: M4 continuation; feature 008 ELF32 PLT REL metadata selected
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: none selected. Feature `007-elf32-relocations` is DONE at exact-head CI #218 / run `35918899544` on `8efe792cfa58a3f34e02dfe0c8bb01fbc3949766`; the next M4 linker/runtime slice remains to be selected and specified.
+Active runtime work: `008-elf32-plt-relocation-metadata`; readiness is complete at base `ef5f08eb6d184c12b252ac6f59994e8efed21d5b`, T001 is READY, and implementation validation is NOT RUN.
 
 ## Working
 
@@ -44,7 +44,7 @@ Active runtime work: none selected. Feature `007-elf32-relocations` is DONE at e
 ## Partial / not implemented
 
 - Feature 006 bounded graph-local unversioned symbol resolution is DONE at exact-head CI #207. Version-aware lookup remains intentionally unsupported (version tables are rejected). Feature 007 now implements bounded main-`DT_REL` relocation application; Android search-path/namespace/pathname policy plus process-wide link-map lifetime across graph-loading calls remain NOT IMPLEMENTED.
-- Broader ARM relocation/linker compatibility remains PARTIAL beyond the completed feature-007 main-`DT_REL` set: PLT/JMPREL, JUMP_SLOT, REL32/COPY/instruction relocations, packed/RELA/RELR forms, version-aware/protected requester semantics, TLS/IFUNC, RELRO, and process-wide/global-group policy remain NOT IMPLEMENTED.
+- Broader ARM relocation/linker compatibility remains PARTIAL beyond the completed feature-007 main-`DT_REL` set. Feature 008 now specifies read-only PLT/JMPREL metadata validation but it is NOT YET IMPLEMENTED; JUMP_SLOT application, REL32/COPY/instruction relocations, packed/RELA/RELR forms, version-aware/protected requester semantics, TLS/IFUNC, RELRO, and process-wide/global-group policy remain NOT IMPLEMENTED.
 - Version-aware and process-wide/global-group symbol interposition policy: NOT IMPLEMENTED; bounded graph-local unversioned lookup is implemented.
 - RELRO/TLS processing: NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.
