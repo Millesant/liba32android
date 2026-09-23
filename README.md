@@ -37,7 +37,7 @@ Still outside the implemented baseline:
 
 ## Validation evidence
 
-Feature `006-elf32-symbol-resolution` T004 passed exact-head GitHub Actions run `35837480789` (#206) at `2fdba16a13e34370483701345de2605df06811e6`: Linux A32 smoke passed 41/41 CTest including `elf32_symbol_index` and `elf32_real_symbol_lookup`; Android x86_64 address-space probe and Android arm64-v8a cross-build jobs also passed. Documentation/state convergence and the final feature-head gate remain the T005 closeout step.
+Feature `006-elf32-symbol-resolution` is complete. T004 real-fixture validation passed exact-head GitHub Actions run `35837480789` (#206) at `2fdba16a13e34370483701345de2605df06811e6`, and the T005 final feature-head gate passed run `35847914558` (#207) at `ad022c2cc569c3175ad1cef0140f964817f5a820`: Linux A32 smoke passed 41/41 CTest including `elf32_symbol_index` and `elf32_real_symbol_lookup`; Android x86_64 address-space probe and Android arm64-v8a cross-build jobs also passed.
 
 PR #32 final head `1ac47ef59f3570989d6fc07cd187c129cbe76588` passed GitHub Actions run `35712896172` (#199): Linux A32 smoke passed 39/39 CTest including `elf32_dependency_loading` and `elf32_real_dependency_loading`; Android x86_64 address-space probe and Android arm64-v8a cross-build jobs also passed. PR #32 was squash-merged to `bleeding` as `17c2aa78535adbd2084c9396f525750e10c0eff8`; the squash commit preserved the exact validated source tree.
 

@@ -1,17 +1,16 @@
 # Next Work
 
-Repository integration is on `bleeding`. Feature `006-elf32-symbol-resolution` is in T005 closeout.
+Repository integration is on `bleeding`. Feature `006-elf32-symbol-resolution` is DONE.
 
-1. T005 — documentation/state/spec convergence and final exact-head feature gate.
-   - Status: ACTIVE.
-   - Dependency gate: T004 PASSed exact-head CI #206 / run `35837480789` at `2fdba16a13e34370483701345de2605df06811e6`; Linux passed 41/41 CTest including `elf32_real_symbol_lookup`, Android x86_64 PASSed, and Android arm64-v8a PASSed.
-   - Convergence scope: add the durable symbol-resolution architecture contract; reconcile README, project context/state, linker-metadata boundary documentation, requirements/tasks status, and acceptance evidence; preserve the explicit versioning/relocation/global-policy non-goals.
-   - Requirements/design/code/test review: no unrecorded semantic gap was found that blocks R1-R17 / AC1-AC16.
-   - Exact next action: run exact-head CI on the convergence commit and require Linux CTest, Android x86_64, and Android arm64-v8a to PASS.
-   - On PASS: mark T005 and feature 006 DONE, persist the final gate identity, and leave the repository ready for the next feature-scale M4 slice.
+1. Next feature-scale M4 linker slice — ARM relocation application.
+   - Status: READY FOR SPECIFICATION; implementation has not started.
+   - Dependency basis: feature 006 final T005 gate PASSed exact-head CI #207 / run `35847914558` at `ad022c2cc569c3175ad1cef0140f964817f5a820`; Linux passed 41/41 CTest including `elf32_real_symbol_lookup`, Android x86_64 PASSed, and Android arm64-v8a PASSed.
+   - Exact next action in a fresh bounded round: verify the next unused feature ID, then create a focused `specs/<next-id>-elf32-relocations/{requirements,design,tasks}.md` package before implementation.
+   - Initial boundary: consume the validated REL metadata, loaded dependency graph, and graph-local symbol lookup contract; keep version matching, Android global-group/namespace policy, TLS, IFUNC execution, PLT/lazy binding, and unrelated compatibility layers outside the first relocation slice unless the new requirements prove one is REQUIRED_NOW.
 
-2. Next M4 linker slice after feature 006.
-   - Status: BLOCKED on T005 closeout.
-   - ARM relocation application remains the nearest dependency-ready linker gap; it must begin with a new focused `specs/<id>-<feature>/` requirements/design/tasks package rather than being folded into feature 006.
+2. Remaining independent evidence/policy gaps.
+   - Android native tombstone/backtrace coexistence remains BLOCKED on an accessible device environment.
+   - AArch64 runtime execution on a 16 KiB Android host remains NOT RUN.
+   - Project license remains BLOCKED on maintainer choice.
 
-Android native tombstone/backtrace evidence remains BLOCKED on an accessible device environment. Project license remains BLOCKED on maintainer choice.
+Do not fold these independent follow-ups into the relocation feature unless their own requirements become dependencies.

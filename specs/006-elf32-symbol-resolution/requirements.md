@@ -1,6 +1,6 @@
 # Requirements — ELF32 Symbol Resolution
 
-Status: implementation validated through T004; T005 convergence and final exact-head gate active
+Status: DONE — final exact-head CI #207 / run `35847914558` PASSed at `ad022c2cc569c3175ad1cef0140f964817f5a820`
 
 ## Goal
 
@@ -365,7 +365,7 @@ The project remains intentionally stricter than a production Android linker wher
 
 ## Open Questions
 
-No unresolved question blocks T001.
+No unresolved question blocks or remains inside feature 006.
 
 Later features must define:
 

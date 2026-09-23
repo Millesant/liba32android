@@ -1,6 +1,6 @@
 # ELF32 symbol resolution
 
-Status: feature 006 implementation validated through T004; T005 convergence/final exact-head gate pending
+Status: complete; feature 006 final exact-head gate PASSed
 
 ## Boundary
 
@@ -134,7 +134,7 @@ Feature 006 was advanced in exact-head slices:
 
 T004 Linux validation passed 41/41 CTest including `elf32_symbol_index` and `elf32_real_symbol_lookup`; Android x86_64 address-space probe and Android arm64-v8a cross-build jobs also passed. The real fixture resolves `fixture_add`, `fixture_data`, and `fixture_bss` from object 0, reads `fixture_data == 0x12345678`, reads zero BSS, verifies the function value lies in an executable segment, and verifies lookup does not mutate loaded state.
 
-The final feature-head exact CI gate is T005.
+T005 documentation/state/spec convergence and the final feature-head gate PASSed exact-head CI #207 / run `35847914558` at `ad022c2cc569c3175ad1cef0140f964817f5a820`. Linux passed 41/41 CTest including `elf32_real_symbol_lookup`; Android x86_64 address-space probe and Android arm64-v8a cross-build also passed. Feature 006 is complete.
 
 ## Deliberate limits
 

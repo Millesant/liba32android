@@ -5,7 +5,7 @@ Current phase: M4 continuation; bounded ELF32 symbol resolution
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `006-elf32-symbol-resolution`; T001-T004 are DONE at exact-head CI #203/#204/#205/#206. T005 documentation/state/spec convergence and final exact-head feature gate are ACTIVE.
+Active runtime work: none. Feature `006-elf32-symbol-resolution` is DONE through T005 exact-head CI #207; the next feature-scale M4 slice has not yet started.
 
 ## Working
 
@@ -42,7 +42,7 @@ Active runtime work: `006-elf32-symbol-resolution`; T001-T004 are DONE at exact-
 
 ## Partial / not implemented
 
-- Feature 006 implementation through T004 is validated: bounded hash/dynsym indexing, exact-name per-object lookup, deterministic graph-local BFS lookup, and pinned real ARM32 GNU-hash integration are PASS. T005 documentation/state/spec convergence plus the final exact-head feature gate remain ACTIVE. Version-aware lookup remains intentionally unsupported (version tables are rejected), and relocation application remains NOT IMPLEMENTED. Android search-path/namespace/pathname policy and process-wide link-map lifetime across graph-loading calls also remain NOT IMPLEMENTED.
+- Feature 006 bounded graph-local unversioned symbol resolution is DONE at exact-head CI #207. Version-aware lookup remains intentionally unsupported (version tables are rejected), relocation application remains NOT IMPLEMENTED, and Android search-path/namespace/pathname policy plus process-wide link-map lifetime across graph-loading calls remain NOT IMPLEMENTED.
 - ARM relocations: NOT IMPLEMENTED.
 - Version-aware and process-wide/global-group symbol interposition policy: NOT IMPLEMENTED; bounded graph-local unversioned lookup is implemented.
 - RELRO/TLS processing: NOT IMPLEMENTED.
@@ -52,7 +52,7 @@ Active runtime work: `006-elf32-symbol-resolution`; T001-T004 are DONE at exact-
 
 ## Validation
 
-### M4 ELF32 symbol resolution (active)
+### M4 ELF32 symbol resolution (complete)
 
 T001 hash metadata/indexing PASSed exact-head GitHub Actions run `35758444356` (#203) at `45cd3e5a322263f53dc02277a9d0e801849515db`. Linux A32 smoke PASSed 40/40 CTest including `elf32_linker_metadata_collection` and `elf32_symbol_index`; Android x86_64 address-space probe and Android arm64-v8a cross-build also PASSed.
 
@@ -61,6 +61,8 @@ T002 exact-name per-object lookup PASSed exact-head GitHub Actions run `35759553
 T003 deterministic graph-local BFS lookup PASSed exact-head GitHub Actions run `35760283793` (#205) at `f3997d037f7f5a29b1666dd9a6f5a566b249a2cc`. Linux PASSed 40/40 CTest including the graph-scope cases in `elf32_symbol_index`; Android x86_64 address-space probe and Android arm64-v8a cross-build also PASSed.
 
 T004 pinned real ARM32 GNU-hash fixture integration PASSed exact-head GitHub Actions run `35837480789` (#206) at `2fdba16a13e34370483701345de2605df06811e6`. Linux PASSed 41/41 CTest including `elf32_real_symbol_lookup` and all neighboring real ELF/linker/dependency fixture tests; Android x86_64 address-space probe and Android arm64-v8a cross-build also PASSed. The fixture resolves `fixture_add`, `fixture_data`, and `fixture_bss` from object 0 through GNU hash, reads back initialized data/BSS through resolved guest values, verifies the function value lies in an executable segment, and confirms lookup leaves loaded mappings/permissions/bytes unchanged.
+
+T005 documentation/state/spec convergence and the final feature-head gate PASSed exact-head GitHub Actions run `35847914558` (#207) at `ad022c2cc569c3175ad1cef0140f964817f5a820`. Linux PASSed 41/41 CTest including `elf32_real_symbol_lookup`; Android x86_64 address-space probe and Android arm64-v8a cross-build also PASSed. Requirements/design/code/tests were reconciled with no unrecorded semantic gap blocking R1-R17 / AC1-AC16.
 
 ### M4 recursive ELF32 dependency graph loading
 

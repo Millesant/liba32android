@@ -102,7 +102,7 @@
   - Android x86_64 address-space probe cross-build PASS;
   - Android arm64-v8a runtime/diagnostics cross-build PASS;
   - docs/contracts match implemented lookup/hash/scope semantics.
-- Status: ACTIVE — T004 exact-head validation is PASS; documentation/state/spec convergence is being committed and the final exact-head feature gate remains pending.
+- Status: DONE — exact-head CI #207 / run `35847914558` PASSed at `ad022c2cc569c3175ad1cef0140f964817f5a820`: Linux passed 41/41 CTest including `elf32_real_symbol_lookup`; Android x86_64 and arm64-v8a jobs also PASSed. Documentation/contracts/state were reconciled with no unrecorded semantic gap blocking R1-R17 / AC1-AC16.
 
 ## Readiness Check
 
