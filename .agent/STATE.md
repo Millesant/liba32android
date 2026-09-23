@@ -5,7 +5,7 @@ Current phase: M4 continuation; bounded ELF32 ARM REL relocation application
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `007-elf32-relocations`; T001 is DONE at exact-head CI #210 and T002 relocation-reference decoding/resolution is DONE at exact-head CI #212. T003 transactional NONE/RELATIVE/GLOB_DAT/ABS32 application with rollback is READY.
+Active runtime work: `007-elf32-relocations`; T001 is DONE at CI #210 and T002 at CI #212. T003 transactional NONE/RELATIVE/GLOB_DAT/ABS32 application with verified reverse rollback is implemented and awaits exact-head CI validation.
 
 ## Working
 
@@ -43,7 +43,7 @@ Active runtime work: `007-elf32-relocations`; T001 is DONE at exact-head CI #210
 ## Partial / not implemented
 
 - Feature 006 bounded graph-local unversioned symbol resolution is DONE at exact-head CI #207. Version-aware lookup remains intentionally unsupported (version tables are rejected), relocation application remains NOT IMPLEMENTED, and Android search-path/namespace/pathname policy plus process-wide link-map lifetime across graph-loading calls remain NOT IMPLEMENTED.
-- ARM relocation application: NOT IMPLEMENTED. Feature 007 T001 read-only main-`DT_REL` planning and T002 reference-symbol decoding/resolution are validated. T003 is the first mutating slice; no relocation writes exist at the current validated implementation head.
+- ARM relocation application: PARTIAL. Feature 007 T001/T002 are validated; T003 now implements the first transactional main-`DT_REL` writes for NONE/RELATIVE/GLOB_DAT/ABS32 with precomputed final words, Android/bionic GLOB_DAT addend suppression, reverse rollback, rollback verification, and explicit rollback failure. T003 awaits its exact-head CI gate; real-fixture mutation remains blocked on T004.
 - Version-aware and process-wide/global-group symbol interposition policy: NOT IMPLEMENTED; bounded graph-local unversioned lookup is implemented.
 - RELRO/TLS processing: NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.

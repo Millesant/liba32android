@@ -59,7 +59,7 @@
   - pre-write failure leaves memory unchanged;
   - later write failure restores earlier words;
   - rollback-failure backend when practical.
-- Status: READY — T002 exact-head validation is PASS.
+- Status: ACTIVE — transactional application/rollback implementation is committed for the next exact-head CI gate.
 
 ## T004 — Integrate pinned real ARM32 GLOB_DAT fixture
 

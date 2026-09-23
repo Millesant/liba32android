@@ -86,6 +86,49 @@ constexpr std::uint16_t kShnXindex = 0xffff;
     return result;
 }
 
+[[nodiscard]] std::uint32_t wrap_add(std::uint32_t lhs,
+                                     std::uint32_t rhs) noexcept {
+    return static_cast<std::uint32_t>(
+        static_cast<std::uint64_t>(lhs) + rhs);
+}
+
+[[nodiscard]] bool write_word(memory::GuestMemory& memory,
+                              std::uint32_t address,
+                              std::uint32_t value) {
+    const std::array<std::uint8_t, 4> bytes{
+        static_cast<std::uint8_t>(value),
+        static_cast<std::uint8_t>(value >> 8U),
+        static_cast<std::uint8_t>(value >> 16U),
+        static_cast<std::uint8_t>(value >> 24U),
+    };
+    return memory.write(address, bytes);
+}
+
+[[nodiscard]] bool restore_word(memory::GuestMemory& memory,
+                                std::uint32_t address,
+                                std::uint32_t original) {
+    if (!write_word(memory, address, original)) return false;
+    std::uint32_t verify = 0;
+    return read_word(memory, address, verify) && verify == original;
+}
+
+struct PendingRelocationWrite {
+    Elf32RelocationWrite write;
+};
+
+[[nodiscard]] Elf32RelocationApplyResult apply_failure(
+    Elf32RelocationApplyError error,
+    Elf32RelocationApplyError primary,
+    std::size_t object_index,
+    std::optional<std::uint32_t> failing_relocation = std::nullopt) {
+    Elf32RelocationApplyResult result;
+    result.error = error;
+    result.primary_error = primary;
+    result.application.object_index = object_index;
+    result.failing_relocation = failing_relocation;
+    return result;
+}
+
 }  // namespace
 
 Elf32RelocationPlanResult build_elf32_rel_relocation_plan(
@@ -366,6 +409,160 @@ Elf32RelocationResolutionResult resolve_elf32_rel_relocation_references(
     return result;
 }
 
+Elf32RelocationApplyResult apply_elf32_rel_relocations(
+    memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t object_index,
+    const Elf32RelocationOptions& options) {
+    Elf32RelocationResolutionResult resolution =
+        resolve_elf32_rel_relocation_references(
+            memory, graph, object_index, options);
+    if (!resolution) {
+        auto result = apply_failure(
+            Elf32RelocationApplyError::ResolveFailed,
+            Elf32RelocationApplyError::ResolveFailed,
+            object_index, resolution.failing_relocation);
+        result.resolution_failure = std::move(resolution);
+        return result;
+    }
+    if (object_index >= graph.objects.size()) {
+        return apply_failure(
+            Elf32RelocationApplyError::InvalidResolvedEntry,
+            Elf32RelocationApplyError::InvalidResolvedEntry,
+            object_index);
+    }
+
+    const std::uint32_t load_bias =
+        graph.objects[object_index].load.load_bias;
+    std::vector<PendingRelocationWrite> pending;
+    pending.reserve(resolution.resolution.entries.size());
+
+    // Complete every semantic check and every final-word calculation before
+    // the first GuestMemory::write. This is the key no-partial-mutation
+    // invariant for malformed/unsupported relocation input.
+    for (const Elf32ResolvedRelocationEntry& resolved :
+         resolution.resolution.entries) {
+        const Elf32RelocationEntry& entry = resolved.relocation;
+        if (entry.type == kRArmNone) continue;
+
+        if (!entry.original_word.has_value()) {
+            return apply_failure(
+                Elf32RelocationApplyError::InvalidResolvedEntry,
+                Elf32RelocationApplyError::InvalidResolvedEntry,
+                object_index, entry.index);
+        }
+
+        std::uint32_t final_word = 0;
+        switch (entry.type) {
+        case kRArmRelative:
+            if (entry.symbol_index != 0) {
+                return apply_failure(
+                    Elf32RelocationApplyError::InvalidRelativeSymbol,
+                    Elf32RelocationApplyError::InvalidRelativeSymbol,
+                    object_index, entry.index);
+            }
+            final_word = wrap_add(load_bias, *entry.original_word);
+            break;
+        case kRArmGlobDat:
+            if (!resolved.reference.has_value()) {
+                return apply_failure(
+                    Elf32RelocationApplyError::InvalidResolvedEntry,
+                    Elf32RelocationApplyError::InvalidResolvedEntry,
+                    object_index, entry.index);
+            }
+            // Android bionic intentionally ignores the ARM REL in-place
+            // addend for GLOB_DAT; preserve that compatibility contract.
+            final_word = resolved.reference->symbol_value;
+            break;
+        case kRArmAbs32:
+            if (!resolved.reference.has_value()) {
+                return apply_failure(
+                    Elf32RelocationApplyError::InvalidResolvedEntry,
+                    Elf32RelocationApplyError::InvalidResolvedEntry,
+                    object_index, entry.index);
+            }
+            final_word = wrap_add(
+                resolved.reference->symbol_value, *entry.original_word);
+            break;
+        default:
+            return apply_failure(
+                Elf32RelocationApplyError::InvalidResolvedEntry,
+                Elf32RelocationApplyError::InvalidResolvedEntry,
+                object_index, entry.index);
+        }
+
+        pending.push_back(PendingRelocationWrite{
+            .write = Elf32RelocationWrite{
+                .relocation_index = entry.index,
+                .type = entry.type,
+                .place_guest_address = entry.place_guest_address,
+                .original_word = *entry.original_word,
+                .final_word = final_word,
+            },
+        });
+    }
+
+    std::vector<std::size_t> applied;
+    applied.reserve(pending.size());
+
+    for (std::size_t i = 0; i < pending.size(); ++i) {
+        const Elf32RelocationWrite& write = pending[i].write;
+        if (write_word(memory, write.place_guest_address,
+                       write.final_word)) {
+            applied.push_back(i);
+            continue;
+        }
+
+        bool rollback_failed = false;
+        std::optional<std::uint32_t> rollback_failure;
+
+        // GuestMemory implementations used by the project validate the whole
+        // span before copying, but the interface does not promise that every
+        // future backend is failure-atomic. Re-read the failed target; if it
+        // changed or cannot be proven unchanged, attempt to restore it too.
+        std::uint32_t failed_target_now = 0;
+        const bool failed_target_unchanged =
+            read_word(memory, write.place_guest_address,
+                      failed_target_now) &&
+            failed_target_now == write.original_word;
+        if (!failed_target_unchanged &&
+            !restore_word(memory, write.place_guest_address,
+                          write.original_word)) {
+            rollback_failed = true;
+            rollback_failure = write.relocation_index;
+        }
+
+        for (auto it = applied.rbegin(); it != applied.rend(); ++it) {
+            const Elf32RelocationWrite& previous =
+                pending[*it].write;
+            if (!restore_word(memory, previous.place_guest_address,
+                              previous.original_word)) {
+                if (!rollback_failure.has_value()) {
+                    rollback_failure = previous.relocation_index;
+                }
+                rollback_failed = true;
+            }
+        }
+
+        auto result = apply_failure(
+            rollback_failed
+                ? Elf32RelocationApplyError::RollbackFailed
+                : Elf32RelocationApplyError::TargetWriteFailed,
+            Elf32RelocationApplyError::TargetWriteFailed,
+            object_index, write.relocation_index);
+        result.rollback_failing_relocation = rollback_failure;
+        return result;
+    }
+
+    Elf32RelocationApplyResult result;
+    result.application.object_index = object_index;
+    result.application.writes.reserve(pending.size());
+    for (const PendingRelocationWrite& item : pending) {
+        result.application.writes.push_back(item.write);
+    }
+    return result;
+}
+
 const char* to_string(Elf32RelocationPlanError error) noexcept {
     switch (error) {
     case Elf32RelocationPlanError::None: return "none";
@@ -400,6 +597,22 @@ const char* to_string(Elf32RelocationResolveError error) noexcept {
     case Elf32RelocationResolveError::UnsupportedReferenceSection: return "unsupported_reference_section";
     case Elf32RelocationResolveError::SymbolLookupFailed: return "symbol_lookup_failed";
     case Elf32RelocationResolveError::UnresolvedStrongSymbol: return "unresolved_strong_symbol";
+    }
+    return "unknown";
+}
+
+const char* to_string(Elf32RelocationApplyError error) noexcept {
+    switch (error) {
+    case Elf32RelocationApplyError::None: return "none";
+    case Elf32RelocationApplyError::ResolveFailed: return "resolve_failed";
+    case Elf32RelocationApplyError::InvalidRelativeSymbol:
+        return "invalid_relative_symbol";
+    case Elf32RelocationApplyError::InvalidResolvedEntry:
+        return "invalid_resolved_entry";
+    case Elf32RelocationApplyError::TargetWriteFailed:
+        return "target_write_failed";
+    case Elf32RelocationApplyError::RollbackFailed:
+        return "rollback_failed";
     }
     return "unknown";
 }
