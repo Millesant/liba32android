@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-23
-Current phase: M4 continuation; feature 008 ELF32 PLT REL metadata T002 convergence/final gate
+Current phase: M4 continuation; feature 008 ELF32 PLT REL metadata DONE
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `008-elf32-plt-relocation-metadata` T002. T001 is VERIFIED at `9a81ed71a027beb166970bcf137bac9a71112f98`: CI #222 / run `35933694619` completed the required Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build jobs successfully, including the explicit AC8 pinned-fixture no-PLT oracle. Documentation/spec/state convergence is prepared; final exact-head feature-gate CI remains pending.
+Active runtime work: none selected. Feature `008-elf32-plt-relocation-metadata` is DONE: T001 is verified at CI #222 / run `35933694619` on `9a81ed71a027beb166970bcf137bac9a71112f98`, and T002 final exact-head CI #223 / run `35934340806` PASSed at `79e9d8c90824baf76d7ff382661422af17e3cb6e` across Linux, Android x86_64, and Android arm64-v8a.
 
 ## Working
 
@@ -53,11 +53,11 @@ Active runtime work: `008-elf32-plt-relocation-metadata` T002. T001 is VERIFIED 
 
 ## Validation
 
-### M4 ELF32 PLT REL metadata (active)
+### M4 ELF32 PLT REL metadata (complete)
 
 T001 implementation plus the REQUIRED_NOW AC8 real-fixture absence oracle are VERIFIED at GitHub Actions CI #222 / run `35933694619` on `9a81ed71a027beb166970bcf137bac9a71112f98`. The Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build jobs all completed successfully. Synthetic coverage exercises valid main+PLT metadata, singleton duplicates, every partial PLT group, non-REL `DT_PLTREL`, bad PLT byte size, address/range overflow, unreadable PLT bytes, and zero-length PLT tables; the pinned real fixture explicitly requires no PLT dynamic tags and no published `plt_rel_table`.
 
-T002 documentation/spec/state convergence is prepared; the final exact-head feature gate is NOT RUN until that convergence head is committed.
+T002 documentation/spec/state convergence and the final exact-head feature gate PASSed CI #223 / run `35934340806` at `79e9d8c90824baf76d7ff382661422af17e3cb6e`. Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all PASSed. R1-R9 / AC1-AC9 are reconciled; PLT entry decoding, `R_ARM_JUMP_SLOT`, and lazy binding remain outside the completed feature.
 
 ### M4 ELF32 ARM REL relocation application (active)
 

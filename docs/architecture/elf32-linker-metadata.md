@@ -1,6 +1,6 @@
 # ELF32 linker metadata
 
-Status: M4 validated metadata layer, including feature-006 hash/version descriptors and feature-008 PLT REL metadata
+Status: complete through feature 008; final exact-head gate PASSed
 
 ## Boundary
 
@@ -105,3 +105,5 @@ The reproducible NDK-generated ARM32 `ET_DYN` fixture is also loaded through `el
 The original linker-metadata T003 integration passed GitHub Actions run `35332054239` (#87). Feature 006 then extended this layer with fixed `DT_HASH` / `DT_GNU_HASH` descriptors and version-presence marking; exact-head CI #203 / run `35758444356` PASSed that extension at `45cd3e5a322263f53dc02277a9d0e801849515db`, and T004 real-fixture CI #206 / run `35837480789` remained green with 41/41 Linux CTest plus both Android jobs.
 
 Feature 008 T001 required-job validation passed on GitHub Actions CI #222 / run `35933694619` at `9a81ed71a027beb166970bcf137bac9a71112f98`: Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all completed successfully. This head includes the explicit pinned-fixture no-PLT oracle required by AC8.
+
+Feature 008 T002 documentation/spec/state convergence and final exact-head gate PASSed on CI #223 / run `35934340806` at `79e9d8c90824baf76d7ff382661422af17e3cb6e`. Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all PASSed; the bounded PLT REL metadata contract is complete with PLT relocation application/lazy binding still explicitly deferred.

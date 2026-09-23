@@ -1,6 +1,6 @@
 # Design — ELF32 PLT REL Metadata
 
-Status: IMPLEMENTED — T001 required-job validation passed CI #222 / run `35933694619` at `9a81ed71a027beb166970bcf137bac9a71112f98`; T002 convergence/final gate pending
+Status: DONE — T002 final exact-head CI #223 / run `35934340806` PASSed at `79e9d8c90824baf76d7ff382661422af17e3cb6e`
 
 ## Context
 
