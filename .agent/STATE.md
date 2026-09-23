@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-23
-Current phase: M4 continuation; feature 008 ELF32 PLT REL metadata selected
+Current phase: M4 continuation; feature 008 ELF32 PLT REL metadata T002 convergence/final gate
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `008-elf32-plt-relocation-metadata` T001. Implementation exact-head CI #221 / run `35933289817` PASSed at `47070bef73acd14464137789585abd4972878ab4` across Linux, Android x86_64, and Android arm64-v8a. Convergence review found AC8 lacked an explicit real-fixture no-PLT assertion; that REQUIRED_NOW test update is prepared and exact-head revalidation is pending.
+Active runtime work: `008-elf32-plt-relocation-metadata` T002. T001 is VERIFIED at `9a81ed71a027beb166970bcf137bac9a71112f98`: CI #222 / run `35933694619` completed the required Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build jobs successfully, including the explicit AC8 pinned-fixture no-PLT oracle. Documentation/spec/state convergence is prepared; final exact-head feature-gate CI remains pending.
 
 ## Working
 
@@ -32,7 +32,7 @@ Active runtime work: `008-elf32-plt-relocation-metadata` T001. Implementation ex
   - retains the first `DT_NULL` and ignores later padding;
   - rejects invalid ranges, non-8-byte file-backed sizes, unreadable guest bytes and unterminated arrays;
   - does not rebase/dereference pointer-like values or begin dynamic linking.
-- `src/elf/elf32_linker_metadata.*` validates STRTAB/STRSZ, SYMTAB/SYMENT, main REL/RELSZ/RELENT, SONAME, and ordered NEEDED offsets. Feature 008 T001 prepares additive PLT REL metadata for `DT_JMPREL` / `DT_PLTRELSZ` / `DT_PLTREL=DT_REL`, with a separate guest-only descriptor, checked rebasing/range/readability, and explicit malformed-group/type/size failures. The PLT extension passed CI #221; an explicit pinned-fixture no-PLT oracle was then identified as REQUIRED_NOW for AC8 and is pending revalidation.
+- `src/elf/elf32_linker_metadata.*` validates STRTAB/STRSZ, SYMTAB/SYMENT, main REL/RELSZ/RELENT, SONAME, and ordered NEEDED offsets. Feature 008 T001 prepares additive PLT REL metadata for `DT_JMPREL` / `DT_PLTRELSZ` / `DT_PLTREL=DT_REL`, with a separate guest-only descriptor, checked rebasing/range/readability, and explicit malformed-group/type/size failures. The PLT extension and explicit pinned-fixture no-PLT oracle are VERIFIED by CI #222 required-job results at `9a81ed71a027beb166970bcf137bac9a71112f98`.
 - `src/elf/elf32_linker_strings.*` now materializes bounded STRTAB entries plus optional SONAME and ordered/repeated NEEDED names. Every call requires an explicit caller-selected payload ceiling; reads remain through `GuestMemory`, use checked guest-address arithmetic, preserve raw bytes, and never mutate guest memory. Aggregate failure is all-or-nothing.
 - `src/elf/elf32_dependency_resolver.*` now acquires host-owned dependency image inputs through a caller-owned provider. It preserves ordered/repeated `DT_NEEDED` occurrences, forwards non-empty name bytes unchanged, distinguishes not-found from provider failure, validates non-empty provider identity/image, enforces explicit dependency-count/per-image/total-image ceilings, and returns no partial successful aggregate on failure. It deliberately does not choose guest bases or map dependency ELF images.
 - `src/elf/elf32_dependency_loader.*` now owns one transactional recursive loaded-object graph: provider identity is the per-call object key, ordered/repeated dependency edges are preserved, cycles/shared objects reuse existing mappings, first-seen dependencies are automatically placed and loaded as `ET_DYN`, graph-wide object/depth/occurrence/image/string limits are enforced, and aggregate failure rolls back graph-owned mappings in reverse load order.
@@ -44,7 +44,7 @@ Active runtime work: `008-elf32-plt-relocation-metadata` T001. Implementation ex
 ## Partial / not implemented
 
 - Feature 006 bounded graph-local unversioned symbol resolution is DONE at exact-head CI #207. Version-aware lookup remains intentionally unsupported (version tables are rejected). Feature 007 now implements bounded main-`DT_REL` relocation application; Android search-path/namespace/pathname policy plus process-wide link-map lifetime across graph-loading calls remain NOT IMPLEMENTED.
-- Broader ARM relocation/linker compatibility remains PARTIAL beyond the completed feature-007 main-`DT_REL` set. Feature 008 T001 PLT/JMPREL metadata code is prepared but validation is NOT RUN; JUMP_SLOT application, REL32/COPY/instruction relocations, packed/RELA/RELR forms, version-aware/protected requester semantics, TLS/IFUNC, RELRO, and process-wide/global-group policy remain NOT IMPLEMENTED.
+- Broader ARM relocation/linker compatibility remains PARTIAL beyond the completed feature-007 main-`DT_REL` set. Feature 008 now has VERIFIED read-only PLT/JMPREL metadata validation; PLT relocation decoding/application, `R_ARM_JUMP_SLOT`, lazy binding, REL32/COPY/instruction relocations, packed/RELA/RELR forms, version-aware/protected requester semantics, TLS/IFUNC, RELRO, and process-wide/global-group policy remain NOT IMPLEMENTED.
 - Version-aware and process-wide/global-group symbol interposition policy: NOT IMPLEMENTED; bounded graph-local unversioned lookup is implemented.
 - RELRO/TLS processing: NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.
@@ -52,6 +52,12 @@ Active runtime work: `008-elf32-plt-relocation-metadata` T001. Implementation ex
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### M4 ELF32 PLT REL metadata (active)
+
+T001 implementation plus the REQUIRED_NOW AC8 real-fixture absence oracle are VERIFIED at GitHub Actions CI #222 / run `35933694619` on `9a81ed71a027beb166970bcf137bac9a71112f98`. The Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build jobs all completed successfully. Synthetic coverage exercises valid main+PLT metadata, singleton duplicates, every partial PLT group, non-REL `DT_PLTREL`, bad PLT byte size, address/range overflow, unreadable PLT bytes, and zero-length PLT tables; the pinned real fixture explicitly requires no PLT dynamic tags and no published `plt_rel_table`.
+
+T002 documentation/spec/state convergence is prepared; the final exact-head feature gate is NOT RUN until that convergence head is committed.
 
 ### M4 ELF32 ARM REL relocation application (active)
 

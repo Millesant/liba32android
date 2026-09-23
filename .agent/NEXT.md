@@ -1,14 +1,12 @@
 # Next Work
 
-Repository integration is on `bleeding`. Features `006-elf32-symbol-resolution` and `007-elf32-relocations` are DONE. Feature `008-elf32-plt-relocation-metadata` T001 implementation passed CI #221 at `47070bef73acd14464137789585abd4972878ab4`, but convergence found one REQUIRED_NOW acceptance gap: AC8 did not explicitly assert the pinned real fixture has no PLT REL metadata.
+Repository integration is on `bleeding`. Features `006-elf32-symbol-resolution` and `007-elf32-relocations` are DONE. Feature `008-elf32-plt-relocation-metadata` T001 is VERIFIED at `9a81ed71a027beb166970bcf137bac9a71112f98`.
 
-1. T001 — validate and expose PLT REL metadata — ACTIVE.
-   - Implementation CI: #221 / run `35933289817` PASSed all three jobs at `47070bef73acd14464137789585abd4972878ab4`.
-   - Prepared gap fix: real-fixture linker-metadata integration now requires no `DT_JMPREL`, `DT_PLTRELSZ`, or `DT_PLTREL` tags and no validated `plt_rel_table`.
-   - Preserve feature 007: no PLT entry decoding, no `R_ARM_JUMP_SLOT`, no lazy binding, and no guest-memory writes.
-   - Exact next action: commit the AC8 oracle and re-run exact-head CI. On PASS, mark T001 PASS and start T002 convergence.
-
-2. T002 — docs/state/spec convergence and final feature gate — QUEUED, depends on T001 PASS.
+1. T002 — documentation/spec/state convergence and final feature gate — ACTIVE.
+   - T001 evidence: CI #222 / run `35933694619`; Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all completed successfully.
+   - Accepted boundary: validated guest-only `DT_JMPREL` / `DT_PLTRELSZ` / `DT_PLTREL=DT_REL` metadata only. The pinned real fixture explicitly reports no PLT REL metadata.
+   - Preserve non-goals: no PLT relocation entry decode, no `R_ARM_JUMP_SLOT`, no lazy binding/`DT_PLTGOT`, and no guest-memory writes.
+   - Exact next action: commit T002 docs/spec/state convergence on `bleeding`, run the final exact-head Linux + Android CI gate, and on PASS persist feature 008 as DONE.
 
 Independent FOLLOW_UP items remain unchanged:
 

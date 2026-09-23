@@ -6,7 +6,7 @@ The project is intentionally layered: CPU execution, guest memory, ELF32 mapping
 
 ## Current phase
 
-The current runtime baseline is C++20/CMake with Dynarmic pinned behind `src/cpu/`. The guest address space, ELF32 mapping/structural parsing, validated linker metadata, bounded SONAME/`DT_NEEDED` string consumption, bounded provider-backed dependency image acquisition, deterministic automatic `ET_DYN` guest-VA placement, transactional recursive dependency-graph loading, bounded SysV/GNU dynamic-symbol indexing, exact per-object lookup, deterministic graph-local breadth-first symbol lookup, and bounded transactional main-`DT_REL` ARM relocation application are implemented. Symbol version matching, PLT/JMPREL handling, process-wide/global-group interposition policy, RELRO, and TLS remain later linker work.
+The current runtime baseline is C++20/CMake with Dynarmic pinned behind `src/cpu/`. The guest address space, ELF32 mapping/structural parsing, validated linker metadata including separate main-REL and AArch32 PLT-REL descriptors, bounded SONAME/`DT_NEEDED` string consumption, bounded provider-backed dependency image acquisition, deterministic automatic `ET_DYN` guest-VA placement, transactional recursive dependency-graph loading, bounded SysV/GNU dynamic-symbol indexing, exact per-object lookup, deterministic graph-local breadth-first symbol lookup, and bounded transactional main-`DT_REL` ARM relocation application are implemented. Symbol version matching, PLT relocation decoding/application and lazy binding, process-wide/global-group interposition policy, RELRO, and TLS remain later linker work.
 
 Implemented in the current baseline:
 
@@ -17,7 +17,7 @@ Implemented in the current baseline:
 - validated ARM ELF32 `ET_EXEC` / explicit-base `ET_DYN` `PT_LOAD` mapping with file copy, BSS zero-fill, alignment checks, final permissions, conflict checks, and loader-owned rollback;
 - validated optional `PT_DYNAMIC` guest-range discovery;
 - structural `Elf32_Dyn` parsing from guest memory with raw signed tags/raw values, unknown-tag preservation, and required `DT_NULL` termination;
-- validated linker metadata for STRTAB/STRSZ, SYMTAB/SYMENT, REL/RELSZ/RELENT, SONAME, and ordered `DT_NEEDED` offsets, including checked load-bias rebasing and guest-range validation;
+- validated linker metadata for STRTAB/STRSZ, SYMTAB/SYMENT, main REL/RELSZ/RELENT, AArch32 `DT_JMPREL`/`DT_PLTRELSZ`/`DT_PLTREL=DT_REL`, SONAME, and ordered `DT_NEEDED` offsets, including checked load-bias rebasing and guest-range validation;
 - bounded STRTAB string consumption with explicit caller-selected per-string limits, optional SONAME materialization, and ordered/repeated `DT_NEEDED` name preservation;
 - provider-backed dependency image acquisition with exact ordered request forwarding, duplicate preservation, distinct provider errors, opaque provider identities, and explicit dependency-count/per-image/total-image resource ceilings;
 - a transactional dependency-graph loader that uses provider identity as the per-call object key, preserves ordered/repeated edges, reuses cycles and aliases without remapping, automatically places/loads `ET_DYN` dependencies, enforces graph-wide bounds, retains owned object metadata/images, and rolls back graph-owned mappings on aggregate failure;
@@ -30,7 +30,7 @@ Still outside the implemented baseline:
 
 - Android search-path/namespace/pathname policy and process-wide loaded-object/link-map lifetime across independent graph-loading calls;
 - symbol version matching and Android/process-wide global-group interposition beyond the implemented graph-local unversioned lookup;
-- PLT/JMPREL/lazy binding and ARM relocation forms beyond the bounded main-`DT_REL` set;
+- PLT/JMPREL relocation decoding/application, `R_ARM_JUMP_SLOT`, lazy binding, and ARM relocation forms beyond the bounded main-`DT_REL` set;
 - RELRO and TLS processing;
 - Android libc/JNI/graphics/audio compatibility layers;
 - end-to-end execution of the real ARM32 ELF fixture on Android;
@@ -41,6 +41,8 @@ Still outside the implemented baseline:
 Feature `006-elf32-symbol-resolution` is complete. T004 real-fixture validation passed exact-head GitHub Actions run `35837480789` (#206) at `2fdba16a13e34370483701345de2605df06811e6`, and the T005 final feature-head gate passed run `35847914558` (#207) at `ad022c2cc569c3175ad1cef0140f964817f5a820`: Linux A32 smoke passed 41/41 CTest including `elf32_symbol_index` and `elf32_real_symbol_lookup`; Android x86_64 address-space probe and Android arm64-v8a cross-build jobs also passed.
 
 Feature `007-elf32-relocations` is complete. T005 documentation/state/spec convergence and the final feature-head gate PASSed exact-head CI #218 / run `35918899544` at `8efe792cfa58a3f34e02dfe0c8bb01fbc3949766`: Linux passed 45/45 CTest including `elf32_relocation_plan`, `elf32_relocation_apply`, `elf32_real_relocation_plan`, and `elf32_real_relocation_apply`; Android x86_64 address-space probe and Android arm64-v8a cross-build also passed. R1-R15 / AC1-AC15 are reconciled with no recorded semantic gap blocking the bounded feature scope.
+
+Feature `008-elf32-plt-relocation-metadata` T001 required-job validation passed CI #222 / run `35933694619` at `9a81ed71a027beb166970bcf137bac9a71112f98`: Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all completed successfully. The validated metadata layer now exposes a separate bounded PLT REL descriptor and the pinned real fixture explicitly reports no PLT REL metadata. T002 documentation/spec convergence and the final exact-head feature gate remain pending.
 
 PR #32 final head `1ac47ef59f3570989d6fc07cd187c129cbe76588` passed GitHub Actions run `35712896172` (#199): Linux A32 smoke passed 39/39 CTest including `elf32_dependency_loading` and `elf32_real_dependency_loading`; Android x86_64 address-space probe and Android arm64-v8a cross-build jobs also passed. PR #32 was squash-merged to `bleeding` as `17c2aa78535adbd2084c9396f525750e10c0eff8`; the squash commit preserved the exact validated source tree.
 

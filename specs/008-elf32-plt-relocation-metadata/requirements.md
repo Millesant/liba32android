@@ -1,6 +1,6 @@
 # Requirements — ELF32 PLT REL Metadata
 
-Status: READY — readiness checked at base `ef5f08eb6d184c12b252ac6f59994e8efed21d5b`
+Status: IMPLEMENTED — T001 required-job validation passed CI #222 / run `35933694619` at `9a81ed71a027beb166970bcf137bac9a71112f98`; T002 final feature gate pending
 
 ## Goal
 
