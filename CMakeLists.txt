@@ -195,6 +195,12 @@ if(LIBA32ANDROID_BUILD_TESTS)
                                PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(elf32_dependency_loader_real_fixture_test PRIVATE liba32android)
 
+    add_executable(elf32_symbol_lookup_real_fixture_test
+                   tests/elf32_symbol_lookup_real_fixture.cpp)
+    target_include_directories(elf32_symbol_lookup_real_fixture_test
+                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(elf32_symbol_lookup_real_fixture_test PRIVATE liba32android)
+
     add_test(NAME guest_arm_return_42 COMMAND cpu_smoke arm)
     add_test(NAME guest_thumb_return_42 COMMAND cpu_smoke thumb)
     add_test(NAME guest_register_state COMMAND cpu_execution registers)
@@ -252,6 +258,9 @@ if(LIBA32ANDROID_BUILD_TESTS)
                          "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
         add_test(NAME elf32_real_dependency_loading
                  COMMAND elf32_dependency_loader_real_fixture_test
+                         "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
+        add_test(NAME elf32_real_symbol_lookup
+                 COMMAND elf32_symbol_lookup_real_fixture_test
                          "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
     endif()
 endif()

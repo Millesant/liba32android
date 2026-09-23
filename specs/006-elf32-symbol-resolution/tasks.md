@@ -68,7 +68,7 @@
   - earlier malformed object failure;
   - scope limit;
   - read-only behavior.
-- Status: ACTIVE — deterministic graph-local BFS lookup, cycle/shared-object handling, first-definition behavior, scope limits, and focused tests are implemented for the next exact-head gate.
+- Status: DONE — exact-head CI #205 / run `35760283793` PASSed at `f3997d037f7f5a29b1666dd9a6f5a566b249a2cc`: Linux passed 40/40 CTest including the expanded `elf32_symbol_index`; Android x86_64 and arm64-v8a jobs also PASSed.
 
 ## T004 — Integrate the pinned real ARM32 GNU-hash fixture
 
@@ -86,7 +86,7 @@
 - Validation:
   - new fixture-backed symbol-resolution CTest PASS;
   - neighboring real fixture loader/dynamic/metadata/string/dependency tests PASS.
-- Status: BLOCKED — depends on T003
+- Status: ACTIVE — pinned real ARM32 GNU-hash graph lookup, resolved data/BSS/function checks, executable-segment validation, and read-only snapshot coverage are implemented for the next exact-head gate.
 
 ## T005 — Converge docs/state/spec and run exact-head CI
 
