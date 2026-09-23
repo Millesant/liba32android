@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "elf/elf32_dependency_loader.h"
@@ -66,6 +67,61 @@ struct Elf32RelocationPlanResult {
     }
 };
 
+struct Elf32RelocationReference {
+    std::uint32_t symbol_index{};
+    std::string name;
+    Elf32Symbol symbol;
+    std::uint32_t symbol_value{};
+    bool unresolved_weak{};
+    std::optional<std::size_t> defining_object_index;
+    std::optional<std::uint32_t> defining_symbol_index;
+};
+
+struct Elf32ResolvedRelocationEntry {
+    Elf32RelocationEntry relocation;
+    std::optional<Elf32RelocationReference> reference;
+};
+
+struct Elf32RelocationResolution {
+    std::size_t object_index{};
+    std::vector<Elf32ResolvedRelocationEntry> entries;
+};
+
+enum class Elf32RelocationResolveError : std::uint8_t {
+    None = 0,
+    InvalidOptions,
+    PlanFailed,
+    IndexBuildFailed,
+    MissingReferenceSymbol,
+    SymbolIndexOutOfRange,
+    ReferenceSymbolReadFailed,
+    ReferenceNameFailed,
+    UnsupportedVersioning,
+    UnsupportedReferenceBinding,
+    UnsupportedReferenceVisibility,
+    UnsupportedReferenceType,
+    UnsupportedReferenceSection,
+    SymbolLookupFailed,
+    UnresolvedStrongSymbol,
+};
+
+struct Elf32RelocationResolutionResult {
+    Elf32RelocationResolveError error{Elf32RelocationResolveError::None};
+    Elf32RelocationPlanError plan_error{Elf32RelocationPlanError::None};
+    Elf32SymbolIndexError index_error{Elf32SymbolIndexError::None};
+    Elf32SymbolReadError symbol_read_error{Elf32SymbolReadError::None};
+    Elf32LinkerStringError string_error{Elf32LinkerStringError::None};
+    Elf32GraphSymbolLookupError graph_error{Elf32GraphSymbolLookupError::None};
+    Elf32SymbolLookupError lookup_error{Elf32SymbolLookupError::None};
+    std::optional<std::size_t> failing_object;
+    std::optional<std::uint32_t> failing_relocation;
+    Elf32RelocationResolution resolution;
+
+    [[nodiscard]] explicit operator bool() const noexcept {
+        return error == Elf32RelocationResolveError::None;
+    }
+};
+
 // Decode and validate one loaded object's main DT_REL table without mutating
 // guest memory. The table descriptor is assumed to originate from validated
 // Elf32LinkerMetadata (DT_RELENT == 8 and DT_RELSZ divisible by 8), but all
@@ -86,6 +142,18 @@ struct Elf32RelocationPlanResult {
     std::size_t object_index,
     const Elf32RelocationOptions& options);
 
+// Resolve symbol-bearing ABS32/GLOB_DAT references without writing guest
+// memory. Only GLOBAL/WEAK DEFAULT NOTYPE/OBJECT/FUNC references are accepted.
+// Protected/versioned/TLS/IFUNC/common/XINDEX semantics fail explicitly.
+// A graph miss becomes S=0 only for a WEAK reference.
+[[nodiscard]] Elf32RelocationResolutionResult
+resolve_elf32_rel_relocation_references(
+    const memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t object_index,
+    const Elf32RelocationOptions& options);
+
 [[nodiscard]] const char* to_string(Elf32RelocationPlanError error) noexcept;
+[[nodiscard]] const char* to_string(Elf32RelocationResolveError error) noexcept;
 
 }  // namespace liba32android::elf

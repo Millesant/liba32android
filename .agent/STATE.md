@@ -5,7 +5,7 @@ Current phase: M4 continuation; bounded ELF32 ARM REL relocation application
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `007-elf32-relocations`; T001 bounded read-only REL decoding/planning is DONE at exact-head CI #210. T002 relocation-reference symbol decoding/resolution is READY.
+Active runtime work: `007-elf32-relocations`; T001 is DONE at exact-head CI #210. T002 bounded relocation-reference dynsym decoding/name materialization/graph-local resolution is implemented and awaits exact-head CI validation.
 
 ## Working
 
@@ -43,7 +43,7 @@ Active runtime work: `007-elf32-relocations`; T001 bounded read-only REL decodin
 ## Partial / not implemented
 
 - Feature 006 bounded graph-local unversioned symbol resolution is DONE at exact-head CI #207. Version-aware lookup remains intentionally unsupported (version tables are rejected), relocation application remains NOT IMPLEMENTED, and Android search-path/namespace/pathname policy plus process-wide link-map lifetime across graph-loading calls remain NOT IMPLEMENTED.
-- ARM relocation application: NOT IMPLEMENTED. Feature 007 T001 read-only main-`DT_REL` decoding/planning is validated; T002 symbol-reference resolution is next. No relocation writes exist yet.
+- ARM relocation application: NOT IMPLEMENTED. Feature 007 T001 read-only main-`DT_REL` planning is validated; T002 reference-symbol decoding/resolution is implemented for the pending exact-head gate. No relocation writes exist yet.
 - Version-aware and process-wide/global-group symbol interposition policy: NOT IMPLEMENTED; bounded graph-local unversioned lookup is implemented.
 - RELRO/TLS processing: NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.

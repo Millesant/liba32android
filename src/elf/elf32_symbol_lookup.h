@@ -85,7 +85,24 @@ struct Elf32Symbol {
     std::uint8_t binding{};
     std::uint8_t type{};
     std::uint8_t visibility{};
+    std::uint8_t raw_other{};
     std::uint16_t section_index{};
+};
+
+enum class Elf32SymbolReadError : std::uint8_t {
+    None = 0,
+    InvalidMetadata,
+    SymbolIndexOutOfRange,
+    SymbolReadFailed,
+};
+
+struct Elf32SymbolReadResult {
+    Elf32SymbolReadError error{Elf32SymbolReadError::None};
+    Elf32Symbol symbol;
+
+    [[nodiscard]] explicit operator bool() const noexcept {
+        return error == Elf32SymbolReadError::None;
+    }
 };
 
 struct Elf32ResolvedSymbol {
@@ -164,6 +181,14 @@ struct Elf32GraphSymbolLookupResult {
     const Elf32LinkerMetadata& metadata,
     const Elf32SymbolLookupOptions& options);
 
+// Decode one entry from an already-bounded dynamic-symbol extent.
+// No host pointer is exposed and guest memory is not modified.
+[[nodiscard]] Elf32SymbolReadResult read_elf32_symbol_entry(
+    const memory::GuestMemory& memory,
+    const Elf32LinkerMetadata& metadata,
+    const Elf32SymbolIndex& index,
+    std::uint32_t symbol_index);
+
 // Resolve one exact non-empty byte name within one already-indexed object.
 // GNU hash is preferred when both formats exist; a GNU miss is not masked by
 // SysV fallback. GLOBAL/WEAK DEFAULT/PROTECTED normal or SHN_ABS definitions
@@ -194,6 +219,7 @@ struct Elf32GraphSymbolLookupResult {
     const Elf32SymbolLookupOptions& options);
 
 [[nodiscard]] const char* to_string(Elf32SymbolIndexError error) noexcept;
+[[nodiscard]] const char* to_string(Elf32SymbolReadError error) noexcept;
 [[nodiscard]] const char* to_string(Elf32SymbolLookupError error) noexcept;
 [[nodiscard]] const char* to_string(Elf32GraphSymbolLookupError error) noexcept;
 

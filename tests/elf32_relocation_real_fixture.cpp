@@ -1,3 +1,4 @@
+#include <array>
 #include <cstdint>
 #include <fstream>
 #include <iostream>
@@ -20,6 +21,7 @@ using liba32android::elf::Elf32DependencyProviderResult;
 using liba32android::elf::Elf32RelocationOptions;
 using liba32android::elf::build_elf32_rel_relocation_plan;
 using liba32android::elf::kRArmGlobDat;
+using liba32android::elf::resolve_elf32_rel_relocation_references;
 using liba32android::elf::load_elf32_dependency_graph;
 using liba32android::memory::MappedGuestMemory;
 
@@ -27,6 +29,8 @@ constexpr std::uint64_t kMaxFixtureImageBytes = 4U << 20;
 constexpr std::uint64_t kMaxTotalImageBytes = 8U << 20;
 constexpr std::uint32_t kExpectedBssOffset = 0x82cc;
 constexpr std::uint32_t kExpectedDataOffset = 0x82d0;
+constexpr std::uint32_t kExpectedBssValue = 0xc2d8;
+constexpr std::uint32_t kExpectedDataValue = 0xc2d4;
 
 int fail(const std::string& message) {
     std::cerr << message << '\n';
@@ -106,6 +110,11 @@ int main(int argc, char** argv) {
 
     Elf32RelocationOptions relocation_options;
     relocation_options.max_relocations = 16;
+    relocation_options.symbols.max_symbols = 64;
+    relocation_options.symbols.max_hash_buckets = 64;
+    relocation_options.symbols.max_gnu_bloom_words = 16;
+    relocation_options.symbols.max_scope_objects = 8;
+    relocation_options.symbols.max_name_bytes = 64;
     const auto plan = build_elf32_rel_relocation_plan(
         memory, graph_result.graph, 0, relocation_options);
     if (!plan) {
@@ -139,6 +148,34 @@ int main(int argc, char** argv) {
         return fail("real fixture second GLOB_DAT plan entry did not match pinned evidence");
     }
 
+    const auto resolution = resolve_elf32_rel_relocation_references(
+        memory, graph_result.graph, 0, relocation_options);
+    if (!resolution || resolution.resolution.entries.size() != 2 ||
+        !resolution.resolution.entries[0].reference.has_value() ||
+        !resolution.resolution.entries[1].reference.has_value()) {
+        return fail(
+            std::string("real ARM32 fixture relocation references failed: ") +
+            liba32android::elf::to_string(resolution.error));
+    }
+    const auto& bss_reference = *resolution.resolution.entries[0].reference;
+    const auto& data_reference = *resolution.resolution.entries[1].reference;
+    if (bss_reference.name != "fixture_bss" ||
+        bss_reference.symbol_value != load_bias + kExpectedBssValue ||
+        bss_reference.unresolved_weak ||
+        data_reference.name != "fixture_data" ||
+        data_reference.symbol_value != load_bias + kExpectedDataValue ||
+        data_reference.unresolved_weak) {
+        return fail("real fixture relocation references resolved incorrectly");
+    }
+
+    std::array<std::uint8_t, 4> target_bytes{};
+    if (!memory.read(load_bias + kExpectedBssOffset, target_bytes) ||
+        target_bytes != std::array<std::uint8_t, 4>{0, 0, 0, 0} ||
+        !memory.read(load_bias + kExpectedDataOffset, target_bytes) ||
+        target_bytes != std::array<std::uint8_t, 4>{0, 0, 0, 0}) {
+        return fail("real fixture read-only relocation resolution mutated targets");
+    }
+
     std::cout << "fixture.relocation.count=2\n"
               << "fixture.relocation.0.type=R_ARM_GLOB_DAT\n"
               << "fixture.relocation.0.symbol_index=2\n"
@@ -148,6 +185,9 @@ int main(int argc, char** argv) {
               << "fixture.relocation.1.symbol_index=3\n"
               << "fixture.relocation.1.offset=0x" << data.offset << std::dec
               << '\n'
+              << "fixture.relocation.0.name=" << bss_reference.name << '\n'
+              << "fixture.relocation.1.name=" << data_reference.name << '\n'
+              << "fixture.relocation.references=PASS\n"
               << "fixture.relocation.status=PASS\n";
     return 0;
 }

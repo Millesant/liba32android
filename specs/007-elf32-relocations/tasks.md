@@ -39,7 +39,7 @@
   - bounds/name/binding/visibility/version/unsupported-form failures;
   - graph-local success;
   - weak unresolved behavior.
-- Status: READY — T001 exact-head validation is PASS.
+- Status: ACTIVE — reference decoding/resolution implementation is committed for the next exact-head CI gate.
 
 ## T003 — Apply NONE/RELATIVE/GLOB_DAT/ABS32 transactionally
 

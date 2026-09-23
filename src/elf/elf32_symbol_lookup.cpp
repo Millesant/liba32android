@@ -179,7 +179,8 @@ constexpr std::size_t kReadValidationChunkSize = 256;
     symbol.size = decode_u32_le(bytes.data() + 8);
     symbol.binding = static_cast<std::uint8_t>(bytes[12] >> 4U);
     symbol.type = static_cast<std::uint8_t>(bytes[12] & 0x0fU);
-    symbol.visibility = static_cast<std::uint8_t>(bytes[13] & 0x03U);
+    symbol.raw_other = bytes[13];
+    symbol.visibility = static_cast<std::uint8_t>(symbol.raw_other & 0x03U);
     symbol.section_index = decode_u16_le(bytes.data() + 14);
     return true;
 }
@@ -472,6 +473,30 @@ Elf32SymbolIndexResult build_elf32_symbol_index(
         return failure(Elf32SymbolIndexError::SymbolReadFailed);
     }
 
+    return result;
+}
+
+Elf32SymbolReadResult read_elf32_symbol_entry(
+    const memory::GuestMemory& memory,
+    const Elf32LinkerMetadata& metadata,
+    const Elf32SymbolIndex& index,
+    std::uint32_t symbol_index) {
+    Elf32SymbolReadResult result;
+    if (!metadata.symbol_table.has_value() ||
+        metadata.symbol_table->entry_size != kElf32SymbolEntrySize ||
+        index.symbol_count == 0) {
+        result.error = Elf32SymbolReadError::InvalidMetadata;
+        return result;
+    }
+    if (symbol_index >= index.symbol_count) {
+        result.error = Elf32SymbolReadError::SymbolIndexOutOfRange;
+        return result;
+    }
+    if (!read_symbol(memory, *metadata.symbol_table, symbol_index,
+                     result.symbol)) {
+        result.error = Elf32SymbolReadError::SymbolReadFailed;
+        return result;
+    }
     return result;
 }
 
@@ -782,6 +807,16 @@ const char* to_string(Elf32SymbolIndexError error) noexcept {
     case Elf32SymbolIndexError::SymbolCountExceeded: return "symbol_count_exceeded";
     case Elf32SymbolIndexError::SymbolRangeOverflow: return "symbol_range_overflow";
     case Elf32SymbolIndexError::SymbolReadFailed: return "symbol_read_failed";
+    }
+    return "unknown";
+}
+
+const char* to_string(Elf32SymbolReadError error) noexcept {
+    switch (error) {
+    case Elf32SymbolReadError::None: return "none";
+    case Elf32SymbolReadError::InvalidMetadata: return "invalid_metadata";
+    case Elf32SymbolReadError::SymbolIndexOutOfRange: return "symbol_index_out_of_range";
+    case Elf32SymbolReadError::SymbolReadFailed: return "symbol_read_failed";
     }
     return "unknown";
 }

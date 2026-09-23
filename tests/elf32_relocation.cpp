@@ -1,17 +1,28 @@
 #include <array>
 #include <cstdint>
 #include <iostream>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #include "elf/elf32_relocation.h"
 #include "memory/guest_memory.h"
 
 namespace {
 
+using liba32android::elf::Elf32DependencyEdge;
 using liba32android::elf::Elf32DependencyGraph;
+using liba32android::elf::Elf32HashTableMetadata;
+using liba32android::elf::Elf32LinkerStringError;
 using liba32android::elf::Elf32RelTableMetadata;
 using liba32android::elf::Elf32RelocationOptions;
 using liba32android::elf::Elf32RelocationPlanError;
+using liba32android::elf::Elf32RelocationResolveError;
+using liba32android::elf::Elf32StringTableMetadata;
+using liba32android::elf::Elf32SymbolIndexError;
+using liba32android::elf::Elf32SymbolTableMetadata;
 using liba32android::elf::build_elf32_rel_relocation_plan;
+using liba32android::elf::resolve_elf32_rel_relocation_references;
 using liba32android::elf::kRArmAbs32;
 using liba32android::elf::kRArmGlobDat;
 using liba32android::elf::kRArmNone;
@@ -79,7 +90,86 @@ Elf32DependencyGraph graph_with_rel(std::uint32_t load_bias,
 Elf32RelocationOptions options(std::uint32_t max_relocations = 16) {
     Elf32RelocationOptions result;
     result.max_relocations = max_relocations;
+    result.symbols.max_symbols = 16;
+    result.symbols.max_hash_buckets = 8;
+    result.symbols.max_gnu_bloom_words = 8;
+    result.symbols.max_scope_objects = 8;
+    result.symbols.max_name_bytes = 64;
     return result;
+}
+
+bool write_string_at(LinearGuestMemory& memory,
+                     std::uint32_t table,
+                     std::uint32_t offset,
+                     std::string_view value) {
+    std::vector<std::uint8_t> bytes(value.begin(), value.end());
+    bytes.push_back(0);
+    return memory.write(table + offset, bytes);
+}
+
+bool write_symbol_at(LinearGuestMemory& memory,
+                     std::uint32_t table,
+                     std::uint32_t index,
+                     std::uint32_t name_offset,
+                     std::uint32_t value,
+                     std::uint8_t binding,
+                     std::uint8_t type,
+                     std::uint8_t other,
+                     std::uint16_t section_index) {
+    std::array<std::uint8_t, 16> bytes{};
+    const auto put_u32 = [&](std::size_t offset, std::uint32_t word) {
+        bytes[offset] = static_cast<std::uint8_t>(word);
+        bytes[offset + 1] = static_cast<std::uint8_t>(word >> 8U);
+        bytes[offset + 2] = static_cast<std::uint8_t>(word >> 16U);
+        bytes[offset + 3] = static_cast<std::uint8_t>(word >> 24U);
+    };
+    put_u32(0, name_offset);
+    put_u32(4, value);
+    put_u32(8, 4);
+    bytes[12] = static_cast<std::uint8_t>((binding << 4U) | (type & 0x0fU));
+    bytes[13] = other;
+    bytes[14] = static_cast<std::uint8_t>(section_index);
+    bytes[15] = static_cast<std::uint8_t>(section_index >> 8U);
+    return memory.write(table + index * 16U, bytes);
+}
+
+bool stage_symbol_object(LinearGuestMemory& memory,
+                         liba32android::elf::Elf32LoadedDependencyObject& object,
+                         std::size_t slot,
+                         std::string_view name,
+                         std::uint32_t load_bias,
+                         std::uint8_t binding,
+                         std::uint8_t type,
+                         std::uint8_t other,
+                         std::uint16_t section_index,
+                         std::uint32_t value = 0,
+                         std::uint32_t name_offset = 1) {
+    const std::uint32_t base =
+        0x4000U + static_cast<std::uint32_t>(slot) * 0x1000U;
+    const std::uint32_t strings = base;
+    const std::uint32_t symbols = base + 0x100U;
+    const std::uint32_t hash = base + 0x300U;
+
+    object.identity = "symbol-object-" + std::to_string(slot);
+    object.load.load_bias = load_bias;
+    object.linker_metadata.string_table =
+        Elf32StringTableMetadata{.guest_address = strings, .size = 0x80};
+    object.linker_metadata.symbol_table =
+        Elf32SymbolTableMetadata{.guest_address = symbols, .entry_size = 16};
+    object.linker_metadata.sysv_hash_table =
+        Elf32HashTableMetadata{.guest_address = hash};
+
+    if (name_offset < 0x80 &&
+        !write_string_at(memory, strings, name_offset, name)) {
+        return false;
+    }
+    return write_symbol_at(memory, symbols, 1, name_offset, value,
+                           binding, type, other, section_index) &&
+           write_u32(memory, hash, 1) &&
+           write_u32(memory, hash + 4U, 2) &&
+           write_u32(memory, hash + 8U, 1) &&
+           write_u32(memory, hash + 12U, 0) &&
+           write_u32(memory, hash + 16U, 0);
 }
 
 int test_empty_and_exact_decode() {
@@ -242,6 +332,257 @@ int test_read_place_and_type_failures() {
     return 0;
 }
 
+int test_reference_resolution_and_weak_behavior() {
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_rel(0x1000, kRelTable, 8);
+        graph.objects.resize(2);
+        if (!stage_symbol_object(memory, graph.objects[0], 0, "target",
+                                 0x1000, 1, 1, 0, 0) ||
+            !stage_symbol_object(memory, graph.objects[1], 1, "target",
+                                 0x5000, 1, 1, 0, 1, 0x120) ||
+            !write_rel(memory, 0, 0x11000, 1, kRArmGlobDat) ||
+            !write_u32(memory, 0x12000, 0xdeadbeefU)) {
+            return fail("could not stage graph-local relocation reference");
+        }
+        graph.objects[0].dependencies = {
+            Elf32DependencyEdge{.requested_name = "dep", .target_object = 1},
+        };
+
+        const auto result = resolve_elf32_rel_relocation_references(
+            memory, graph, 0, options());
+        if (!result || result.resolution.entries.size() != 1 ||
+            !result.resolution.entries[0].reference.has_value()) {
+            return fail("valid relocation reference did not resolve");
+        }
+        const auto& reference = *result.resolution.entries[0].reference;
+        if (reference.name != "target" ||
+            reference.symbol_index != 1 ||
+            reference.symbol.binding != 1 ||
+            reference.symbol.section_index != 0 ||
+            reference.symbol_value != 0x5120 ||
+            reference.unresolved_weak ||
+            !reference.defining_object_index.has_value() ||
+            *reference.defining_object_index != 1 ||
+            !reference.defining_symbol_index.has_value() ||
+            *reference.defining_symbol_index != 1) {
+            return fail("graph-local relocation reference result was incorrect");
+        }
+        std::uint32_t target = 0;
+        if (!read_u32(memory, 0x12000, target) ||
+            target != 0xdeadbeefU) {
+            return fail("reference resolution mutated guest target memory");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_rel(0x1000, kRelTable, 8);
+        if (!stage_symbol_object(memory, graph.objects[0], 0, "missing",
+                                 0x1000, 2, 1, 0, 0) ||
+            !write_rel(memory, 0, 0x11000, 1, kRArmAbs32) ||
+            !write_u32(memory, 0x12000, 0x12345678U)) {
+            return fail("could not stage unresolved weak relocation reference");
+        }
+        const auto result = resolve_elf32_rel_relocation_references(
+            memory, graph, 0, options());
+        if (!result || result.resolution.entries.size() != 1 ||
+            !result.resolution.entries[0].reference.has_value() ||
+            !result.resolution.entries[0].reference->unresolved_weak ||
+            result.resolution.entries[0].reference->symbol_value != 0 ||
+            result.resolution.entries[0].reference->defining_object_index.has_value()) {
+            return fail("unresolved weak relocation reference did not become S=0");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_rel(0x1000, kRelTable, 8);
+        if (!stage_symbol_object(memory, graph.objects[0], 0, "missing",
+                                 0x1000, 1, 1, 0, 0) ||
+            !write_rel(memory, 0, 0x11000, 1, kRArmGlobDat) ||
+            !write_u32(memory, 0x12000, 0)) {
+            return fail("could not stage unresolved strong relocation reference");
+        }
+        const auto result = resolve_elf32_rel_relocation_references(
+            memory, graph, 0, options());
+        if (result.error !=
+            Elf32RelocationResolveError::UnresolvedStrongSymbol ||
+            !result.failing_relocation.has_value() ||
+            *result.failing_relocation != 0) {
+            return fail("unresolved strong relocation reference was not rejected");
+        }
+    }
+    return 0;
+}
+
+int expect_reference_form_error(std::uint8_t binding,
+                                std::uint8_t type,
+                                std::uint8_t other,
+                                std::uint16_t section_index,
+                                Elf32RelocationResolveError expected) {
+    LinearGuestMemory memory(0x20000, kMemoryBase);
+    auto graph = graph_with_rel(0x1000, kRelTable, 8);
+    if (!stage_symbol_object(memory, graph.objects[0], 0, "target",
+                             0x1000, binding, type, other, section_index) ||
+        !write_rel(memory, 0, 0x11000, 1, kRArmAbs32) ||
+        !write_u32(memory, 0x12000, 0)) {
+        return fail("could not stage unsupported reference form");
+    }
+    const auto result = resolve_elf32_rel_relocation_references(
+        memory, graph, 0, options());
+    if (result.error != expected) {
+        return fail("unsupported relocation reference form returned wrong error");
+    }
+    return 0;
+}
+
+int test_reference_validation_failures() {
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_rel(0x1000, kRelTable, 8);
+        if (!stage_symbol_object(memory, graph.objects[0], 0, "target",
+                                 0x1000, 1, 1, 0, 0) ||
+            !write_rel(memory, 0, 0x11000, 0, kRArmAbs32) ||
+            !write_u32(memory, 0x12000, 0)) {
+            return fail("could not stage missing reference-symbol case");
+        }
+        if (resolve_elf32_rel_relocation_references(
+                memory, graph, 0, options()).error !=
+            Elf32RelocationResolveError::MissingReferenceSymbol) {
+            return fail("symbol index zero was not rejected for ABS32");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_rel(0x1000, kRelTable, 8);
+        if (!stage_symbol_object(memory, graph.objects[0], 0, "target",
+                                 0x1000, 1, 1, 0, 0) ||
+            !write_rel(memory, 0, 0x11000, 2, kRArmGlobDat) ||
+            !write_u32(memory, 0x12000, 0)) {
+            return fail("could not stage symbol-index bounds case");
+        }
+        if (resolve_elf32_rel_relocation_references(
+                memory, graph, 0, options()).error !=
+            Elf32RelocationResolveError::SymbolIndexOutOfRange) {
+            return fail("relocation symbol index extent was not enforced");
+        }
+    }
+
+    if (expect_reference_form_error(
+            0, 1, 0, 0,
+            Elf32RelocationResolveError::UnsupportedReferenceBinding) != 0 ||
+        expect_reference_form_error(
+            1, 1, 3, 0,
+            Elf32RelocationResolveError::UnsupportedReferenceVisibility) != 0 ||
+        expect_reference_form_error(
+            1, 1, 2, 0,
+            Elf32RelocationResolveError::UnsupportedReferenceVisibility) != 0 ||
+        expect_reference_form_error(
+            1, 1, 4, 0,
+            Elf32RelocationResolveError::UnsupportedReferenceVisibility) != 0 ||
+        expect_reference_form_error(
+            1, 6, 0, 0,
+            Elf32RelocationResolveError::UnsupportedReferenceType) != 0 ||
+        expect_reference_form_error(
+            1, 10, 0, 0,
+            Elf32RelocationResolveError::UnsupportedReferenceType) != 0 ||
+        expect_reference_form_error(
+            1, 1, 0, 0xfff2,
+            Elf32RelocationResolveError::UnsupportedReferenceSection) != 0 ||
+        expect_reference_form_error(
+            1, 1, 0, 0xffff,
+            Elf32RelocationResolveError::UnsupportedReferenceSection) != 0) {
+        return 1;
+    }
+
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_rel(0x1000, kRelTable, 8);
+        if (!stage_symbol_object(memory, graph.objects[0], 0, "target",
+                                 0x1000, 1, 1, 0, 0) ||
+            !write_rel(memory, 0, 0x11000, 1, kRArmGlobDat) ||
+            !write_u32(memory, 0x12000, 0)) {
+            return fail("could not stage versioned reference case");
+        }
+        graph.objects[0].linker_metadata.has_symbol_versioning = true;
+        if (resolve_elf32_rel_relocation_references(
+                memory, graph, 0, options()).error !=
+            Elf32RelocationResolveError::UnsupportedVersioning) {
+            return fail("versioned relocation requester was not rejected");
+        }
+    }
+    return 0;
+}
+
+int test_reference_nested_failures() {
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_rel(0x1000, kRelTable, 8);
+        if (!stage_symbol_object(memory, graph.objects[0], 0, "target",
+                                 0x1000, 1, 1, 0, 0) ||
+            !write_rel(memory, 0, 0x11000, 1, kRArmAbs32) ||
+            !write_u32(memory, 0x12000, 0)) {
+            return fail("could not stage missing-hash index failure");
+        }
+        graph.objects[0].linker_metadata.sysv_hash_table.reset();
+        const auto result = resolve_elf32_rel_relocation_references(
+            memory, graph, 0, options());
+        if (result.error != Elf32RelocationResolveError::IndexBuildFailed ||
+            result.index_error != Elf32SymbolIndexError::MissingHashTable) {
+            return fail("symbol-index build failure was not retained");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_rel(0x1000, kRelTable, 8);
+        if (!stage_symbol_object(memory, graph.objects[0], 0, "target",
+                                 0x1000, 1, 1, 0, 0, 0, 0x90) ||
+            !write_rel(memory, 0, 0x11000, 1, kRArmGlobDat) ||
+            !write_u32(memory, 0x12000, 0)) {
+            return fail("could not stage reference-name failure");
+        }
+        const auto result = resolve_elf32_rel_relocation_references(
+            memory, graph, 0, options());
+        if (result.error != Elf32RelocationResolveError::ReferenceNameFailed ||
+            result.string_error !=
+                Elf32LinkerStringError::StringOffsetOutOfRange) {
+            return fail("reference string-table failure was not retained");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_rel(0x1000, kRelTable, 8);
+        graph.objects.resize(2);
+        if (!stage_symbol_object(memory, graph.objects[0], 0, "target",
+                                 0x1000, 1, 1, 0, 0) ||
+            !stage_symbol_object(memory, graph.objects[1], 1, "other",
+                                 0x5000, 1, 1, 0, 1, 0x80) ||
+            !write_rel(memory, 0, 0x11000, 1, kRArmGlobDat) ||
+            !write_u32(memory, 0x12000, 0)) {
+            return fail("could not stage nested graph lookup failure");
+        }
+        graph.objects[1].linker_metadata.sysv_hash_table.reset();
+        graph.objects[0].dependencies = {
+            Elf32DependencyEdge{.requested_name = "dep", .target_object = 1},
+        };
+        const auto result = resolve_elf32_rel_relocation_references(
+            memory, graph, 0, options());
+        if (result.error != Elf32RelocationResolveError::SymbolLookupFailed ||
+            result.graph_error !=
+                liba32android::elf::Elf32GraphSymbolLookupError::IndexBuildFailed ||
+            result.index_error != Elf32SymbolIndexError::MissingHashTable ||
+            !result.failing_object.has_value() ||
+            *result.failing_object != 1) {
+            return fail("nested graph/index lookup failure was not retained");
+        }
+    }
+    return 0;
+}
+
 int test_duplicate_target_rejected_without_mutation() {
     LinearGuestMemory memory(0x4000, kMemoryBase);
     auto graph = graph_with_rel(0x1000, kRelTable, 16);
@@ -270,6 +611,9 @@ int main() {
     if (const int status = test_empty_and_exact_decode(); status != 0) return status;
     if (const int status = test_limits_and_graph_inputs(); status != 0) return status;
     if (const int status = test_read_place_and_type_failures(); status != 0) return status;
+    if (const int status = test_reference_resolution_and_weak_behavior(); status != 0) return status;
+    if (const int status = test_reference_validation_failures(); status != 0) return status;
+    if (const int status = test_reference_nested_failures(); status != 0) return status;
     if (const int status = test_duplicate_target_rejected_without_mutation(); status != 0) return status;
     return 0;
 }
