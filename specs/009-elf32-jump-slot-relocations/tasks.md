@@ -1,6 +1,6 @@
 # Tasks — ELF32 ARM eager JUMP_SLOT relocations
 
-Status: READY
+Status: ACTIVE — T001-T003 VERIFIED; T004 convergence/final gate active
 
 Base revision: `bbad7db39e430ba87a373841e3ede954696c85c5`
 Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
@@ -38,7 +38,7 @@ Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
 
 ## T003 — Reproducible real JUMP_SLOT fixture and graph-backed application
 
-- Status: IMPLEMENTED — fixture/build/CTest/CI plumbing prepared; exact-head validation NOT RUN
+- Status: VERIFIED — exact-head CI #228 / run `35939575947` PASSed at `815386149732201ce5b64e1b5ad207079491eb80`; pinned-NDK double-build/readelf evidence and graph-backed real application all PASSed
 - Depends on: T002
 - Requirements: R11-R12, R14; AC9-AC11
 - Scope:
@@ -55,7 +55,7 @@ Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
 
 ## T004 — Convergence and final exact-head gate
 
-- Status: QUEUED
+- Status: ACTIVE — docs/spec/change/state convergence prepared; final exact-head CI pending
 - Depends on: T003
 - Requirements: R13-R14; AC8-AC12
 - Scope:
@@ -70,4 +70,4 @@ Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
 
 ## Readiness
 
-PASS. T001 is the active bounded objective.
+PASS. T001-T003 are verified; T004 is the active bounded convergence objective.

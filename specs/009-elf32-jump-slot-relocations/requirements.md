@@ -1,6 +1,6 @@
 # Requirements — ELF32 ARM eager JUMP_SLOT relocations
 
-Status: READY — readiness checked at base `bbad7db39e430ba87a373841e3ede954696c85c5`
+Status: IMPLEMENTED — T001-T003 verified through CI #228 / run `35939575947` at `815386149732201ce5b64e1b5ad207079491eb80`; T004 final convergence gate pending
 
 ## Goal
 

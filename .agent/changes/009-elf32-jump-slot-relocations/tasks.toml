@@ -15,12 +15,12 @@ acceptance = "Apply eager JUMP_SLOT writes transactionally as S, ignoring the in
 
 [[tasks]]
 id = "T003"
-status = "implemented"
+status = "verified"
 depends_on = ["T002"]
 acceptance = "Build a reproducible ARMv7 consumer/provider fixture pair with real DT_NEEDED + R_ARM_JUMP_SLOT and validate graph-backed application."
 
 [[tasks]]
 id = "T004"
-status = "planned"
+status = "active"
 depends_on = ["T003"]
 acceptance = "Converge specs/docs/state/evidence and pass the final exact-head Linux and Android CI gate."

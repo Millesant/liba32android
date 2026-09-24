@@ -18,3 +18,15 @@ claim = "Feature 009 T002 eager JUMP_SLOT application writes S, preserves weak-z
 source = "GitHub Actions CI #227 / run 35938885569"
 result = "At 666a15ab2edaebdfa3c0f6817dca30e2e2e7a931, Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all completed successfully."
 limitations = "This evidence validates synthetic transactional PLT application. The NDK-generated provider/consumer fixture and graph-backed real JUMP_SLOT application are validated by T003."
+
+[[evidence]]
+id = "t003-real-jump-slot-ci"
+kind = "validation"
+status = "passed"
+claim = "Feature 009 T003 produces a reproducible real ARMv7 provider/consumer pair with DT_NEEDED plus R_ARM_JUMP_SLOT and applies the real slot through the loaded dependency graph without guest execution."
+source = "GitHub Actions CI #228 / run 35939575947"
+result = "At 815386149732201ce5b64e1b5ad207079491eb80, the pinned NDK built byte-identical provider/consumer DSOs twice; readelf confirmed the provider DT_NEEDED and R_ARM_JUMP_SLOT fixture_import shape; the real graph-backed application CTest passed; Linux A32 smoke, Android x86_64, and Android arm64-v8a all completed successfully."
+limitations = "This evidence proves eager graph-local JUMP_SLOT application for the pinned freestanding fixture pair. It does not prove lazy binding, process-wide namespaces/interposition, guest execution, or broader relocation compatibility."
+artifact_id = "10783439676"
+artifact_name = "arm32-loader-fixture-815386149732201ce5b64e1b5ad207079491eb80"
+artifact_digest = "sha256:4a68646d281cb35ceb69586388acd5ce0bbb5e5f316ecd285b1b8c4574bffee7"

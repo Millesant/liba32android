@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-23
-Current phase: M4 continuation; feature 009 eager ELF32 ARM JUMP_SLOT relocation application
+Current phase: M4 continuation; feature 009 eager ELF32 ARM JUMP_SLOT T004 convergence/final gate
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `009-elf32-jump-slot-relocations` T003. T001 is VERIFIED by CI #226 at `fe12b6de747884a18d1214f564559d94937d8974`; T002 transactional eager JUMP_SLOT application is VERIFIED by CI #227 / run `35938885569` at `666a15ab2edaebdfa3c0f6817dca30e2e2e7a931`. T003 real provider/consumer fixture, dependency-graph application test, CMake, and CI evidence plumbing are prepared; exact-head validation is NOT RUN.
+Active runtime work: `009-elf32-jump-slot-relocations` T004. T001 PASSed CI #226 at `fe12b6de747884a18d1214f564559d94937d8974`; T002 PASSed CI #227 at `666a15ab2edaebdfa3c0f6817dca30e2e2e7a931`; T003 real provider/consumer fixture plus graph-backed application PASSed CI #228 / run `35939575947` at `815386149732201ce5b64e1b5ad207079491eb80`. Documentation/spec/change/state convergence is prepared; final exact-head feature-gate CI remains pending.
 
 ## Working
 
@@ -37,14 +37,14 @@ Active runtime work: `009-elf32-jump-slot-relocations` T003. T001 is VERIFIED by
 - `src/elf/elf32_dependency_resolver.*` now acquires host-owned dependency image inputs through a caller-owned provider. It preserves ordered/repeated `DT_NEEDED` occurrences, forwards non-empty name bytes unchanged, distinguishes not-found from provider failure, validates non-empty provider identity/image, enforces explicit dependency-count/per-image/total-image ceilings, and returns no partial successful aggregate on failure. It deliberately does not choose guest bases or map dependency ELF images.
 - `src/elf/elf32_dependency_loader.*` now owns one transactional recursive loaded-object graph: provider identity is the per-call object key, ordered/repeated dependency edges are preserved, cycles/shared objects reuse existing mappings, first-seen dependencies are automatically placed and loaded as `ET_DYN`, graph-wide object/depth/occurrence/image/string limits are enforced, and aggregate failure rolls back graph-owned mappings in reverse load order.
 - `src/elf/elf32_symbol_lookup.*` now implements bounded SysV/GNU hash metadata interpretation and dynamic-symbol indexing, exact byte-name per-object lookup, checked logical 32-bit guest-value computation, explicit unsupported version/TLS/common/XINDEX/IFUNC boundaries, and deterministic graph-local breadth-first lookup from dependency edges. The layer is read-only and never treats guest values as host pointers.
-- `src/elf/elf32_relocation.*` now implements bounded main-`DT_REL` ARM relocation planning, reference-symbol resolution through feature 006, and transactional application for `R_ARM_NONE`, `R_ARM_RELATIVE`, `R_ARM_GLOB_DAT`, and `R_ARM_ABS32`. Planning is byte-explicit and bounded, duplicate write targets are rejected, protected/versioned/TLS/IFUNC/common/XINDEX reference forms remain explicit failures, unresolved weak references map to `S=0` only in relocation policy, Android `GLOB_DAT` writes `S` without the in-place REL addend, and late write failures roll back earlier relocation-owned writes in reverse order without broadening page permissions.
-- The reproducible real ARMv7/Android fixture remains generated with pinned NDK r27d / API 26 inputs. It has four `PT_LOAD` segments with `p_align=0x4000`, BSS, one `PT_DYNAMIC`, and observed SONAME/REL/SYMTAB/STRTAB/GNU_HASH-related tags with no `DT_NEEDED`; the linker-string integration validates SONAME `liba32android_loader_fixture.so` with an explicit 64-byte ceiling and zero NEEDED names.
+- `src/elf/elf32_relocation.*` now implements separate bounded main-REL and PLT-REL pipelines. Main `DT_REL` supports `R_ARM_NONE`, `R_ARM_RELATIVE`, `R_ARM_GLOB_DAT`, and `R_ARM_ABS32`; PLT REL accepts only eager `R_ARM_JUMP_SLOT`. Both paths use byte-explicit bounded planning, the same graph-local reference policy, plan-before-write validation, unresolved-weak `S=0`, and reverse rollback without permission broadening. `GLOB_DAT` and `JUMP_SLOT` write `S` without treating the in-place word as an addend.
+- The reproducible real ARMv7/Android loader fixture remains generated with pinned NDK r27d / API 26 inputs. Feature 009 additionally generates a freestanding provider/consumer DSO pair twice byte-identically; the consumer has `DT_NEEDED liba32android_jump_slot_provider.so` and `R_ARM_JUMP_SLOT fixture_import`, and the real integration loads the two-object graph and rewrites that slot to the provider guest symbol value without guest execution.
 - Project-local agent material is limited to the root `AGENTS.md` project overlay, durable `.agent/` project state/decisions, and project-owned `specs/<id>-<feature>/{requirements,design,tasks}.md` packages. Generic workflow/runtime/governance is centralized in `Millesant/.gpt` rather than copied into this repository.
 
 ## Partial / not implemented
 
 - Feature 006 bounded graph-local unversioned symbol resolution is DONE at exact-head CI #207. Version-aware lookup remains intentionally unsupported (version tables are rejected). Feature 007 now implements bounded main-`DT_REL` relocation application; Android search-path/namespace/pathname policy plus process-wide link-map lifetime across graph-loading calls remain NOT IMPLEMENTED.
-- Broader ARM relocation/linker compatibility remains PARTIAL beyond the completed feature-007 main-`DT_REL` set. Feature 008 has VERIFIED PLT/JMPREL metadata validation. Feature 009 T001/T002 now have VERIFIED bounded eager `R_ARM_JUMP_SLOT` planning/resolution/application; the real NDK provider/consumer integration is prepared but NOT YET VALIDATED. Lazy binding/`DT_PLTGOT`, REL32/COPY/instruction relocations, packed/RELA/RELR forms, version-aware/protected requester semantics, TLS/IFUNC, RELRO, and process-wide/global-group policy remain NOT IMPLEMENTED.
+- Broader ARM relocation/linker compatibility remains PARTIAL beyond the completed feature-007 main-`DT_REL` set. Feature 008 has VERIFIED PLT/JMPREL metadata validation, and feature 009 T001-T003 have VERIFIED eager `R_ARM_JUMP_SLOT` planning/resolution/application including a real NDK provider/consumer graph. Lazy binding/`DT_PLTGOT`, combined main+PLT atomic application, REL32/COPY/instruction relocations, packed/RELA/RELR forms, version-aware/protected requester semantics, TLS/IFUNC, RELRO, and process-wide/global-group policy remain NOT IMPLEMENTED.
 - Version-aware and process-wide/global-group symbol interposition policy: NOT IMPLEMENTED; bounded graph-local unversioned lookup is implemented.
 - RELRO/TLS processing: NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.
@@ -59,7 +59,9 @@ T001 read-only PLT REL planning/reference resolution PASSed exact-head GitHub Ac
 
 T002 transactional eager application PASSed exact-head GitHub Actions CI #227 / run `35938885569` at `666a15ab2edaebdfa3c0f6817dca30e2e2e7a931`. All three required jobs PASSed. Synthetic coverage locks JUMP_SLOT = S with a non-zero original word ignored semantically, unresolved WEAK = 0, strong pre-write failure, reverse rollback after a later write failure, and explicit rollback-failure reporting while existing main-REL tests remain green.
 
-T003 real ARMv7 provider/consumer fixture plus graph-backed application is prepared; exact-head validation is NOT RUN.
+T003 real ARMv7 provider/consumer fixture plus graph-backed application PASSed exact-head CI #228 / run `35939575947` at `815386149732201ce5b64e1b5ad207079491eb80`. The pinned NDK generated the provider/consumer pair twice byte-identically; `readelf` confirmed `DT_NEEDED liba32android_jump_slot_provider.so` plus `R_ARM_JUMP_SLOT fixture_import`; the dependency loader built the expected two-object graph; independent symbol lookup and PLT resolution agreed on the provider guest value; application rewrote the real slot while preserving mapping permissions and every non-target readable segment byte. Artifact ID `10783439676`, digest `sha256:4a68646d281cb35ceb69586388acd5ce0bbb5e5f316ecd285b1b8c4574bffee7`.
+
+T004 documentation/spec/change/state convergence is prepared; the final exact-head feature gate is NOT RUN until that convergence head is committed.
 
 ### M4 ELF32 PLT REL metadata (complete)
 
