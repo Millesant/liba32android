@@ -1,6 +1,6 @@
 #include "elf/elf32_load_plan.h"
 
-#include "elf/elf32_bytes.h"
+#include "elf/internal/elf32_bytes.h"
 
 #include <algorithm>
 #include <cstddef>

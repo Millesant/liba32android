@@ -1,16 +1,16 @@
 add_library(liba32android SHARED
     src/cpu/dynarmic_cpu.cpp
-    src/elf/elf32_dependency_loader.cpp
-    src/elf/elf32_dependency_resolver.cpp
-    src/elf/elf32_dynamic.cpp
-    src/elf/elf32_dynamic_placement.cpp
-    src/elf/elf32_linker_metadata.cpp
-    src/elf/elf32_linker_strings.cpp
-    src/elf/elf32_relocation.cpp
-    src/elf/elf32_relro.cpp
-    src/elf/elf32_symbol_lookup.cpp
-    src/elf/elf32_load_plan.cpp
-    src/elf/elf32_loader.cpp
+    src/elf/loading/elf32_dynamic_placement.cpp
+    src/elf/loading/elf32_load_plan.cpp
+    src/elf/loading/elf32_loader.cpp
+    src/elf/metadata/elf32_dynamic.cpp
+    src/elf/metadata/elf32_linker_metadata.cpp
+    src/elf/metadata/elf32_linker_strings.cpp
+    src/elf/linking/elf32_dependency_loader.cpp
+    src/elf/linking/elf32_dependency_resolver.cpp
+    src/elf/linking/elf32_relocation.cpp
+    src/elf/linking/elf32_symbol_lookup.cpp
+    src/elf/hardening/elf32_relro.cpp
     src/memory/guest_memory.cpp
     src/memory/guest_va_allocator.cpp
 )

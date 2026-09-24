@@ -11,7 +11,7 @@ output=$2
 host_tag=${NDK_HOST_TAG:-linux-x86_64}
 clang="$ndk_root/toolchains/llvm/prebuilt/$host_tag/bin/armv7a-linux-androideabi26-clang"
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-source_file="$script_dir/../tests/fixtures/arm32_loader_fixture.c"
+source_file="$script_dir/../../tests/elf/fixtures/arm32_loader_fixture.c"
 
 if [[ ! -x "$clang" ]]; then
     echo "ARMv7 Android clang not found: $clang" >&2

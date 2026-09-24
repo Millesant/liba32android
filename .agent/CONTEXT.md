@@ -2,87 +2,74 @@
 
 ## Mission
 
-Build a reusable, game-agnostic AArch32 compatibility runtime for AArch64 Android. The intended stack is ARM32 Android ELF -> ELF32 loader -> dynamic-linker metadata/semantics -> guest runtime/ABI/compatibility layers -> A32 execution engine -> AArch64 Android host.
+Build a reusable, game-agnostic AArch32 compatibility runtime for AArch64 Android. The intended stack is ARM32 Android ELF -> ELF32 loader -> dynamic-linker semantics -> future ABI/compatibility layers -> A32 execution engine -> AArch64 Android host.
 
 Minecraft PE 0.15.x is a future stress target, not the architecture.
 
-## Non-goals
+## Non-goals and invariants
 
-Do not hard-code one game into the generic runtime. Application-specific work belongs under `profiles/` and must not leak into CPU, memory, ELF, ABI, compatibility-library, or platform contracts.
-
-Do not equate guest pointer values with host pointer identity, and do not treat a successful cross-build or one device sample as proof of broad Android compatibility.
-
-## Architecture boundaries
-
-Keep CPU execution, guest address space, ELF32 mapping, structural dynamic metadata, dynamic linking, AAPCS32/AAPCS64 bridging, compatibility libraries, pthread/TLS, signals, JNI, graphics/audio, instrumentation and application profiles separate.
-
-Current dependency direction is intentionally one-way:
-
-```text
-ELF image -> ELF32 loader -> GuestMemory
-                          -> structural Elf32_Dyn metadata
-                          -> linker metadata/strings -> dependency graph -> symbol lookup -> relocation application
-GuestMemory -> CPU adapter -> Dynarmic
-```
-
-ELF/ABI/runtime APIs operate on logical 32-bit guest VAs and must not expose host pointers as guest pointers.
-
-## Current phase
-
-The M2 guest-address-space scope is implemented. M3 ELF32 mapping plus structural dynamic-array metadata is implemented. M4 now includes validated linker metadata with separate main REL and AArch32 PLT REL descriptors, bounded linker-string materialization, bounded provider-backed dependency image acquisition, deterministic automatic `ET_DYN` guest placement, transactional recursive dependency graph loading, bounded SysV/GNU dynamic-symbol indexing, exact per-object lookup, deterministic graph-local breadth-first symbol resolution, bounded transactional main-`DT_REL` ARM relocation application, bounded eager PLT `R_ARM_JUMP_SLOT` application, and verified GNU RELRO metadata/sealing primitives. Real post-relocation RELRO fixture integration is implemented but not yet exact-head validated. Version-aware/process-wide interposition policy, lazy binding/`DT_PLTGOT`, and TLS remain unimplemented.
+- Do not hard-code one application into the generic runtime.
+- Guest addresses are logical 32-bit values; guest pointer values are not host pointers.
+- Dynarmic stays behind `src/cpu/`.
+- `memory::GuestMemory` remains the engine-independent memory seam.
+- Fastmem is optional acceleration; callbacks remain the correctness fallback.
+- ELF mapping, structural metadata, dynamic-linker semantics, relocation, and post-relocation hardening remain separate layers.
+- Do not broaden permissions or compatibility semantics to make a fixture pass.
 
 ## Current stack
 
-- Language/build: C++20 + CMake/Ninja.
-- CPU engine: Dynarmic behind `src/cpu/`, pinned to `azahar-emu/dynarmic` commit `e77b1ba0b7da7cbe93021b01a663acfe7c4dd516`.
-- Generic memory seam: `memory::GuestMemory`.
-- Correctness memory: `LinearGuestMemory`.
-- Mapped memory: `MappedGuestMemory`, logical 32-bit guest VAs, contiguous high-host-VA 4 GiB reservation, page map/protect/unmap lifecycle; `guest_va_allocator` provides bounded non-mutating free-range search.
-- CPU acceleration: internal mapped-memory `fastmem_base()` capability plus Dynarmic fastmem; callbacks remain the mandatory correctness fallback.
-- ELF: `src/elf/elf32_load_plan.*` for shared pre-mutation validation/layout planning, `src/elf/elf32_loader.*` for explicit-base validated mapping, `src/elf/elf32_dynamic_placement.*` for deterministic automatic `ET_DYN` base selection, `src/elf/elf32_dynamic.*` for structural raw dynamic entries, `src/elf/elf32_linker_metadata.*` / `elf32_linker_strings.*` for validated linker inputs including main/PLT REL descriptors, `src/elf/elf32_dependency_resolver.*` for bounded provider-backed dependency image acquisition, `src/elf/elf32_dependency_loader.*` for transactional recursive loaded-object graph ownership, `src/elf/elf32_symbol_lookup.*` for bounded hash/dynsym indexing plus graph-local exact-name resolution, and `src/elf/elf32_relocation.*` for separate bounded main-REL and PLT-REL planning/reference resolution plus transactional main relocation and eager `R_ARM_JUMP_SLOT` writes with shared rollback.
-- Android cross-build: `arm64-v8a`, NDK `27.3.13750724`.
+- Language/build: C++20, CMake 3.24+, Ninja in CI.
+- CPU engine: pinned Dynarmic behind the A32 CPU adapter.
+- Memory: `LinearGuestMemory` for deterministic correctness tests; `MappedGuestMemory` for logical guest mappings, protection lifecycle, high-base fastmem reservation, and callback fallback.
+- ELF loading: shared pre-mutation load planning, explicit mapping, bounded deterministic ET_DYN placement.
+- Dynamic-linker scope: structural dynamic entries, validated linker metadata/strings, bounded dependency acquisition, transactional dependency graph loading, SysV/GNU symbol lookup, main REL plus eager JUMP_SLOT relocation, and explicit GNU RELRO sealing.
+- Android validation: x86_64 standalone address-space probe plus arm64-v8a runtime/probe cross-build; real AArch64 16 KiB runtime execution remains an evidence gap.
 
-D-0003 and D-0004 remain central: guest VAs are independent from host pointer identity, and high-base contiguous fastmem is the preferred first Android acceleration path when available.
+## Dependency direction
+
+```text
+ELF image
+  -> loading
+  -> structural metadata
+  -> linker metadata + strings
+  -> dependency graph
+  -> symbol lookup
+  -> relocation
+  -> RELRO hardening
+
+GuestMemory -> CPU adapter -> Dynarmic
+```
 
 ## Repository map
 
-- `src/cpu/`: engine adapter only.
-- `src/memory/`: guest-memory contracts/backends.
-- `src/elf/`: ELF mapping and structural metadata layers.
-- `tests/`: host regression and real-fixture integration tests.
-- `tools/`: Android probes/runtime-smoke and fixture tooling.
-- `docs/architecture/`: subsystem boundaries and current design detail.
-- `docs/research/`: research/evidence records.
-- `.agent/specs/`: accepted current project contracts.
-- `.agent/changes/`: durable substantial-work identities, tasks, and evidence.
-- `.agent/`: project identity, continuation state, decisions, specs, and changes.
-- `specs/`: retained historical numbered feature packages from the pre-v7 workflow.
+- `src/cpu/`: CPU abstraction and Dynarmic adapter.
+- `src/memory/`: guest-memory contracts and address-space implementation.
+- `src/elf/*.h`: ELF layer contracts.
+- `src/elf/loading/`: load planning, placement, and mapping implementations.
+- `src/elf/metadata/`: dynamic/linker metadata and string implementations.
+- `src/elf/linking/`: dependency, symbol, and relocation implementations.
+- `src/elf/hardening/`: post-relocation hardening implementations.
+- `src/elf/internal/`: private ELF helpers.
+- `tests/cpu/`, `tests/memory/`, `tests/elf/`: subsystem tests; ELF synthetic and real-fixture tests are separated.
+- `tools/android/`: Android diagnostics and runtime-validation harnesses.
+- `tools/fixtures/`: reproducible ARM32 fixture builders.
+- `cmake/tests/`: domain-specific test registration.
+- `docs/architecture/`: current subsystem design.
+- `docs/development/`: build/test/layout guidance.
+- `docs/research/`: research and environment-specific evidence.
+- `.agent/specs/`: accepted current contracts.
+- `.agent/changes/`: substantial change records/evidence.
+- root `specs/`: historical pre-v7 feature records only.
 
-## Build / test entry points
+## Canonical state
 
-Host tests:
-
-```sh
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLIBA32ANDROID_BUILD_TESTS=ON
-cmake --build build
-ctest --test-dir build --output-on-failure
-```
-
-GitHub Actions also builds the reproducible ARM32 Android fixture, cross-builds `liba32android.so` plus diagnostics for Android `arm64-v8a`, and publishes the relevant artifacts.
-
-## Canonical specs / docs
-
-- Generic agent workflow/runtime/governance: external control plane `Millesant/.gpt`; intentionally not vendored here.
-- Project-specific agent overlay: `AGENTS.md`.
+- Repository integration branch: `bleeding`.
+- Project identity: `.agent/project.toml`.
 - Accepted current contracts: `.agent/specs/`.
-- Historical converted baseline and feature-era packages: `specs/` (non-canonical).
-- Current observed state: `.agent/STATE.md`.
+- Observed current state: `.agent/STATE.md`.
 - Dependency-ordered next work: `.agent/NEXT.md`.
-- Durable architecture decisions: `.agent/DECISIONS.md`.
-- Detailed subsystem design/evidence: `docs/architecture/` and `docs/research/`.
+- Durable project decisions: `.agent/DECISIONS.md`.
+- Repository-specific agent overlay: `AGENTS.md`.
+- Generic workflow/control rules: private external `Millesant/.gpt` control plane.
 
-For substantial work, use a stable `.agent/changes/<change-id>/` identity and express any proposed contract delta relative to accepted current specs in `.agent/specs/`. The root `specs/` tree is historical only. Tiny/routine changes do not need process artifacts solely for ceremony.
-
-## Evidence records
-
-Durable validation records use the central `PASS` / `FAIL` / `BLOCKED` / `NOT RUN` vocabulary and keep source/revision/environment limitations explicit. Do not persist transient connector or host capability availability as project state.
+For substantial work, use a stable `.agent/changes/<change-id>/` identity. Historical feature packages under root `specs/` are evidence, not current contract authority.

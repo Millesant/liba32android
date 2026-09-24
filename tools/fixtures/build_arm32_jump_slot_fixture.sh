@@ -11,8 +11,8 @@ output_dir=$2
 host_tag=${NDK_HOST_TAG:-linux-x86_64}
 clang="$ndk_root/toolchains/llvm/prebuilt/$host_tag/bin/armv7a-linux-androideabi26-clang"
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-provider_source="$script_dir/../tests/fixtures/arm32_jump_slot_provider.c"
-consumer_source="$script_dir/../tests/fixtures/arm32_jump_slot_consumer.c"
+provider_source="$script_dir/../../tests/elf/fixtures/arm32_jump_slot_provider.c"
+consumer_source="$script_dir/../../tests/elf/fixtures/arm32_jump_slot_consumer.c"
 provider="$output_dir/liba32android_jump_slot_provider.so"
 consumer="$output_dir/liba32android_jump_slot_consumer.so"
 

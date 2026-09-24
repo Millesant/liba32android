@@ -30,14 +30,14 @@ jobs:
       - name: Validate Android 16 KiB harnesses
         run: |
           set -euxo pipefail
-          bash -n tools/run_android_16k_validation.sh
-          grep -F 'getconf PAGE_SIZE' tools/run_android_16k_validation.sh
-          grep -F 'expected 16384-byte Android page size' tools/run_android_16k_validation.sh
-          grep -F 'expected AArch64 Android target' tools/run_android_16k_validation.sh
-          grep -F 'a32.fastmem_fault.status=PASS' tools/run_android_16k_validation.sh
-          bash -n tools/run_android_16k_probe_validation.sh
-          grep -F 'expected x86_64 or aarch64 Android target' tools/run_android_16k_probe_validation.sh
-          grep -F 'jit_wx.result_check=PASS' tools/run_android_16k_probe_validation.sh
+          bash -n tools/android/run_android_16k_validation.sh
+          grep -F 'getconf PAGE_SIZE' tools/android/run_android_16k_validation.sh
+          grep -F 'expected 16384-byte Android page size' tools/android/run_android_16k_validation.sh
+          grep -F 'expected AArch64 Android target' tools/android/run_android_16k_validation.sh
+          grep -F 'a32.fastmem_fault.status=PASS' tools/android/run_android_16k_validation.sh
+          bash -n tools/android/run_android_16k_probe_validation.sh
+          grep -F 'expected x86_64 or aarch64 Android target' tools/android/run_android_16k_probe_validation.sh
+          grep -F 'jit_wx.result_check=PASS' tools/android/run_android_16k_probe_validation.sh
       - name: Ensure pinned NDK for real ARM32 fixture
         run: |
           set -euxo pipefail
@@ -49,8 +49,8 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p build-fixtures
-          bash tools/build_arm32_loader_fixture.sh "$ANDROID_HOME/ndk/$NDK_VERSION" "$ARM32_FIXTURE"
-          bash tools/build_arm32_loader_fixture.sh "$ANDROID_HOME/ndk/$NDK_VERSION" build-fixtures/liba32android_loader_fixture.second.so
+          bash tools/fixtures/build_arm32_loader_fixture.sh "$ANDROID_HOME/ndk/$NDK_VERSION" "$ARM32_FIXTURE"
+          bash tools/fixtures/build_arm32_loader_fixture.sh "$ANDROID_HOME/ndk/$NDK_VERSION" build-fixtures/liba32android_loader_fixture.second.so
           cmp "$ARM32_FIXTURE" build-fixtures/liba32android_loader_fixture.second.so
           file "$ARM32_FIXTURE"
           readelf -hW "$ARM32_FIXTURE"
@@ -60,8 +60,8 @@ jobs:
       - name: Build reproducible real ARM32 JUMP_SLOT fixture
         run: |
           set -euxo pipefail
-          bash tools/build_arm32_jump_slot_fixture.sh "$ANDROID_HOME/ndk/$NDK_VERSION" "$ARM32_JUMP_SLOT_DIR"
-          bash tools/build_arm32_jump_slot_fixture.sh "$ANDROID_HOME/ndk/$NDK_VERSION" build-fixtures/jump-slot-second
+          bash tools/fixtures/build_arm32_jump_slot_fixture.sh "$ANDROID_HOME/ndk/$NDK_VERSION" "$ARM32_JUMP_SLOT_DIR"
+          bash tools/fixtures/build_arm32_jump_slot_fixture.sh "$ANDROID_HOME/ndk/$NDK_VERSION" build-fixtures/jump-slot-second
           cmp "$ARM32_JUMP_SLOT_CONSUMER" build-fixtures/jump-slot-second/liba32android_jump_slot_consumer.so
           cmp "$ARM32_JUMP_SLOT_PROVIDER" build-fixtures/jump-slot-second/liba32android_jump_slot_provider.so
           file "$ARM32_JUMP_SLOT_CONSUMER" "$ARM32_JUMP_SLOT_PROVIDER"
@@ -257,18 +257,18 @@ jobs:
             echo 'obsolete android.api compile-time marker still present' >&2
             exit 1
           fi
-          grep -F 'A32CRASH|component=android_address_space_probe|signal=' tools/android_address_space_probe.cpp
+          grep -F 'A32CRASH|component=android_address_space_probe|signal=' tools/android/android_address_space_probe.cpp
           strings build-android/android_address_space_probe | grep -F -- '--crash-test'
           strings build-android/android_address_space_probe | grep -F 'crash_test.status=ARMED'
-          grep -F 'std::abort();' tools/android_address_space_probe.cpp
+          grep -F 'std::abort();' tools/android/android_address_space_probe.cpp
           strings build-android/android_runtime_smoke | grep -F 'a32.return42.status=%s'
           strings build-android/android_runtime_smoke | grep -F 'a32.memory.fastmem_direct=%s'
-          grep -F 'A32CRASH|component=android_runtime_smoke|signal=' tools/android_runtime_smoke.cpp
+          grep -F 'A32CRASH|component=android_runtime_smoke|signal=' tools/android/android_runtime_smoke.cpp
           strings build-android/android_runtime_smoke | grep -F -- '--crash-test'
           strings build-android/android_runtime_smoke | grep -F 'crash_test.status=ARMED'
-          grep -F 'std::abort();' tools/android_runtime_smoke.cpp
-          grep -F 'A32ERR|component=android_runtime_smoke|' tools/android_runtime_smoke.cpp
-          grep -F 'signal(signal_number, SIG_DFL);' tools/android_runtime_smoke.cpp
+          grep -F 'std::abort();' tools/android/android_runtime_smoke.cpp
+          grep -F 'A32ERR|component=android_runtime_smoke|' tools/android/android_runtime_smoke.cpp
+          grep -F 'signal(signal_number, SIG_DFL);' tools/android/android_runtime_smoke.cpp
           readelf -d build-android/android_runtime_smoke | grep -F 'Shared library: [liba32android.so]'
       - name: Upload Android runtime
         uses: actions/upload-artifact@v4

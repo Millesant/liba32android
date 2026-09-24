@@ -1,0 +1,20 @@
+schema = 1
+change = "project-tooling-layout-v8"
+
+[[evidence]]
+id = "structural-plan"
+kind = "inspection"
+status = "passed"
+claim = "Separate Android diagnostics from fixture tooling and update all current integration references."
+source = "Pre-write repository audit at ed8f4d97a521aadb27d29089351737e873b4f5b0"
+result = "The selected changes are path/module/documentation ownership changes with stable runtime and test identities."
+limitations = "Requires exact-head CI after the integrated implementation is persisted."
+
+[[evidence]]
+id = "exact-head-ci"
+kind = "validation"
+status = "not_run"
+claim = "The integrated cleanup revision validates this child scope."
+source = "Exact-head GitHub checks for the integrated implementation revision"
+result = ""
+limitations = "Not run at implementation persistence time."

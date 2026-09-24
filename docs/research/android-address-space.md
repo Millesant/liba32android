@@ -115,8 +115,8 @@ Source: https://developer.android.com/guide/practices/page-sizes
 
 The evidence path is intentionally split by host architecture:
 
-- `tools/run_android_16k_probe_validation.sh` validates Android page-size/address-space behavior on x86_64 or AArch64. It runs the standalone probe, including architecture-native generated code, and captures 4 GiB reservation, exact low-VA mapping, and RW->RX behavior. This is the appropriate path for the user's native Fedora 44 x86_64/KVM host.
-- `tools/run_android_16k_validation.sh` remains the stronger AArch64-only runtime path. It additionally executes `liba32android.so` / Dynarmic direct-fastmem and fallback smoke tests and therefore requires an AArch64 Android target.
+- `tools/android/run_android_16k_probe_validation.sh` validates Android page-size/address-space behavior on x86_64 or AArch64. It runs the standalone probe, including architecture-native generated code, and captures 4 GiB reservation, exact low-VA mapping, and RW->RX behavior. This is the appropriate path for the user's native Fedora 44 x86_64/KVM host.
+- `tools/android/run_android_16k_validation.sh` remains the stronger AArch64-only runtime path. It additionally executes `liba32android.so` / Dynarmic direct-fastmem and fallback smoke tests and therefore requires an AArch64 Android target.
 
 An x86_64 16 KiB emulator result is valid evidence for Android/kernel page-size and mapping policy. It is **not** evidence that the AArch64 liba32android/Dynarmic runtime path works with 16 KiB pages.
 

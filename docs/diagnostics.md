@@ -165,7 +165,7 @@ Its generated-code mode is `--execute-generated-code`. The mutually exclusive `-
 
 A second physical phone is not required for the page-size-specific check. Android's official guidance provides experimental 16 KiB emulator system images for Android 15 or newer; verify the running target with `adb shell getconf PAGE_SIZE`, which must return `16384`.
 
-For project-valid runtime evidence, use the ARM64 16 KiB image and run `tools/run_android_16k_validation.sh` against the matching `android_address_space_probe`, `android_runtime_smoke`, and `liba32android.so` outputs. The harness rejects a non-AArch64 or non-16 KiB target and captures the normal probe, generated-code probe, runtime smoke, and fastmem-fallback outputs without invoking the destructive crash test.
+For project-valid runtime evidence, use the ARM64 16 KiB image and run `tools/android/run_android_16k_validation.sh` against the matching `android_address_space_probe`, `android_runtime_smoke`, and `liba32android.so` outputs. The harness rejects a non-AArch64 or non-16 KiB target and captures the normal probe, generated-code probe, runtime smoke, and fastmem-fallback outputs without invoking the destructive crash test.
 
 Official setup reference: https://developer.android.com/guide/practices/page-sizes
 
@@ -181,7 +181,7 @@ adb shell uname -m
 The required result is `16384` and `x86_64`. Then run the matching x86_64 `android_address_space_probe` through:
 
 ```sh
-tools/run_android_16k_probe_validation.sh android_address_space_probe
+tools/android/run_android_16k_probe_validation.sh android_address_space_probe
 ```
 
 This harness validates Android/kernel address-space behavior only. It does not load `liba32android.so` and must not be reported as AArch64 Dynarmic/runtime evidence.

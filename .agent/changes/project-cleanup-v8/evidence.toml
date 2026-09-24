@@ -1,0 +1,20 @@
+schema = 1
+change = "project-cleanup-v8"
+
+[[evidence]]
+id = "pre-write-audit"
+kind = "inspection"
+status = "passed"
+claim = "The cleanup plan is organizational and preserves accepted runtime/test identities."
+source = "Bounded repository audit at ed8f4d97a521aadb27d29089351737e873b4f5b0"
+result = "The runtime already exposes stable internal headers and CTest identities. The selected cleanup moves implementations/tests/tooling without changing runtime interfaces, keeps existing test target/CTest names, and updates all current build/CI path references identified by search."
+limitations = "Inspection is not compilation or test execution; exact-head CI is required after persistence."
+
+[[evidence]]
+id = "exact-head-ci"
+kind = "validation"
+status = "not_run"
+claim = "The complete project cleanup preserves the required build/test matrix."
+source = "Exact-head GitHub checks for the implementation revision"
+result = ""
+limitations = "Not run at implementation persistence time."

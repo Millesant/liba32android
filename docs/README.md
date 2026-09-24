@@ -1,0 +1,27 @@
+# Documentation
+
+This directory separates current architecture/development guidance from research and historical evidence.
+
+## Architecture
+
+- [Architecture index](architecture/README.md)
+- [CPU engine](architecture/cpu-engine.md)
+- [ELF32 loader](architecture/elf32-loader.md)
+- [ELF32 dynamic metadata](architecture/elf32-dynamic.md)
+- [Linker metadata](architecture/elf32-linker-metadata.md)
+- [Linker strings](architecture/elf32-linker-strings.md)
+- [Dependency resolution](architecture/elf32-dependency-resolution.md)
+- [Dependency loading](architecture/elf32-dependency-loading.md)
+- [Symbol resolution](architecture/elf32-symbol-resolution.md)
+- [Relocation](architecture/elf32-relocation.md)
+- [GNU RELRO](architecture/elf32-relro.md)
+
+## Development
+
+- [Repository layout](development/repository-layout.md)
+- [Build and test](development/build-and-test.md)
+- [Diagnostics](diagnostics.md)
+
+## Research and evidence
+
+`research/` contains research notes and environment-specific evidence. These records are useful context, but they do not replace accepted current contracts in `.agent/specs/` or exact-revision validation in `.agent/STATE.md`.

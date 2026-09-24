@@ -1,6 +1,6 @@
 #include "elf/elf32_dynamic.h"
 
-#include "elf/elf32_bytes.h"
+#include "elf/internal/elf32_bytes.h"
 
 #include <array>
 #include <bit>
