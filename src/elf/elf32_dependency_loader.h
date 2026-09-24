@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "elf/elf32_dependency_graph.h"
 #include "elf/elf32_dependency_resolver.h"
 #include "elf/elf32_dynamic.h"
 #include "elf/elf32_dynamic_placement.h"
@@ -28,25 +29,6 @@ struct Elf32DependencyLoadOptions {
     std::uint64_t max_total_image_bytes{};
     std::uint32_t max_string_bytes{};
     Elf32DynamicPlacementOptions placement{};
-};
-
-struct Elf32DependencyEdge {
-    std::string requested_name;
-    std::size_t target_object{};
-};
-
-struct Elf32LoadedDependencyObject {
-    std::string identity;
-    std::vector<std::uint8_t> image;
-    Elf32LoadResult load;
-    std::vector<Elf32DynamicEntry> dynamic_entries;
-    Elf32LinkerMetadata linker_metadata;
-    Elf32LinkerStrings linker_strings;
-    std::vector<Elf32DependencyEdge> dependencies;
-};
-
-struct Elf32DependencyGraph {
-    std::vector<Elf32LoadedDependencyObject> objects;
 };
 
 enum class Elf32DependencyLoadError : std::uint8_t {

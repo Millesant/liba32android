@@ -6,7 +6,7 @@
 #include <string>
 #include <string_view>
 
-#include "elf/elf32_dependency_loader.h"
+#include "elf/elf32_dependency_graph.h"
 #include "elf/elf32_linker_metadata.h"
 #include "elf/elf32_linker_strings.h"
 #include "memory/guest_memory.h"

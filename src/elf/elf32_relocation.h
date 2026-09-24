@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "elf/elf32_dependency_loader.h"
+#include "elf/elf32_dependency_graph.h"
 #include "elf/elf32_symbol_lookup.h"
 #include "memory/guest_memory.h"
 

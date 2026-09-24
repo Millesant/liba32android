@@ -1,7 +1,7 @@
 # Current State
 
 Last updated: 2026-09-24
-Current phase: M4 continuation; runtime feature work stable; v7.2 maintenance cleanup complete
+Current phase: M4 continuation; runtime feature work stable; v7.2 dependency layering cleanup active
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
@@ -12,6 +12,7 @@ Completed maintenance change: `test-infrastructure-cleanup-v7` is DONE. Real-fix
 Persistence-only test-infrastructure closeout head `0b51069def55cfe3ce35621845d948ea2401a38f` passed CI #239 / run `35980275074` in all three required lanes.
 Completed maintenance change: `elf32-header-layering-v7` is DONE. `Elf32LoadError` and its formatter declaration now live in a focused shared header; loader callers retain the same API exposure, while load-plan and dynamic-placement headers no longer pull in the full loader header. Exact-head CI #240 / run `35980653513` at `2343c32cf0f44afb4bfeec14a5f97e3fa3e10ca6` passed Linux 49/49 plus both Android lanes.
 Completed maintenance change: `elf32-load-contract-layering-v7-2` is DONE. This round is pinned to `.gpt@609e6cb9cff9d00e241aa5437d9904fc7492f407` (v7.2.0), adopts checks-first CI retrieval, and separates loader-produced ELF32 data contracts from the loader call surface so dynamic, RELRO, and dependency public headers depend on focused load types. Exact-head checks at `36b5dc8ddf9b06654fb075d33106f9eb4a417be4` passed in all three required lanes: Linux A32 smoke `107812244467`, Android arm64-v8a cross-build `107812244430`, and Android x86_64 address-space probe `107812244098`.
+Active maintenance change: `elf32-dependency-graph-layering-v7-2` is IMPLEMENTED pending exact-head CI. `Elf32DependencyEdge`, `Elf32LoadedDependencyObject`, and `Elf32DependencyGraph` now have a focused header so symbol lookup and relocation no longer depend on the dependency-loading operation surface.
 
 ## Working
 
