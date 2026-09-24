@@ -20,6 +20,9 @@ jobs:
     env:
       NDK_VERSION: 27.3.13750724
       ARM32_FIXTURE: ${{ github.workspace }}/build-fixtures/liba32android_loader_fixture.so
+      ARM32_JUMP_SLOT_DIR: ${{ github.workspace }}/build-fixtures/jump-slot
+      ARM32_JUMP_SLOT_CONSUMER: ${{ github.workspace }}/build-fixtures/jump-slot/liba32android_jump_slot_consumer.so
+      ARM32_JUMP_SLOT_PROVIDER: ${{ github.workspace }}/build-fixtures/jump-slot/liba32android_jump_slot_provider.so
     steps:
       - uses: actions/checkout@v4
       - name: Install build dependencies
@@ -54,12 +57,30 @@ jobs:
           readelf -lW "$ARM32_FIXTURE"
           readelf -dW "$ARM32_FIXTURE"
           sha256sum "$ARM32_FIXTURE" build-fixtures/liba32android_loader_fixture.second.so
+      - name: Build reproducible real ARM32 JUMP_SLOT fixture
+        run: |
+          set -euxo pipefail
+          bash tools/build_arm32_jump_slot_fixture.sh "$ANDROID_HOME/ndk/$NDK_VERSION" "$ARM32_JUMP_SLOT_DIR"
+          bash tools/build_arm32_jump_slot_fixture.sh "$ANDROID_HOME/ndk/$NDK_VERSION" build-fixtures/jump-slot-second
+          cmp "$ARM32_JUMP_SLOT_CONSUMER" build-fixtures/jump-slot-second/liba32android_jump_slot_consumer.so
+          cmp "$ARM32_JUMP_SLOT_PROVIDER" build-fixtures/jump-slot-second/liba32android_jump_slot_provider.so
+          file "$ARM32_JUMP_SLOT_CONSUMER" "$ARM32_JUMP_SLOT_PROVIDER"
+          readelf -dW "$ARM32_JUMP_SLOT_CONSUMER" | tee build-fixtures/jump-slot-dynamic.txt
+          readelf -rW "$ARM32_JUMP_SLOT_CONSUMER" | tee build-fixtures/jump-slot-relocations.txt
+          grep -F 'Shared library: [liba32android_jump_slot_provider.so]' build-fixtures/jump-slot-dynamic.txt
+          grep -F '(JMPREL)' build-fixtures/jump-slot-dynamic.txt
+          grep -F '(PLTRELSZ)' build-fixtures/jump-slot-dynamic.txt
+          grep -F '(PLTREL)' build-fixtures/jump-slot-dynamic.txt | grep -F 'REL'
+          grep -F 'R_ARM_JUMP_SLOT' build-fixtures/jump-slot-relocations.txt | grep -F 'fixture_import'
+          sha256sum "$ARM32_JUMP_SLOT_CONSUMER" "$ARM32_JUMP_SLOT_PROVIDER"
       - name: Configure
         run: >-
           cmake -S . -B build -G Ninja
           -DCMAKE_BUILD_TYPE=Release
           -DLIBA32ANDROID_BUILD_TESTS=ON
           -DLIBA32ANDROID_ARM32_FIXTURE_PATH="$ARM32_FIXTURE"
+          -DLIBA32ANDROID_ARM32_JUMP_SLOT_CONSUMER_PATH="$ARM32_JUMP_SLOT_CONSUMER"
+          -DLIBA32ANDROID_ARM32_JUMP_SLOT_PROVIDER_PATH="$ARM32_JUMP_SLOT_PROVIDER"
       - name: Build
         run: cmake --build build --parallel 2
       - name: Verify shared library name
@@ -77,6 +98,8 @@ jobs:
             tee build-fixtures/auto-placement-evidence.txt
           build/elf32_dependency_loader_real_fixture_test "$ARM32_FIXTURE" |
             tee build-fixtures/dependency-graph-evidence.txt
+          build/elf32_jump_slot_real_fixture_test "$ARM32_JUMP_SLOT_CONSUMER" "$ARM32_JUMP_SLOT_PROVIDER" |
+            tee build-fixtures/jump-slot-apply-evidence.txt
           readelf -lW "$ARM32_FIXTURE" > build-fixtures/program-headers.txt
           grep -F 'fixture.status=PASS' build-fixtures/loader-evidence.txt
           grep -F 'fixture.auto_placement.required_alignment=0x4000'             build-fixtures/auto-placement-evidence.txt
@@ -85,6 +108,11 @@ jobs:
           grep -F 'fixture.dependency_graph.needed_count=0' build-fixtures/dependency-graph-evidence.txt
           grep -F 'fixture.dependency_graph.provider_calls=0' build-fixtures/dependency-graph-evidence.txt
           grep -F 'fixture.dependency_graph.status=PASS' build-fixtures/dependency-graph-evidence.txt
+          grep -F 'fixture.jump_slot.object_count=2' build-fixtures/jump-slot-apply-evidence.txt
+          grep -F 'fixture.jump_slot.relocation_count=1' build-fixtures/jump-slot-apply-evidence.txt
+          grep -F 'fixture.jump_slot.provider_calls=1' build-fixtures/jump-slot-apply-evidence.txt
+          grep -F 'fixture.jump_slot.mappings_unchanged=true' build-fixtures/jump-slot-apply-evidence.txt
+          grep -F 'fixture.jump_slot.status=PASS' build-fixtures/jump-slot-apply-evidence.txt
       - name: Upload real ARM32 fixture evidence
         uses: actions/upload-artifact@v4
         with:
@@ -95,6 +123,11 @@ jobs:
             build-fixtures/auto-placement-evidence.txt
             build-fixtures/dependency-graph-evidence.txt
             build-fixtures/program-headers.txt
+            build-fixtures/jump-slot/liba32android_jump_slot_consumer.so
+            build-fixtures/jump-slot/liba32android_jump_slot_provider.so
+            build-fixtures/jump-slot-dynamic.txt
+            build-fixtures/jump-slot-relocations.txt
+            build-fixtures/jump-slot-apply-evidence.txt
           if-no-files-found: error
           retention-days: 14
 

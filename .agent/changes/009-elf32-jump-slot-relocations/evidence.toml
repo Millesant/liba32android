@@ -9,3 +9,12 @@ claim = "Feature 009 T001 read-only PLT REL planning/reference resolution preser
 source = "GitHub Actions CI #226 / run 35938429972"
 result = "At fe12b6de747884a18d1214f564559d94937d8974, Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all completed successfully."
 limitations = "This evidence validates T001 only. Transactional PLT writes and the real provider/consumer fixture are validated by later tasks."
+
+[[evidence]]
+id = "t002-exact-head-ci"
+kind = "validation"
+status = "passed"
+claim = "Feature 009 T002 eager JUMP_SLOT application writes S, preserves weak-zero behavior, and reuses transactional rollback without regressing main REL behavior."
+source = "GitHub Actions CI #227 / run 35938885569"
+result = "At 666a15ab2edaebdfa3c0f6817dca30e2e2e7a931, Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all completed successfully."
+limitations = "This evidence validates synthetic transactional PLT application. The NDK-generated provider/consumer fixture and graph-backed real JUMP_SLOT application are validated by T003."

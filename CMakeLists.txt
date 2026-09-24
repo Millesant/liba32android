@@ -23,6 +23,10 @@ option(LIBA32ANDROID_BUILD_TESTS "Build liba32android tests" ${BUILD_TESTING})
 option(LIBA32ANDROID_BUILD_ANDROID_PROBES "Build Android-only diagnostic probes" OFF)
 set(LIBA32ANDROID_ARM32_FIXTURE_PATH "" CACHE FILEPATH
     "Optional generated ARM32 Android ET_DYN fixture used by the real ELF32 loader integration test")
+set(LIBA32ANDROID_ARM32_JUMP_SLOT_CONSUMER_PATH "" CACHE FILEPATH
+    "Optional generated ARM32 Android JUMP_SLOT consumer DSO used by feature-009 integration")
+set(LIBA32ANDROID_ARM32_JUMP_SLOT_PROVIDER_PATH "" CACHE FILEPATH
+    "Optional generated ARM32 Android JUMP_SLOT provider DSO used by feature-009 integration")
 
 # Keep Dynarmic narrowly scoped to the A32 frontend needed by this runtime.
 set(DYNARMIC_FRONTENDS "A32" CACHE STRING "" FORCE)
@@ -222,6 +226,12 @@ if(LIBA32ANDROID_BUILD_TESTS)
                                PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(elf32_relocation_apply_real_fixture_test PRIVATE liba32android)
 
+    add_executable(elf32_jump_slot_real_fixture_test
+                   tests/elf32_jump_slot_real_fixture.cpp)
+    target_include_directories(elf32_jump_slot_real_fixture_test
+                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(elf32_jump_slot_real_fixture_test PRIVATE liba32android)
+
     add_test(NAME guest_arm_return_42 COMMAND cpu_smoke arm)
     add_test(NAME guest_thumb_return_42 COMMAND cpu_smoke thumb)
     add_test(NAME guest_register_state COMMAND cpu_execution registers)
@@ -257,6 +267,30 @@ if(LIBA32ANDROID_BUILD_TESTS)
     add_test(NAME elf32_relocation_apply COMMAND elf32_relocation_apply_test)
     add_test(NAME elf32_dependency_resolution COMMAND elf32_dependency_resolver_test)
     add_test(NAME elf32_dependency_loading COMMAND elf32_dependency_loader_test)
+
+    if((LIBA32ANDROID_ARM32_JUMP_SLOT_CONSUMER_PATH AND
+        NOT LIBA32ANDROID_ARM32_JUMP_SLOT_PROVIDER_PATH) OR
+       (LIBA32ANDROID_ARM32_JUMP_SLOT_PROVIDER_PATH AND
+        NOT LIBA32ANDROID_ARM32_JUMP_SLOT_CONSUMER_PATH))
+        message(FATAL_ERROR
+            "Both LIBA32ANDROID_ARM32_JUMP_SLOT_CONSUMER_PATH and LIBA32ANDROID_ARM32_JUMP_SLOT_PROVIDER_PATH must be supplied together")
+    endif()
+
+    if(LIBA32ANDROID_ARM32_JUMP_SLOT_CONSUMER_PATH AND
+       LIBA32ANDROID_ARM32_JUMP_SLOT_PROVIDER_PATH)
+        if(NOT EXISTS "${LIBA32ANDROID_ARM32_JUMP_SLOT_CONSUMER_PATH}")
+            message(FATAL_ERROR
+                "JUMP_SLOT consumer fixture does not exist: ${LIBA32ANDROID_ARM32_JUMP_SLOT_CONSUMER_PATH}")
+        endif()
+        if(NOT EXISTS "${LIBA32ANDROID_ARM32_JUMP_SLOT_PROVIDER_PATH}")
+            message(FATAL_ERROR
+                "JUMP_SLOT provider fixture does not exist: ${LIBA32ANDROID_ARM32_JUMP_SLOT_PROVIDER_PATH}")
+        endif()
+        add_test(NAME elf32_real_jump_slot_apply
+                 COMMAND elf32_jump_slot_real_fixture_test
+                         "${LIBA32ANDROID_ARM32_JUMP_SLOT_CONSUMER_PATH}"
+                         "${LIBA32ANDROID_ARM32_JUMP_SLOT_PROVIDER_PATH}")
+    endif()
 
     if(LIBA32ANDROID_ARM32_FIXTURE_PATH)
         if(NOT EXISTS "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")

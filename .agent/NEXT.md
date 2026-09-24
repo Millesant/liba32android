@@ -8,10 +8,11 @@ Repository integration is on `bleeding`. Features `006-elf32-symbol-resolution`,
    - Validation: focused synthetic PLT plan/reference coverage plus existing relocation/dependency/symbol suites and exact-head Linux + Android CI.
    - Linux A32 smoke, Android x86_64, and Android arm64-v8a all PASSed.
 
-2. T002 — transactional eager JUMP_SLOT application — IMPLEMENTED; validation NOT RUN.
-   - Prepared semantics: JUMP_SLOT writes `S`, ignores the in-place word as an addend, unresolved WEAK writes zero, strong misses are pre-write failures, and late write failures reuse verified reverse rollback.
-   - Exact next action: commit T002 source/tests and verify exact-head Linux + Android CI before starting the real fixture.
-3. T003 — reproducible provider/consumer ARMv7 fixture + graph-backed real application — QUEUED, depends on T002 PASS.
+2. T002 — transactional eager JUMP_SLOT application — VERIFIED at CI #227 / run `35938885569` on `666a15ab2edaebdfa3c0f6817dca30e2e2e7a931`.
+   - JUMP_SLOT writes `S`, ignores the in-place word as an addend, unresolved WEAK writes zero, strong misses are pre-write failures, and late write failures reuse verified reverse rollback.
+3. T003 — reproducible provider/consumer ARMv7 fixture + graph-backed real application — IMPLEMENTED; validation NOT RUN.
+   - Prepared scope: pinned-NDK freestanding provider/consumer DSOs, byte-identical double build, readelf DT_NEEDED/JUMP_SLOT checks, dependency-graph loading, independent symbol lookup, real PLT application, permission/non-target-byte invariants, and artifact evidence.
+   - Exact next action: commit T003 and verify exact-head CI; repair any real-toolchain/fixture mismatch before T004.
 4. T004 — docs/spec/change/state convergence and final exact-head gate — QUEUED, depends on T003 PASS.
 
 Explicit non-goals: lazy binding/`DT_PLTGOT`, version-aware or process-wide interposition policy, TLS, IFUNC, RELRO, broader relocation forms, permission broadening, and guest execution.

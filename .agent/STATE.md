@@ -5,7 +5,7 @@ Current phase: M4 continuation; feature 009 eager ELF32 ARM JUMP_SLOT relocation
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `009-elf32-jump-slot-relocations` T002. T001 read-only PLT planning/reference resolution is VERIFIED by CI #226 / run `35938429972` at `fe12b6de747884a18d1214f564559d94937d8974`. T002 transactional eager JUMP_SLOT application plus weak-zero/write-rollback synthetic coverage is prepared; exact-head validation is NOT RUN.
+Active runtime work: `009-elf32-jump-slot-relocations` T003. T001 is VERIFIED by CI #226 at `fe12b6de747884a18d1214f564559d94937d8974`; T002 transactional eager JUMP_SLOT application is VERIFIED by CI #227 / run `35938885569` at `666a15ab2edaebdfa3c0f6817dca30e2e2e7a931`. T003 real provider/consumer fixture, dependency-graph application test, CMake, and CI evidence plumbing are prepared; exact-head validation is NOT RUN.
 
 ## Working
 
@@ -44,7 +44,7 @@ Active runtime work: `009-elf32-jump-slot-relocations` T002. T001 read-only PLT 
 ## Partial / not implemented
 
 - Feature 006 bounded graph-local unversioned symbol resolution is DONE at exact-head CI #207. Version-aware lookup remains intentionally unsupported (version tables are rejected). Feature 007 now implements bounded main-`DT_REL` relocation application; Android search-path/namespace/pathname policy plus process-wide link-map lifetime across graph-loading calls remain NOT IMPLEMENTED.
-- Broader ARM relocation/linker compatibility remains PARTIAL beyond the completed feature-007 main-`DT_REL` set. Feature 008 has VERIFIED PLT/JMPREL metadata validation. Feature 009 now specifies bounded eager `R_ARM_JUMP_SLOT` planning/resolution/application, but T001 implementation is NOT YET VALIDATED; lazy binding/`DT_PLTGOT`, REL32/COPY/instruction relocations, packed/RELA/RELR forms, version-aware/protected requester semantics, TLS/IFUNC, RELRO, and process-wide/global-group policy remain NOT IMPLEMENTED.
+- Broader ARM relocation/linker compatibility remains PARTIAL beyond the completed feature-007 main-`DT_REL` set. Feature 008 has VERIFIED PLT/JMPREL metadata validation. Feature 009 T001/T002 now have VERIFIED bounded eager `R_ARM_JUMP_SLOT` planning/resolution/application; the real NDK provider/consumer integration is prepared but NOT YET VALIDATED. Lazy binding/`DT_PLTGOT`, REL32/COPY/instruction relocations, packed/RELA/RELR forms, version-aware/protected requester semantics, TLS/IFUNC, RELRO, and process-wide/global-group policy remain NOT IMPLEMENTED.
 - Version-aware and process-wide/global-group symbol interposition policy: NOT IMPLEMENTED; bounded graph-local unversioned lookup is implemented.
 - RELRO/TLS processing: NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.
@@ -52,6 +52,14 @@ Active runtime work: `009-elf32-jump-slot-relocations` T002. T001 read-only PLT 
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### M4 ELF32 eager JUMP_SLOT relocations (active)
+
+T001 read-only PLT REL planning/reference resolution PASSed exact-head GitHub Actions CI #226 / run `35938429972` at `fe12b6de747884a18d1214f564559d94937d8974`. Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all PASSed. The PLT planner accepts only `R_ARM_JUMP_SLOT`, preserves the separate main-REL type policy, enforces count/place/alignment/read/duplicate bounds, and reuses the bounded graph-local reference policy including strong-failure and weak-zero behavior.
+
+T002 transactional eager application PASSed exact-head GitHub Actions CI #227 / run `35938885569` at `666a15ab2edaebdfa3c0f6817dca30e2e2e7a931`. All three required jobs PASSed. Synthetic coverage locks JUMP_SLOT = S with a non-zero original word ignored semantically, unresolved WEAK = 0, strong pre-write failure, reverse rollback after a later write failure, and explicit rollback-failure reporting while existing main-REL tests remain green.
+
+T003 real ARMv7 provider/consumer fixture plus graph-backed application is prepared; exact-head validation is NOT RUN.
 
 ### M4 ELF32 PLT REL metadata (complete)
 

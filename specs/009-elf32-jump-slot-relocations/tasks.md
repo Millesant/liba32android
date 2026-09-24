@@ -23,7 +23,7 @@ Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
 
 ## T002 — Transactional eager JUMP_SLOT application
 
-- Status: IMPLEMENTED — exact-head validation NOT RUN
+- Status: VERIFIED — exact-head CI #227 / run `35938885569` PASSed at `666a15ab2edaebdfa3c0f6817dca30e2e2e7a931` across Linux A32 smoke, Android x86_64, and Android arm64-v8a
 - Depends on: T001
 - Requirements: R8-R10, R13-R14; AC5-AC8
 - Scope:
@@ -38,7 +38,7 @@ Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
 
 ## T003 — Reproducible real JUMP_SLOT fixture and graph-backed application
 
-- Status: QUEUED
+- Status: IMPLEMENTED — fixture/build/CTest/CI plumbing prepared; exact-head validation NOT RUN
 - Depends on: T002
 - Requirements: R11-R12, R14; AC9-AC11
 - Scope:

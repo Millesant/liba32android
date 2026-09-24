@@ -9,13 +9,13 @@ acceptance = "Add bounded read-only PLT REL planning and reference resolution fo
 
 [[tasks]]
 id = "T002"
-status = "implemented"
+status = "verified"
 depends_on = ["T001"]
 acceptance = "Apply eager JUMP_SLOT writes transactionally as S, ignoring the in-place word as an addend, with rollback coverage."
 
 [[tasks]]
 id = "T003"
-status = "planned"
+status = "implemented"
 depends_on = ["T002"]
 acceptance = "Build a reproducible ARMv7 consumer/provider fixture pair with real DT_NEEDED + R_ARM_JUMP_SLOT and validate graph-backed application."
 
