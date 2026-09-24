@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-23
-Current phase: M4 continuation; feature 008 ELF32 PLT REL metadata DONE
+Current phase: M4 continuation; feature 009 eager ELF32 ARM JUMP_SLOT relocation application
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: none selected. Feature `008-elf32-plt-relocation-metadata` is DONE: T001 is verified at CI #222 / run `35933694619` on `9a81ed71a027beb166970bcf137bac9a71112f98`, and T002 final exact-head CI #223 / run `35934340806` PASSed at `79e9d8c90824baf76d7ff382661422af17e3cb6e` across Linux, Android x86_64, and Android arm64-v8a.
+Active runtime work: `009-elf32-jump-slot-relocations` T001. The S2 change/spec is readiness-checked against project base `bbad7db39e430ba87a373841e3ede954696c85c5` under control revision `9240ab19507b86491398a5c9fdf0deb58e2fdc91`. T001 read-only PLT planning/reference resolution is ACTIVE; implementation validation is NOT RUN.
 
 ## Working
 
@@ -44,7 +44,7 @@ Active runtime work: none selected. Feature `008-elf32-plt-relocation-metadata` 
 ## Partial / not implemented
 
 - Feature 006 bounded graph-local unversioned symbol resolution is DONE at exact-head CI #207. Version-aware lookup remains intentionally unsupported (version tables are rejected). Feature 007 now implements bounded main-`DT_REL` relocation application; Android search-path/namespace/pathname policy plus process-wide link-map lifetime across graph-loading calls remain NOT IMPLEMENTED.
-- Broader ARM relocation/linker compatibility remains PARTIAL beyond the completed feature-007 main-`DT_REL` set. Feature 008 now has VERIFIED read-only PLT/JMPREL metadata validation; PLT relocation decoding/application, `R_ARM_JUMP_SLOT`, lazy binding, REL32/COPY/instruction relocations, packed/RELA/RELR forms, version-aware/protected requester semantics, TLS/IFUNC, RELRO, and process-wide/global-group policy remain NOT IMPLEMENTED.
+- Broader ARM relocation/linker compatibility remains PARTIAL beyond the completed feature-007 main-`DT_REL` set. Feature 008 has VERIFIED PLT/JMPREL metadata validation. Feature 009 now specifies bounded eager `R_ARM_JUMP_SLOT` planning/resolution/application, but T001 implementation is NOT YET VALIDATED; lazy binding/`DT_PLTGOT`, REL32/COPY/instruction relocations, packed/RELA/RELR forms, version-aware/protected requester semantics, TLS/IFUNC, RELRO, and process-wide/global-group policy remain NOT IMPLEMENTED.
 - Version-aware and process-wide/global-group symbol interposition policy: NOT IMPLEMENTED; bounded graph-local unversioned lookup is implemented.
 - RELRO/TLS processing: NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.
