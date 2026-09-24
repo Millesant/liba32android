@@ -2,19 +2,19 @@ schema = 1
 change = "elf32-dependency-graph-layering-v7-2"
 
 [[evidence]]
-id = "planned-tree-inspection"
+id = "persisted-tree-inspection"
 kind = "inspection"
 status = "passed"
 claim = "The bounded refactor moves dependency-graph data declarations verbatim and narrows public include dependencies."
-source = "Pre-write structural audit against f1781485ad9cd0d2fd7b70efa2754e847814b0ba"
-result = "Elf32DependencyEdge, Elf32LoadedDependencyObject, and Elf32DependencyGraph are moved verbatim into elf32_dependency_graph.h; elf32_dependency_loader.h includes and re-exports that contract; symbol lookup and relocation switch from elf32_dependency_loader.h to the focused graph header."
-limitations = "Structural inspection validates declaration/include ownership; compilation and behavior require exact-head CI."
+source = "Persisted-tree inspection at 9720bda9e87922728c6bfbf104b476fdcada2be5"
+result = "Elf32DependencyEdge, Elf32LoadedDependencyObject, and Elf32DependencyGraph moved verbatim into elf32_dependency_graph.h; elf32_dependency_loader.h re-exports that contract; symbol lookup and relocation now include the focused graph header instead of elf32_dependency_loader.h."
+limitations = "Structural inspection validates declaration/include ownership; compile/runtime behavior is validated separately by exact-head checks."
 
 [[evidence]]
 id = "exact-head-ci"
 kind = "validation"
-status = "not_run"
+status = "passed"
 claim = "The dependency-graph layering cleanup preserves the required build/test matrix."
-source = "Exact-head GitHub Actions validation of the implementation revision"
-result = ""
-limitations = "Not run at implementation persistence time."
+source = "GitHub exact-head checks at 9720bda9e87922728c6bfbf104b476fdcada2be5: Linux A32 smoke 107816257536; Android arm64-v8a cross-build 107816257895; Android x86_64 address-space probe 107816257866"
+result = "All three required checks completed successfully on the exact implementation revision."
+limitations = "Check conclusions establish the required CI lanes; no failure-only job-step or log escalation was needed."
