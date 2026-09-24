@@ -10,7 +10,7 @@ Completed maintenance change: `repository-organization-v7` is DONE. The v7.1 pro
 Persistence-only closeout head `38304a2e4fcb3bdb96cd77785256afe135c8653a` passed CI #236 / run `35979083056` in all three required lanes.
 Completed maintenance change: `test-infrastructure-cleanup-v7` is DONE. Real-fixture binary loading is shared across 12 integration tests, the four duplicated guest-word readers are centralized under `tests/support/`, and CMake test executable setup is deduplicated while preserving all 30 target identities and 49 CTest names. Exact-head CI #238 / run `35979816632` at `56df3ec5a97add0b96f25e02183bdcfbe2aac1c9` passed Linux 49/49 plus both Android lanes.
 Persistence-only test-infrastructure closeout head `0b51069def55cfe3ce35621845d948ea2401a38f` passed CI #239 / run `35980275074` in all three required lanes.
-Active maintenance work: `elf32-header-layering-v7` removes an unnecessary ELF32 loader-header dependency from load planning/placement by extracting the shared load-error contract without intended API or runtime behavior changes.
+Completed maintenance change: `elf32-header-layering-v7` is DONE. `Elf32LoadError` and its formatter declaration now live in a focused shared header; loader callers retain the same API exposure, while load-plan and dynamic-placement headers no longer pull in the full loader header. Exact-head CI #240 / run `35980653513` at `2343c32cf0f44afb4bfeec14a5f97e3fa3e10ca6` passed Linux 49/49 plus both Android lanes.
 
 ## Working
 
