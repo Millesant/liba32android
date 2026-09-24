@@ -1,13 +1,13 @@
 # Tasks — ELF32 GNU RELRO protection
 
-Status: ACTIVE — T001 metadata implementation prepared; exact-head validation NOT RUN
+Status: ACTIVE — T001 VERIFIED; T002 sealing implementation prepared, exact-head validation NOT RUN
 
 Base revision: `fd6670f3d40d51ad6fa5995b27ede87e4aa1b51c`
 Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
 
 ## T001 — Validate and expose PT_GNU_RELRO metadata
 
-- Status: IMPLEMENTED — exact-head validation NOT RUN
+- Status: VERIFIED — exact-head CI #231 / run `35942933233` PASSed at `e3ea30a9445c86546933d008ee5a336bd9e91e8e`; Linux passed 47/47 CTest including `elf32_relro_metadata`, Android x86_64 and Android arm64-v8a also PASSed
 - Requirements: R1-R4, R11, R13-R14; AC1-AC4, AC9-AC10
 - Scope:
   - recognize `PT_GNU_RELRO` in the shared load plan;
@@ -23,7 +23,7 @@ Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
 
 ## T002 — Bounded transactional RELRO sealing
 
-- Status: QUEUED
+- Status: IMPLEMENTED — exact-head validation NOT RUN
 - Depends on: T001
 - Requirements: R5-R10, R13-R14; AC5-AC9
 - Scope:
@@ -70,4 +70,4 @@ Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
 
 ## Readiness
 
-PASS. The existing fixture and memory-protection seam make T001/T002 observable without new platform dependencies.
+PASS. T001 is verified; T002 is the active bounded implementation objective and remains independently testable through the mapped-memory seam.

@@ -3,13 +3,13 @@ change = "010-elf32-gnu-relro"
 
 [[tasks]]
 id = "T001"
-status = "implemented"
+status = "verified"
 depends_on = []
 acceptance = "Validate and expose page-rounded PT_GNU_RELRO ranges through the load plan/loader result without changing permissions."
 
 [[tasks]]
 id = "T002"
-status = "planned"
+status = "implemented"
 depends_on = ["T001"]
 acceptance = "Seal published GNU RELRO pages read-only through a bounded transactional API with complete preflight and idempotence."
 

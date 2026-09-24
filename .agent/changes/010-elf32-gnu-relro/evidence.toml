@@ -1,2 +1,11 @@
 schema = 1
 change = "010-elf32-gnu-relro"
+
+[[evidence]]
+id = "t001-exact-head-ci"
+kind = "validation"
+status = "passed"
+claim = "Feature 010 T001 validates and exposes PT_GNU_RELRO metadata without sealing pages early and preserves existing repository behavior."
+source = "GitHub Actions CI #231 / run 35942933233"
+result = "At e3ea30a9445c86546933d008ee5a336bd9e91e8e, Linux A32 smoke passed 47/47 CTest including elf32_relro_metadata; the pinned fixture reported one GNU_RELRO range at linked VA 0x826c with memsz 0xd94 and remained writable before sealing; Android x86_64 and Android arm64-v8a jobs passed."
+limitations = "This validates read-only RELRO metadata only. Permission sealing is T002 and real post-relocation sealing is T003."

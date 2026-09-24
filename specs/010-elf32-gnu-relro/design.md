@@ -1,6 +1,6 @@
 # Design — ELF32 GNU RELRO protection
 
-Status: ACTIVE — T001 metadata implementation prepared; exact-head validation NOT RUN
+Status: ACTIVE — T001 verified by CI #231; T002 sealing implementation prepared, exact-head validation NOT RUN
 
 ## Context
 
