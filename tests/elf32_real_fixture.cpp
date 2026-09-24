@@ -30,6 +30,7 @@ constexpr std::uint16_t kElfTypeDyn = 3;
 constexpr std::uint16_t kElfMachineArm = 40;
 constexpr std::uint32_t kProgramTypeLoad = 1;
 constexpr std::uint32_t kProgramTypeDynamic = 2;
+constexpr std::uint32_t kProgramTypeGnuRelro = 0x6474e552U;
 constexpr std::uint32_t kFlagExecute = 1U << 0;
 constexpr std::uint32_t kFlagWrite = 1U << 1;
 constexpr std::uint32_t kFlagRead = 1U << 2;
@@ -49,6 +50,11 @@ struct DynamicSegment {
     std::uint32_t offset{};
     std::uint32_t virtual_address{};
     std::uint32_t file_size{};
+    std::uint32_t memory_size{};
+};
+
+struct RelroProgramSegment {
+    std::uint32_t virtual_address{};
     std::uint32_t memory_size{};
 };
 
@@ -144,6 +150,7 @@ int main(int argc, char** argv) {
 
     std::vector<LoadSegment> loads;
     std::optional<DynamicSegment> dynamic_segment;
+    std::vector<RelroProgramSegment> relro_segments;
     bool has_executable = false;
     bool has_writable = false;
     bool has_bss = false;
@@ -163,6 +170,12 @@ int main(int argc, char** argv) {
                 .file_size = read_u32(image, offset + 16),
                 .memory_size = read_u32(image, offset + 20),
             };
+        }
+        if (type == kProgramTypeGnuRelro) {
+            relro_segments.push_back({
+                .virtual_address = read_u32(image, offset + 8),
+                .memory_size = read_u32(image, offset + 20),
+            });
         }
         if (type != kProgramTypeLoad) {
             continue;
@@ -188,6 +201,9 @@ int main(int argc, char** argv) {
     }
     if (maximum_alignment < kExpectedFixtureAlignment) {
         return fail("generated fixture PT_LOAD alignment is smaller than the requested 16 KiB");
+    }
+    if (relro_segments.size() != 1 || relro_segments.front().memory_size == 0) {
+        return fail("generated fixture did not retain the expected single non-empty GNU RELRO segment");
     }
 
     MappedGuestMemory memory;
@@ -246,6 +262,47 @@ int main(int argc, char** argv) {
         result.dynamic_segment->file_size != raw_dynamic.file_size ||
         result.dynamic_segment->memory_size != raw_dynamic.memory_size) {
         return fail("loader PT_DYNAMIC result metadata does not match the real fixture program header");
+    }
+
+    if (result.relro_segments.size() != relro_segments.size()) {
+        return fail("loader omitted real fixture GNU RELRO metadata");
+    }
+    bool relro_writable_before_seal = false;
+    for (std::size_t index = 0; index < relro_segments.size(); ++index) {
+        const RelroProgramSegment& raw = relro_segments[index];
+        const auto& loaded = result.relro_segments[index];
+        const std::uint64_t guest =
+            static_cast<std::uint64_t>(raw.virtual_address) + result.load_bias;
+        const std::uint64_t exact_end = guest + raw.memory_size;
+        const std::uint64_t expected_mapping_start =
+            align_down(guest, host_page_size);
+        const std::uint64_t expected_mapping_end =
+            align_up(exact_end, host_page_size);
+        if (guest > std::numeric_limits<std::uint32_t>::max() ||
+            expected_mapping_start > std::numeric_limits<std::uint32_t>::max() ||
+            expected_mapping_end > MappedGuestMemory::kAddressSpaceSize ||
+            loaded.guest_address != guest ||
+            loaded.memory_size != raw.memory_size ||
+            loaded.mapping_start != expected_mapping_start ||
+            loaded.mapping_size != expected_mapping_end - expected_mapping_start) {
+            return fail("loader GNU RELRO metadata does not match the real fixture program header");
+        }
+
+        for (std::uint64_t page = expected_mapping_start;
+             page < expected_mapping_end;
+             page += host_page_size) {
+            const auto permissions =
+                memory.permissions(static_cast<std::uint32_t>(page));
+            if (!has_permission(permissions, MemoryPermission::Read)) {
+                return fail("real fixture GNU RELRO page was not readable after load");
+            }
+            relro_writable_before_seal =
+                relro_writable_before_seal ||
+                has_permission(permissions, MemoryPermission::Write);
+        }
+    }
+    if (!relro_writable_before_seal) {
+        return fail("loader unexpectedly sealed the real fixture GNU RELRO before relocations");
     }
 
     for (std::size_t index = 0; index < loads.size(); ++index) {
@@ -321,6 +378,15 @@ int main(int argc, char** argv) {
               << result.dynamic_segment->guest_address << '\n'
               << "fixture.pt_dynamic.filesz=0x" << result.dynamic_segment->file_size << '\n'
               << "fixture.pt_dynamic.memsz=0x" << result.dynamic_segment->memory_size << std::dec << '\n'
+              << "fixture.pt_gnu_relro.count=" << result.relro_segments.size() << '\n'
+              << "fixture.pt_gnu_relro.0.guest_address=0x" << std::hex
+              << result.relro_segments.front().guest_address << '\n'
+              << "fixture.pt_gnu_relro.0.memsz=0x"
+              << result.relro_segments.front().memory_size << '\n'
+              << "fixture.pt_gnu_relro.0.mapping_size=0x"
+              << result.relro_segments.front().mapping_size << std::dec << '\n'
+              << "fixture.pt_gnu_relro.writable_before_seal="
+              << (relro_writable_before_seal ? "true" : "false") << '\n'
               << "fixture.has_bss=true\n"
               << "fixture.max_p_align=" << maximum_alignment << '\n'
               << "fixture.host_page_size=" << host_page_size << '\n'

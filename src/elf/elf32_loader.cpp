@@ -97,6 +97,28 @@ Elf32LoadResult load_elf32(memory::MappedGuestMemory& memory,
         };
     }
 
+    std::vector<Elf32RelroSegment> loaded_relro_segments;
+    loaded_relro_segments.reserve(plan.relro_segments.size());
+    for (const Elf32LoadPlanRelroSegment& raw : plan.relro_segments) {
+        const std::uint64_t guest_address =
+            static_cast<std::uint64_t>(raw.virtual_address) + load_bias;
+        const std::uint64_t mapping_start =
+            static_cast<std::uint64_t>(raw.mapping_start) + load_bias;
+        const std::uint64_t mapping_end = raw.mapping_end + load_bias;
+        if (guest_address > std::numeric_limits<std::uint32_t>::max() ||
+            mapping_start > std::numeric_limits<std::uint32_t>::max() ||
+            mapping_end > kGuestAddressSpaceSize) {
+            return failure(Elf32LoadError::RelroSegmentAddressOverflow);
+        }
+
+        loaded_relro_segments.push_back({
+            .guest_address = static_cast<std::uint32_t>(guest_address),
+            .memory_size = raw.memory_size,
+            .mapping_start = static_cast<std::uint32_t>(mapping_start),
+            .mapping_size = mapping_end - mapping_start,
+        });
+    }
+
     std::vector<PlannedSegment> planned_segments;
     planned_segments.reserve(plan.segments.size());
     for (const Elf32LoadPlanSegment& raw : plan.segments) {
@@ -202,6 +224,7 @@ Elf32LoadResult load_elf32(memory::MappedGuestMemory& memory,
     result.load_bias = load_bias;
     result.entry = loaded_entry;
     result.dynamic_segment = loaded_dynamic_segment;
+    result.relro_segments = loaded_relro_segments;
     result.segments.reserve(planned_segments.size());
     for (const PlannedSegment& planned : planned_segments) {
         const Elf32LoadPlanSegment& raw = *planned.raw;
@@ -264,6 +287,14 @@ const char* to_string(Elf32LoadError error) noexcept {
         return "dynamic_segment_not_readable";
     case Elf32LoadError::DynamicSegmentFileMappingMismatch:
         return "dynamic_segment_file_mapping_mismatch";
+    case Elf32LoadError::RelroSegmentEmpty:
+        return "relro_segment_empty";
+    case Elf32LoadError::RelroSegmentAddressOverflow:
+        return "relro_segment_address_overflow";
+    case Elf32LoadError::RelroSegmentOutsideLoad:
+        return "relro_segment_outside_load";
+    case Elf32LoadError::RelroSegmentNotReadable:
+        return "relro_segment_not_readable";
     case Elf32LoadError::SegmentPageOverlap:
         return "segment_page_overlap";
     case Elf32LoadError::AddressConflict: return "address_conflict";

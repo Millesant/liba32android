@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-23
-Current phase: M4 continuation; feature 009 eager ELF32 ARM JUMP_SLOT DONE
+Current phase: M4 continuation; feature 010 ELF32 GNU RELRO protection
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: none selected. Feature `009-elf32-jump-slot-relocations` is DONE: T001 PASSed CI #226 at `fe12b6de747884a18d1214f564559d94937d8974`; T002 PASSed CI #227 at `666a15ab2edaebdfa3c0f6817dca30e2e2e7a931`; T003 real provider/consumer graph-backed application PASSed CI #228 at `815386149732201ce5b64e1b5ad207079491eb80`; and T004 final exact-head convergence gate PASSed CI #229 / run `35940125841` at `4b255695a9effbaab4028708cd5e7e5a5e23150e` across Linux, Android x86_64, and Android arm64-v8a.
+Active runtime work: `010-elf32-gnu-relro` T001. The feature is specified as a bounded post-relocation hardening slice. T001 loader/load-plan metadata plus synthetic/real-fixture coverage are prepared; exact-head validation is NOT RUN. Feature 009 remains DONE at its final exact-head gate CI #229.
 
 ## Working
 
@@ -23,7 +23,8 @@ Active runtime work: none selected. Feature `009-elf32-jump-slot-relocations` is
   - explicit-base `ET_DYN` with load bias preserving all `PT_LOAD p_align` constraints;
   - validated `PT_LOAD` mapping, file copy, BSS zero-fill, final permissions and loader-owned rollback;
   - guest-only result metadata; no host pointers in loader results;
-  - zero-or-one validated non-empty `PT_DYNAMIC` guest range inside a readable `PT_LOAD`, with file/address/containment/file-to-load validation before guest mutation.
+  - zero-or-one validated non-empty `PT_DYNAMIC` guest range inside a readable `PT_LOAD`, with file/address/containment/file-to-load validation before guest mutation;
+  - feature-010 T001 prepares zero-or-more validated `PT_GNU_RELRO` guest ranges with host-page-rounded readable PT_LOAD coverage and additive load-result metadata; loader mapping still leaves original PT_LOAD permissions unchanged until a later explicit seal call.
 - Automatic `ET_DYN` guest placement is implemented through `src/elf/elf32_dynamic_placement.*`: deterministic caller-bounded first-fit, host-page and `p_align` congruence preservation, no guest-memory mutation, explicit malformed/non-dynamic/window/overflow/no-space failures, and loader-ready `dynamic_base` output.
 - Structural dynamic-array parsing is implemented through `src/elf/elf32_dynamic.*`:
   - consumes only the loader-validated `Elf32DynamicSegment` plus `GuestMemory`;
@@ -44,14 +45,18 @@ Active runtime work: none selected. Feature `009-elf32-jump-slot-relocations` is
 ## Partial / not implemented
 
 - Feature 006 bounded graph-local unversioned symbol resolution is DONE at exact-head CI #207. Version-aware lookup remains intentionally unsupported (version tables are rejected). Feature 007 now implements bounded main-`DT_REL` relocation application; Android search-path/namespace/pathname policy plus process-wide link-map lifetime across graph-loading calls remain NOT IMPLEMENTED.
-- Broader ARM relocation/linker compatibility remains PARTIAL beyond the completed feature-007 main-`DT_REL` set. Feature 008 has VERIFIED PLT/JMPREL metadata validation, and feature 009 T001-T003 have VERIFIED eager `R_ARM_JUMP_SLOT` planning/resolution/application including a real NDK provider/consumer graph. Lazy binding/`DT_PLTGOT`, combined main+PLT atomic application, REL32/COPY/instruction relocations, packed/RELA/RELR forms, version-aware/protected requester semantics, TLS/IFUNC, RELRO, and process-wide/global-group policy remain NOT IMPLEMENTED.
+- Broader ARM relocation/linker compatibility remains PARTIAL beyond the completed feature-007 main-`DT_REL` set. Feature 008 has VERIFIED PLT/JMPREL metadata validation, and feature 009 has VERIFIED eager `R_ARM_JUMP_SLOT` application. Feature 010 T001 GNU RELRO metadata is prepared but NOT YET VALIDATED; RELRO sealing itself remains NOT IMPLEMENTED until T002. Lazy binding/`DT_PLTGOT`, combined main+PLT atomic application, REL32/COPY/instruction relocations, packed/RELA/RELR forms, version-aware/protected requester semantics, TLS/IFUNC, and process-wide/global-group policy remain NOT IMPLEMENTED.
 - Version-aware and process-wide/global-group symbol interposition policy: NOT IMPLEMENTED; bounded graph-local unversioned lookup is implemented.
-- RELRO/TLS processing: NOT IMPLEMENTED.
+- RELRO processing: PARTIAL — feature 010 T001 metadata is prepared but unvalidated; permission sealing is NOT IMPLEMENTED. TLS processing remains NOT IMPLEMENTED.
 - End-to-end execution of the real ARM32 fixture through the runtime on Android: NOT IMPLEMENTED / NOT RUN.
 - Actual 16 KiB Android host-page behavior: PARTIAL by architecture — x86_64 Android 15 emulator probe PASS with 4 GiB reservation/commit, exact sampled low-VA `MAP_FIXED_NOREPLACE`, collision `EEXIST`, RW->RX, and generated-code return 42; AArch64 runtime on 16 KiB pages remains NOT RUN.
 - Broader Android/vendor/kernel compatibility for the high-base reservation: PARTIAL evidence only.
 
 ## Validation
+
+### M4 ELF32 GNU RELRO protection (active)
+
+T001 loader/load-plan GNU RELRO metadata implementation and the pinned-fixture oracle are prepared. Exact-head CI is NOT RUN.
 
 ### M4 ELF32 eager JUMP_SLOT relocations (complete)
 

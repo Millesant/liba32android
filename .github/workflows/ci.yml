@@ -101,6 +101,9 @@ jobs:
           build/elf32_jump_slot_real_fixture_test "$ARM32_JUMP_SLOT_CONSUMER" "$ARM32_JUMP_SLOT_PROVIDER" |
             tee build-fixtures/jump-slot-apply-evidence.txt
           readelf -lW "$ARM32_FIXTURE" > build-fixtures/program-headers.txt
+          grep -F 'GNU_RELRO' build-fixtures/program-headers.txt
+          grep -F 'fixture.pt_gnu_relro.count=1' build-fixtures/loader-evidence.txt
+          grep -F 'fixture.pt_gnu_relro.writable_before_seal=true' build-fixtures/loader-evidence.txt
           grep -F 'fixture.status=PASS' build-fixtures/loader-evidence.txt
           grep -F 'fixture.auto_placement.required_alignment=0x4000'             build-fixtures/auto-placement-evidence.txt
           grep -F 'fixture.auto_placement.status=PASS'             build-fixtures/auto-placement-evidence.txt

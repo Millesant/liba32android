@@ -23,6 +23,7 @@ constexpr std::size_t kFirstProgramHeader = kProgramHeaderOffset;
 constexpr std::size_t kSecondProgramHeader = kProgramHeaderOffset + kProgramHeaderSize;
 constexpr std::size_t kThirdProgramHeader = kProgramHeaderOffset + 2 * kProgramHeaderSize;
 constexpr std::size_t kFourthProgramHeader = kProgramHeaderOffset + 3 * kProgramHeaderSize;
+constexpr std::uint32_t kProgramTypeGnuRelro = 0x6474e552U;
 
 int fail(const char* message) {
     std::cerr << message << '\n';
@@ -100,6 +101,16 @@ void add_dynamic_segment(std::vector<std::uint8_t>& image, std::uint32_t virtual
     }
 }
 
+void add_relro_segment(std::vector<std::uint8_t>& image,
+                       std::uint32_t virtual_base) {
+    write_u16(image, 44, 3);
+    write_u32(image, kThirdProgramHeader + 0, kProgramTypeGnuRelro);
+    write_u32(image, kThirdProgramHeader + 8, virtual_base + 0x2000);
+    write_u32(image, kThirdProgramHeader + 20, 0x20);
+    write_u32(image, kThirdProgramHeader + 24, 4);
+    write_u32(image, kThirdProgramHeader + 28, 1);
+}
+
 bool all_zero(std::span<const std::uint8_t> bytes) {
     for (const std::uint8_t byte : bytes) {
         if (byte != 0) {
@@ -123,6 +134,9 @@ int test_valid_dynamic() {
     }
     if (result.dynamic_segment.has_value()) {
         return fail("missing PT_DYNAMIC unexpectedly produced dynamic metadata");
+    }
+    if (!result.relro_segments.empty()) {
+        return fail("missing PT_GNU_RELRO unexpectedly produced RELRO metadata");
     }
 
     const auto rx = MemoryPermission::Read | MemoryPermission::Execute;
@@ -156,6 +170,50 @@ int test_valid_dynamic() {
         return fail("instruction fetch unexpectedly succeeded on final RW segment");
     }
 
+    return 0;
+}
+
+int test_relro_metadata() {
+    auto image = make_image(3, 0);
+    add_relro_segment(image, 0);
+
+    MappedGuestMemory memory;
+    const std::uint32_t dynamic_base =
+        static_cast<std::uint32_t>(memory.page_size() * 512);
+
+    Elf32LoadOptions options;
+    options.dynamic_base = dynamic_base;
+    const auto result = load_elf32(memory, image, options);
+    if (!result || result.relro_segments.size() != 1) {
+        return fail("valid GNU RELRO metadata was not published by the loader");
+    }
+
+    const auto& relro = result.relro_segments.front();
+    const std::uint64_t page = memory.page_size();
+    const std::uint64_t expected_start =
+        (static_cast<std::uint64_t>(dynamic_base + 0x2000) / page) * page;
+    const std::uint64_t exact_end =
+        static_cast<std::uint64_t>(dynamic_base + 0x2000) + 0x20;
+    const std::uint64_t remainder = exact_end % page;
+    const std::uint64_t expected_end =
+        remainder == 0 ? exact_end : exact_end + (page - remainder);
+
+    if (relro.guest_address != dynamic_base + 0x2000 ||
+        relro.memory_size != 0x20 ||
+        relro.mapping_start != expected_start ||
+        relro.mapping_size != expected_end - expected_start) {
+        return fail("load-biased GNU RELRO metadata was incorrect");
+    }
+
+    const auto rw = MemoryPermission::Read | MemoryPermission::Write;
+    if (memory.permissions(dynamic_base + 0x2000) != rw) {
+        return fail("loader sealed GNU RELRO before relocation time");
+    }
+
+    constexpr std::array<std::uint8_t, 1> byte{0xaa};
+    if (!memory.write(dynamic_base + 0x2000, byte)) {
+        return fail("GNU RELRO page was not writable immediately after load");
+    }
     return 0;
 }
 
@@ -444,6 +502,7 @@ int main(int argc, char** argv) {
 
     const std::string_view mode = argv[1];
     if (mode == "valid_dynamic") return test_valid_dynamic();
+    if (mode == "relro_metadata") return test_relro_metadata();
     if (mode == "valid_exec") return test_valid_exec();
     if (mode == "dynamic_metadata") return test_dynamic_metadata();
     if (mode == "headers") return test_header_validation();

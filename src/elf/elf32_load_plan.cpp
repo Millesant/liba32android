@@ -21,6 +21,7 @@ constexpr std::uint16_t kElfTypeDyn = 3;
 constexpr std::uint16_t kElfMachineArm = 40;
 constexpr std::uint32_t kProgramTypeLoad = 1;
 constexpr std::uint32_t kProgramTypeDynamic = 2;
+constexpr std::uint32_t kProgramTypeGnuRelro = 0x6474e552U;
 constexpr std::uint32_t kFlagExecute = 1U << 0;
 constexpr std::uint32_t kFlagWrite = 1U << 1;
 constexpr std::uint32_t kFlagRead = 1U << 2;
@@ -192,6 +193,31 @@ Elf32LoadPlanResult plan_elf32_load(
             continue;
         }
 
+        if (program_type == kProgramTypeGnuRelro) {
+            Elf32LoadPlanRelroSegment relro;
+            relro.virtual_address = read_u32(image, offset + 8);
+            relro.memory_size = read_u32(image, offset + 20);
+
+            if (relro.memory_size == 0) {
+                return failure(Elf32LoadError::RelroSegmentEmpty);
+            }
+
+            const std::uint64_t relro_start = relro.virtual_address;
+            const std::uint64_t relro_end = relro_start + relro.memory_size;
+            if (relro_end > kGuestAddressSpaceSize) {
+                return failure(Elf32LoadError::RelroSegmentAddressOverflow);
+            }
+
+            relro.mapping_start = static_cast<std::uint32_t>(
+                align_down(relro_start, page_size));
+            if (!align_up(relro_end, page_size, relro.mapping_end)) {
+                return failure(Elf32LoadError::RelroSegmentAddressOverflow);
+            }
+
+            plan.relro_segments.push_back(relro);
+            continue;
+        }
+
         if (program_type != kProgramTypeLoad) {
             continue;
         }
@@ -307,6 +333,33 @@ Elf32LoadPlanResult plan_elf32_load(
         const Elf32LoadPlanSegment& current = plan.segments[order[index]];
         if (static_cast<std::uint64_t>(current.mapping_start) < previous.mapping_end) {
             return failure(Elf32LoadError::SegmentPageOverlap);
+        }
+    }
+
+    for (const Elf32LoadPlanRelroSegment& relro : plan.relro_segments) {
+        for (std::uint64_t page = relro.mapping_start;
+             page < relro.mapping_end;
+             page += page_size) {
+            const Elf32LoadPlanSegment* containing_load = nullptr;
+            for (const Elf32LoadPlanSegment& segment : plan.segments) {
+                if (segment.memory_size == 0) {
+                    continue;
+                }
+
+                if (page >= segment.mapping_start &&
+                    page + page_size <= segment.mapping_end) {
+                    containing_load = &segment;
+                    break;
+                }
+            }
+
+            if (containing_load == nullptr) {
+                return failure(Elf32LoadError::RelroSegmentOutsideLoad);
+            }
+            if (!memory::has_permission(
+                    containing_load->permissions, memory::MemoryPermission::Read)) {
+                return failure(Elf32LoadError::RelroSegmentNotReadable);
+            }
         }
     }
 

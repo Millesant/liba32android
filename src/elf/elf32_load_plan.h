@@ -32,6 +32,13 @@ struct Elf32LoadPlanDynamicSegment {
     std::uint32_t memory_size{};
 };
 
+struct Elf32LoadPlanRelroSegment {
+    std::uint32_t virtual_address{};
+    std::uint32_t memory_size{};
+    std::uint32_t mapping_start{};
+    std::uint64_t mapping_end{};
+};
+
 struct Elf32LoadPlan {
     Elf32ImageType type{Elf32ImageType::Dynamic};
     std::uint32_t entry{};
@@ -40,6 +47,7 @@ struct Elf32LoadPlan {
     std::uint64_t required_load_bias_alignment{1};
     std::vector<Elf32LoadPlanSegment> segments;
     std::optional<Elf32LoadPlanDynamicSegment> dynamic_segment;
+    std::vector<Elf32LoadPlanRelroSegment> relro_segments;
 };
 
 struct Elf32LoadPlanResult {
