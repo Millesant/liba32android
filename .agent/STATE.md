@@ -3,26 +3,23 @@
 Last updated: 2026-09-24
 Integration branch: `bleeding`
 Control-plane round: `Millesant/.gpt@609e6cb9cff9d00e241aa5437d9904fc7492f407` (v7.2.0)
-Pre-cleanup verified head: `ed8f4d97a521aadb27d29089351737e873b4f5b0`
+Cleanup implementation revision: `5b1cf991272632ed44d6276d6ec5e982ef732f28`
 
 ## Phase
 
-M4 runtime/linker scope is stable through bounded eager JUMP_SLOT relocation and GNU RELRO. The active work is repository-wide maintenance/organization under `project-cleanup-v8`; runtime semantics are intentionally unchanged.
+M4 runtime/linker scope is stable through bounded eager JUMP_SLOT relocation and GNU RELRO. Repository-wide maintenance change `project-cleanup-v8` is DONE; no runtime semantics were intentionally changed.
 
-## Active maintenance
+## Repository organization
 
-`project-cleanup-v8` is IMPLEMENTED pending exact-head validation.
+The current tree is organized by ownership:
 
-The implementation:
+- ELF interface headers remain under `src/elf/`; implementations are grouped under `loading/`, `metadata/`, `linking/`, `hardening/`, and `internal/`.
+- Tests are grouped under `tests/cpu/`, `tests/memory/`, and `tests/elf/` with separate unit/integration/fixture/support ownership.
+- CMake test registration is split under `cmake/tests/` by CPU, memory, and ELF.
+- Android diagnostics live under `tools/android/`; reproducible fixture builders live under `tools/fixtures/`.
+- Documentation has a navigation index plus development layout/build guidance; README and agent orientation are compact current-state entry points.
 
-- groups ELF implementation files by loading, metadata, linking, hardening, and private-helper ownership while retaining ELF interface headers under `src/elf/`;
-- groups tests into CPU, memory, ELF unit, and ELF integration trees;
-- splits CMake test registration into CPU/memory/ELF modules while preserving executable target and CTest names;
-- groups Android diagnostics separately from fixture builders under `tools/`;
-- updates CI/tool paths and current diagnostics/research references;
-- replaces the oversized historical README/state orientation with concise current navigation and adds repository/build/test documentation.
-
-No accepted runtime or ELF contract is intentionally changed by this maintenance round.
+Persisted inspection at `5b1cf991272632ed44d6276d6ec5e982ef732f28` confirmed 30 test executable identities and 49 CTest names were preserved exactly.
 
 ## Implemented runtime
 
@@ -60,17 +57,17 @@ Still outside the accepted implementation:
 
 AArch64 runtime execution on a real/emulated 16 KiB Android host remains NOT RUN. x86_64 Android 15 16 KiB address-space/JIT probing has passed in the recorded Fedora/KVM environment.
 
-## Validation baseline
+## Validation
 
-The pre-cleanup closeout head `ed8f4d97a521aadb27d29089351737e873b4f5b0` passed all three required exact-head checks:
+Exact-head cleanup validation at `5b1cf991272632ed44d6276d6ec5e982ef732f28`:
 
-- Linux A32 smoke: check `107817777741` — PASS.
-- Android arm64-v8a cross-build: check `107817778038` — PASS.
-- Android x86_64 address-space probe: check `107817778031` — PASS.
+- Linux A32 smoke: check `107823867033` — PASS.
+- Android arm64-v8a cross-build: check `107823867078` — PASS.
+- Android x86_64 address-space probe: check `107823866703` — PASS.
 
-The cleanup implementation requires a new exact-head run; historical green checks do not validate moved paths or updated CMake/CI references.
+The cleanup changes only repository organization, build/test registration structure, tooling paths, and documentation. These passing checks establish that the existing CI matrix still builds/tests the reorganized tree; they do not establish new runtime compatibility behavior.
 
-Feature-level evidence remains available in Git history, completed `.agent/changes/` records, root historical `specs/`, and `docs/research/evidence/`.
+Historical feature-level evidence remains available in Git history, completed `.agent/changes/` records, root historical `specs/`, and `docs/research/evidence/`.
 
 ## Current blockers / external evidence gaps
 

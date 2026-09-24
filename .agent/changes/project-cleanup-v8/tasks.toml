@@ -9,24 +9,24 @@ acceptance = "Audit repository ownership, build/test registration, tooling refer
 
 [[tasks]]
 id = "T002"
-status = "implemented"
+status = "done"
 depends_on = ["T001"]
 acceptance = "Complete child change project-source-test-layout-v8."
 
 [[tasks]]
 id = "T003"
-status = "implemented"
+status = "done"
 depends_on = ["T001"]
 acceptance = "Complete child change project-tooling-layout-v8."
 
 [[tasks]]
 id = "T004"
-status = "implemented"
+status = "done"
 depends_on = ["T001"]
 acceptance = "Complete child change project-documentation-v8."
 
 [[tasks]]
 id = "T005"
-status = "planned"
+status = "done"
 depends_on = ["T002", "T003", "T004"]
 acceptance = "Inspect the persisted tree, pass all required exact-head CI checks, and converge parent/child state and evidence."

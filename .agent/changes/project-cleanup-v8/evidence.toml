@@ -2,19 +2,19 @@ schema = 1
 change = "project-cleanup-v8"
 
 [[evidence]]
-id = "pre-write-audit"
+id = "persisted-layout-inspection"
 kind = "inspection"
 status = "passed"
-claim = "The cleanup plan is organizational and preserves accepted runtime/test identities."
-source = "Bounded repository audit at ed8f4d97a521aadb27d29089351737e873b4f5b0"
-result = "The runtime already exposes stable internal headers and CTest identities. The selected cleanup moves implementations/tests/tooling without changing runtime interfaces, keeps existing test target/CTest names, and updates all current build/CI path references identified by search."
-limitations = "Inspection is not compilation or test execution; exact-head CI is required after persistence."
+claim = "The repository cleanup persisted the intended ownership layout without dropping moved files or renaming test identities."
+source = "Persisted-tree inspection and CMake identity comparison at 5b1cf991272632ed44d6276d6ec5e982ef732f28"
+result = "All required new source/test/tool paths are present and sampled old paths are absent. The runtime still registers 14 source translation units. Test registration preserves exactly 30 executable targets and 49 CTest names with no missing or extra identities."
+limitations = "Structural inspection is not build/runtime validation; exact-head checks validate the integrated tree separately."
 
 [[evidence]]
 id = "exact-head-ci"
 kind = "validation"
-status = "not_run"
+status = "passed"
 claim = "The complete project cleanup preserves the required build/test matrix."
-source = "Exact-head GitHub checks for the implementation revision"
-result = ""
-limitations = "Not run at implementation persistence time."
+source = "GitHub exact-head checks at 5b1cf991272632ed44d6276d6ec5e982ef732f28: Linux A32 smoke 107823867033; Android arm64-v8a cross-build 107823867078; Android x86_64 address-space probe 107823866703"
+result = "All three required checks completed successfully on the exact implementation revision."
+limitations = "These checks validate repository build/test integration for the cleanup; they establish no new runtime compatibility claim."
