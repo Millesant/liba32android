@@ -3,13 +3,13 @@ change = "009-elf32-jump-slot-relocations"
 
 [[tasks]]
 id = "T001"
-status = "implemented"
+status = "verified"
 depends_on = []
 acceptance = "Add bounded read-only PLT REL planning and reference resolution for R_ARM_JUMP_SLOT while preserving existing main REL APIs."
 
 [[tasks]]
 id = "T002"
-status = "planned"
+status = "implemented"
 depends_on = ["T001"]
 acceptance = "Apply eager JUMP_SLOT writes transactionally as S, ignoring the in-place word as an addend, with rollback coverage."
 

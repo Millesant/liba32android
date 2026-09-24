@@ -7,7 +7,7 @@ Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
 
 ## T001 — PLT REL planning and reference resolution
 
-- Status: IMPLEMENTED — exact-head validation NOT RUN
+- Status: VERIFIED — exact-head CI #226 / run `35938429972` PASSed at `fe12b6de747884a18d1214f564559d94937d8974` across Linux A32 smoke, Android x86_64, and Android arm64-v8a
 - Requirements: R1-R7, R13-R14; AC1-AC5, AC8
 - Scope:
   - add `kRArmJumpSlot = 22`;
@@ -23,7 +23,7 @@ Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
 
 ## T002 — Transactional eager JUMP_SLOT application
 
-- Status: QUEUED
+- Status: IMPLEMENTED — exact-head validation NOT RUN
 - Depends on: T001
 - Requirements: R8-R10, R13-R14; AC5-AC8
 - Scope:

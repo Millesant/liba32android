@@ -19,9 +19,11 @@ using liba32android::elf::Elf32RelocationApplyError;
 using liba32android::elf::Elf32RelocationOptions;
 using liba32android::elf::Elf32StringTableMetadata;
 using liba32android::elf::Elf32SymbolTableMetadata;
+using liba32android::elf::apply_elf32_plt_rel_relocations;
 using liba32android::elf::apply_elf32_rel_relocations;
 using liba32android::elf::kRArmAbs32;
 using liba32android::elf::kRArmGlobDat;
+using liba32android::elf::kRArmJumpSlot;
 using liba32android::elf::kRArmNone;
 using liba32android::elf::kRArmRelative;
 using liba32android::memory::GuestMemory;
@@ -29,6 +31,7 @@ using liba32android::memory::LinearGuestMemory;
 
 constexpr std::uint32_t kMemoryBase = 0x1000;
 constexpr std::uint32_t kRelTable = 0x1100;
+constexpr std::uint32_t kPltRelTable = 0x1180;
 constexpr std::uint32_t kTarget0 = 0x12000;
 constexpr std::uint32_t kTarget1 = 0x12004;
 
@@ -61,14 +64,24 @@ bool read_u32(const GuestMemory& memory,
     return true;
 }
 
+bool write_rel_at(GuestMemory& memory,
+                  std::uint32_t table,
+                  std::uint32_t index,
+                  std::uint32_t offset,
+                  std::uint32_t symbol_index,
+                  std::uint8_t type) {
+    return write_u32(memory, table + index * 8U, offset) &&
+           write_u32(memory, table + index * 8U + 4U,
+                     (symbol_index << 8U) | type);
+}
+
 bool write_rel(GuestMemory& memory,
                std::uint32_t index,
                std::uint32_t offset,
                std::uint32_t symbol_index,
                std::uint8_t type) {
-    return write_u32(memory, kRelTable + index * 8U, offset) &&
-           write_u32(memory, kRelTable + index * 8U + 4U,
-                     (symbol_index << 8U) | type);
+    return write_rel_at(
+        memory, kRelTable, index, offset, symbol_index, type);
 }
 
 Elf32DependencyGraph graph_with_rel(std::uint32_t load_bias,
@@ -80,6 +93,21 @@ Elf32DependencyGraph graph_with_rel(std::uint32_t load_bias,
     graph.objects[0].linker_metadata.rel_table =
         Elf32RelTableMetadata{
             .guest_address = kRelTable,
+            .size = count * 8U,
+            .entry_size = 8,
+        };
+    return graph;
+}
+
+Elf32DependencyGraph graph_with_plt_rel(std::uint32_t load_bias,
+                                        std::uint32_t count) {
+    Elf32DependencyGraph graph;
+    graph.objects.resize(1);
+    graph.objects[0].identity = "plt-relocation-apply-test";
+    graph.objects[0].load.load_bias = load_bias;
+    graph.objects[0].linker_metadata.plt_rel_table =
+        Elf32RelTableMetadata{
+            .guest_address = kPltRelTable,
             .size = count * 8U,
             .entry_size = 8,
         };
@@ -138,7 +166,8 @@ bool stage_symbol(GuestMemory& memory,
                   std::uint32_t load_bias,
                   std::uint32_t value,
                   std::uint8_t binding,
-                  std::uint16_t section_index) {
+                  std::uint16_t section_index,
+                  std::uint8_t type = 1) {
     constexpr std::uint32_t strings = 0x4000;
     constexpr std::uint32_t symbols = 0x4100;
     constexpr std::uint32_t hash = 0x4300;
@@ -153,7 +182,7 @@ bool stage_symbol(GuestMemory& memory,
 
     return write_string_at(memory, strings, 1, name) &&
            write_symbol_at(memory, symbols, 1, 1, value,
-                           binding, 1, 0, section_index) &&
+                           binding, type, 0, section_index) &&
            write_u32(memory, hash, 1) &&
            write_u32(memory, hash + 4U, 2) &&
            write_u32(memory, hash + 8U, 1) &&
@@ -376,6 +405,144 @@ int test_rollback_failure_is_explicit() {
     return 0;
 }
 
+
+int test_jump_slot_ignores_original_word() {
+    LinearGuestMemory memory(0x20000, kMemoryBase);
+    auto graph = graph_with_plt_rel(0x1000, 1);
+    if (!stage_symbol(memory, graph.objects[0], "target",
+                      0x1000, 0x234, 1, 1, 2) ||
+        !write_rel_at(memory, kPltRelTable, 0, 0x11000, 1,
+                      kRArmJumpSlot) ||
+        !write_u32(memory, kTarget0, 0x11111111U)) {
+        return fail("could not stage JUMP_SLOT apply case");
+    }
+
+    const auto result =
+        apply_elf32_plt_rel_relocations(memory, graph, 0, options());
+    std::uint32_t value = 0;
+    if (!result || result.application.writes.size() != 1 ||
+        result.application.writes[0].type != kRArmJumpSlot ||
+        result.application.writes[0].original_word != 0x11111111U ||
+        result.application.writes[0].final_word != 0x1234U ||
+        !read_u32(memory, kTarget0, value) ||
+        value != 0x1234U) {
+        return fail("JUMP_SLOT did not write S while ignoring original word");
+    }
+    return 0;
+}
+
+int test_jump_slot_weak_zero() {
+    LinearGuestMemory memory(0x20000, kMemoryBase);
+    auto graph = graph_with_plt_rel(0x1000, 1);
+    if (!stage_symbol(memory, graph.objects[0], "missing",
+                      0x1000, 0, 2, 0, 2) ||
+        !write_rel_at(memory, kPltRelTable, 0, 0x11000, 1,
+                      kRArmJumpSlot) ||
+        !write_u32(memory, kTarget0, 0xdeadbeefU)) {
+        return fail("could not stage weak JUMP_SLOT case");
+    }
+
+    const auto result =
+        apply_elf32_plt_rel_relocations(memory, graph, 0, options());
+    std::uint32_t value = 1;
+    if (!result || result.application.writes.size() != 1 ||
+        result.application.writes[0].final_word != 0 ||
+        !read_u32(memory, kTarget0, value) || value != 0) {
+        return fail("unresolved weak JUMP_SLOT did not write zero");
+    }
+    return 0;
+}
+
+int test_jump_slot_resolve_failure_is_prewrite() {
+    LinearGuestMemory memory(0x20000, kMemoryBase);
+    auto graph = graph_with_plt_rel(0x1000, 1);
+    if (!stage_symbol(memory, graph.objects[0], "missing",
+                      0x1000, 0, 1, 0, 2) ||
+        !write_rel_at(memory, kPltRelTable, 0, 0x11000, 1,
+                      kRArmJumpSlot) ||
+        !write_u32(memory, kTarget0, 0xfeedfaceU)) {
+        return fail("could not stage strong JUMP_SLOT resolve failure");
+    }
+
+    const auto result =
+        apply_elf32_plt_rel_relocations(memory, graph, 0, options());
+    std::uint32_t value = 0;
+    if (result.error != Elf32RelocationApplyError::ResolveFailed ||
+        result.resolution_failure.error !=
+            liba32android::elf::Elf32RelocationResolveError::UnresolvedStrongSymbol ||
+        !result.application.writes.empty() ||
+        !read_u32(memory, kTarget0, value) ||
+        value != 0xfeedfaceU) {
+        return fail("JUMP_SLOT resolution failure mutated guest memory");
+    }
+    return 0;
+}
+
+int test_plt_late_write_failure_rolls_back() {
+    ScriptedWriteMemory memory(0x20000, kMemoryBase);
+    auto graph = graph_with_plt_rel(0x1000, 2);
+    if (!stage_symbol(memory, graph.objects[0], "target",
+                      0x1000, 0x234, 1, 1, 2) ||
+        !write_rel_at(memory, kPltRelTable, 0, 0x11000, 1,
+                      kRArmJumpSlot) ||
+        !write_rel_at(memory, kPltRelTable, 1, 0x11004, 1,
+                      kRArmJumpSlot) ||
+        !write_u32(memory, kTarget0, 0x10U) ||
+        !write_u32(memory, kTarget1, 0x20U)) {
+        return fail("could not stage PLT rollback case");
+    }
+    memory.arm_failures({2});
+
+    const auto result =
+        apply_elf32_plt_rel_relocations(memory, graph, 0, options());
+    std::uint32_t first = 0;
+    std::uint32_t second = 0;
+    if (result.error != Elf32RelocationApplyError::TargetWriteFailed ||
+        result.primary_error != Elf32RelocationApplyError::TargetWriteFailed ||
+        !result.failing_relocation.has_value() ||
+        *result.failing_relocation != 1 ||
+        result.rollback_failing_relocation.has_value() ||
+        !result.application.writes.empty() ||
+        !read_u32(memory, kTarget0, first) || first != 0x10U ||
+        !read_u32(memory, kTarget1, second) || second != 0x20U) {
+        return fail("PLT late write failure did not restore prior slot");
+    }
+    return 0;
+}
+
+int test_plt_rollback_failure_is_explicit() {
+    ScriptedWriteMemory memory(0x20000, kMemoryBase);
+    auto graph = graph_with_plt_rel(0x1000, 2);
+    if (!stage_symbol(memory, graph.objects[0], "target",
+                      0x1000, 0x234, 1, 1, 2) ||
+        !write_rel_at(memory, kPltRelTable, 0, 0x11000, 1,
+                      kRArmJumpSlot) ||
+        !write_rel_at(memory, kPltRelTable, 1, 0x11004, 1,
+                      kRArmJumpSlot) ||
+        !write_u32(memory, kTarget0, 0x10U) ||
+        !write_u32(memory, kTarget1, 0x20U)) {
+        return fail("could not stage PLT rollback-failure case");
+    }
+    memory.arm_failures({2, 3});
+
+    const auto result =
+        apply_elf32_plt_rel_relocations(memory, graph, 0, options());
+    std::uint32_t first = 0;
+    std::uint32_t second = 0;
+    if (result.error != Elf32RelocationApplyError::RollbackFailed ||
+        result.primary_error != Elf32RelocationApplyError::TargetWriteFailed ||
+        !result.failing_relocation.has_value() ||
+        *result.failing_relocation != 1 ||
+        !result.rollback_failing_relocation.has_value() ||
+        *result.rollback_failing_relocation != 0 ||
+        !result.application.writes.empty() ||
+        !read_u32(memory, kTarget0, first) || first != 0x1234U ||
+        !read_u32(memory, kTarget1, second) || second != 0x20U) {
+        return fail("PLT rollback failure was not explicit/preserved");
+    }
+    return 0;
+}
+
 }  // namespace
 
 int main() {
@@ -386,5 +553,10 @@ int main() {
     if (const int status = test_resolve_failure_is_prewrite(); status != 0) return status;
     if (const int status = test_late_write_failure_rolls_back(); status != 0) return status;
     if (const int status = test_rollback_failure_is_explicit(); status != 0) return status;
+    if (const int status = test_jump_slot_ignores_original_word(); status != 0) return status;
+    if (const int status = test_jump_slot_weak_zero(); status != 0) return status;
+    if (const int status = test_jump_slot_resolve_failure_is_prewrite(); status != 0) return status;
+    if (const int status = test_plt_late_write_failure_rolls_back(); status != 0) return status;
+    if (const int status = test_plt_rollback_failure_is_explicit(); status != 0) return status;
     return 0;
 }

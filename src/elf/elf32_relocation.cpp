@@ -473,14 +473,17 @@ resolve_elf32_plt_rel_relocation_references(
         memory, graph, object_index, options, RelocationTableKind::PltRel);
 }
 
-Elf32RelocationApplyResult apply_elf32_rel_relocations(
+namespace {
+
+[[nodiscard]] Elf32RelocationApplyResult apply_relocations_for_table(
     memory::GuestMemory& memory,
     const Elf32DependencyGraph& graph,
     std::size_t object_index,
-    const Elf32RelocationOptions& options) {
+    const Elf32RelocationOptions& options,
+    RelocationTableKind kind) {
     Elf32RelocationResolutionResult resolution =
-        resolve_elf32_rel_relocation_references(
-            memory, graph, object_index, options);
+        resolve_relocation_references_for_table(
+            memory, graph, object_index, options, kind);
     if (!resolution) {
         auto result = apply_failure(
             Elf32RelocationApplyError::ResolveFailed,
@@ -528,14 +531,16 @@ Elf32RelocationApplyResult apply_elf32_rel_relocations(
             final_word = wrap_add(load_bias, *entry.original_word);
             break;
         case kRArmGlobDat:
+        case kRArmJumpSlot:
             if (!resolved.reference.has_value()) {
                 return apply_failure(
                     Elf32RelocationApplyError::InvalidResolvedEntry,
                     Elf32RelocationApplyError::InvalidResolvedEntry,
                     object_index, entry.index);
             }
-            // Android bionic intentionally ignores the ARM REL in-place
-            // addend for GLOB_DAT; preserve that compatibility contract.
+            // Android bionic uses the non-REL-addend path for ARM GLOB_DAT
+            // and JUMP_SLOT. For JUMP_SLOT, AAELF32 also specifies A=0 in
+            // REL form. The captured original word is rollback state only.
             final_word = resolved.reference->symbol_value;
             break;
         case kRArmAbs32:
@@ -625,6 +630,26 @@ Elf32RelocationApplyResult apply_elf32_rel_relocations(
         result.application.writes.push_back(item.write);
     }
     return result;
+}
+
+}  // namespace
+
+Elf32RelocationApplyResult apply_elf32_rel_relocations(
+    memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t object_index,
+    const Elf32RelocationOptions& options) {
+    return apply_relocations_for_table(
+        memory, graph, object_index, options, RelocationTableKind::MainRel);
+}
+
+Elf32RelocationApplyResult apply_elf32_plt_rel_relocations(
+    memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t object_index,
+    const Elf32RelocationOptions& options) {
+    return apply_relocations_for_table(
+        memory, graph, object_index, options, RelocationTableKind::PltRel);
 }
 
 const char* to_string(Elf32RelocationPlanError error) noexcept {

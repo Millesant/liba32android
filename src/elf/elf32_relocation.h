@@ -240,6 +240,20 @@ resolve_elf32_plt_rel_relocation_references(
     std::size_t object_index,
     const Elf32RelocationOptions& options);
 
+// Eagerly apply the feature-009 PLT R_ARM_JUMP_SLOT table transactionally.
+// Every reference is resolved and every final word is computed before the
+// first write. JUMP_SLOT stores S exactly; the in-place REL word is retained
+// only for rollback and is never treated as an addend. Unresolved WEAK
+// references therefore write zero. Writes occur in PLT-table order and reuse
+// the same verified reverse-rollback contract as main REL application. This
+// function does not implement lazy binding, DT_PLTGOT resolver state, guest
+// execution, or page-permission changes.
+[[nodiscard]] Elf32RelocationApplyResult apply_elf32_plt_rel_relocations(
+    memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t object_index,
+    const Elf32RelocationOptions& options);
+
 [[nodiscard]] const char* to_string(Elf32RelocationPlanError error) noexcept;
 [[nodiscard]] const char* to_string(Elf32RelocationResolveError error) noexcept;
 [[nodiscard]] const char* to_string(Elf32RelocationApplyError error) noexcept;
