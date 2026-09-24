@@ -3,7 +3,7 @@ change = "010-elf32-gnu-relro"
 
 [[tasks]]
 id = "T001"
-status = "verified"
+status = "done"
 depends_on = []
 acceptance = "Validate and expose page-rounded PT_GNU_RELRO ranges through the load plan/loader result without changing permissions."
 
@@ -21,6 +21,6 @@ acceptance = "Apply existing real ARMv7 relocations, seal its GNU RELRO range, a
 
 [[tasks]]
 id = "T004"
-status = "implemented"
+status = "done"
 depends_on = ["T003"]
 acceptance = "Converge specs/docs/state/evidence and pass the final exact-head Linux and Android CI gate."

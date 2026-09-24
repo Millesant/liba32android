@@ -2,10 +2,11 @@ schema = 1
 id = "010-elf32-gnu-relro"
 kind = "feature"
 size = "S2"
-status = "implemented"
+status = "done"
 workflow = "feature"
 control_revision = "1df73390ad04c0909e3ca42daa690789f150f1ca"
 base_revision = "fd6670f3d40d51ad6fa5995b27ede87e4aa1b51c"
+result_revision = "f24c87026b66838c0742bf61ebafe27fba2f117e"
 acceptance = [
   "PT_GNU_RELRO ranges are validated by the shared ELF32 load plan and exposed as biased guest-only loader metadata",
   "loader mapping does not seal RELRO early; relocation writes remain possible until the explicit sealing call",
@@ -25,6 +26,6 @@ implementation = "aligned"
 tests = "aligned"
 documentation = "aligned"
 decisions = "not_applicable"
-tasks = "pending"
-evidence = "pending"
-repository = "pending"
+tasks = "aligned"
+evidence = "aligned"
+repository = "aligned"

@@ -1,12 +1,12 @@
 # Current State
 
-Last updated: 2026-09-23
-Current phase: M4 continuation; feature 010 ELF32 GNU RELRO protection
+Last updated: 2026-09-24
+Current phase: M4 continuation; feature 010 GNU RELRO complete; repository v7 organization complete
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `010-elf32-gnu-relro` T004 convergence. T001/T002 remain VERIFIED by CI #231/#232; T003 real post-relocation GNU RELRO sealing is VERIFIED by CI #234 / run `35946857448` at `ff1792457f05bd9dd58740e1b768576b9ad4f1c3`. T004 convergence is implemented; its final exact-head gate is NOT RUN on the convergence revision.
-Active maintenance work: `repository-organization-v7` T004 convergence. The v7.1 project/spec/change migration, modular CMake organization, and private ELF32 helper cleanup are VERIFIED together by CI #234 on `ff1792457f05bd9dd58740e1b768576b9ad4f1c3`; the convergence revision still requires its final exact-head gate.
+Completed runtime change: `010-elf32-gnu-relro` is DONE. T001/T002 passed CI #231/#232, T003 real post-relocation sealing passed CI #234, and T004 convergence passed exact-head CI #235 / run `35947449163` at `f24c87026b66838c0742bf61ebafe27fba2f117e`.
+Completed maintenance change: `repository-organization-v7` is DONE. The v7.1 project/spec/change migration, modular CMake organization, private ELF32 helper cleanup, and reconciled docs/state passed CI #234 and final exact-head convergence CI #235.
 
 ## Working
 
@@ -56,13 +56,15 @@ Active maintenance work: `repository-organization-v7` T004 convergence. The v7.1
 
 ## Validation
 
-### M4 ELF32 GNU RELRO protection (active)
+### M4 ELF32 GNU RELRO protection (complete)
 
 T001 loader/load-plan GNU RELRO metadata PASSed exact-head GitHub Actions CI #231 / run `35942933233` at `e3ea30a9445c86546933d008ee5a336bd9e91e8e`. Linux PASSed 47/47 CTest including `elf32_relro_metadata`; Android x86_64 and Android arm64-v8a also PASSed. The pinned fixture exposed one GNU RELRO range at linked VA `0x826c`, memsz `0xd94`, page-rounded mapping size `0x1000`, and remained writable immediately after load, proving the loader does not seal before relocation time.
 
 T002 bounded transactional sealing PASSed exact-head GitHub Actions CI #232 / run `35943552213` at `655f933f46c4bb28e5c36fe34b628b92af1f679b`. Linux PASSed 48/48 CTest including `elf32_relro_seal`; Android x86_64 and Android arm64-v8a also PASSed. Synthetic coverage verifies empty success, caller page limits before mutation, overlap deduplication, RW -> R sealing, post-seal write rejection, idempotence, malformed metadata rejection, and unmapped/unreadable/executable preflight without earlier mutation.
 
 T003 real post-relocation GNU RELRO sealing PASSed exact-head GitHub Actions CI #234 / run `35946857448` at `ff1792457f05bd9dd58740e1b768576b9ad4f1c3`. Linux PASSed 49/49 CTest including `elf32_real_relro_seal`; Android x86_64 and Android arm64-v8a also PASSed. The real fixture is relocated before sealing; both observed GLOB_DAT target values remain intact, RELRO writes are rejected after sealing, and non-RELRO mapped-page permissions remain unchanged.
+
+T004 documentation/spec/change/state convergence PASSed exact-head CI #235 / run `35947449163` at `f24c87026b66838c0742bf61ebafe27fba2f117e`; Linux again PASSed 49/49 CTest and both Android jobs PASSed.
 
 ### M4 ELF32 eager JUMP_SLOT relocations (complete)
 

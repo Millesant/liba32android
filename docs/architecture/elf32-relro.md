@@ -1,6 +1,6 @@
 # ELF32 GNU RELRO architecture
 
-Status: implementation verified through feature 010 T003 at CI #234 / run `35946857448`; convergence-head final gate pending
+Status: feature 010 complete; implementation verified by CI #234 and convergence verified by CI #235 / run `35947449163`
 
 ## Boundary
 

@@ -27,3 +27,12 @@ claim = "Feature 010 T003 applies the pinned real ARMv7 fixture relocations befo
 source = "GitHub Actions CI #234 / run 35946857448"
 result = "At ff1792457f05bd9dd58740e1b768576b9ad4f1c3, Linux A32 smoke passed 49/49 CTest including elf32_real_relro_seal; Android x86_64 address-space probe and Android arm64-v8a cross-build also passed."
 limitations = "This validates the implementation/refactor revision and real post-relocation RELRO integration. The documentation/state convergence commit still requires its own exact-head final gate."
+
+[[evidence]]
+id = "t004-convergence-exact-head-ci"
+kind = "validation"
+status = "passed"
+claim = "Feature 010 documentation/spec/change/state convergence agrees with the verified GNU RELRO implementation and passes the required exact-head repository CI gate."
+source = "GitHub Actions CI #235 / run 35947449163"
+result = "At f24c87026b66838c0742bf61ebafe27fba2f117e, Linux A32 smoke passed 49/49 CTest including elf32_real_relro_seal; Android x86_64 address-space probe and Android arm64-v8a cross-build passed."
+limitations = "This closes the bounded eager GNU RELRO feature only. Lazy binding, RELRO sharing, version-aware/process-wide interposition, TLS, IFUNC, broader relocations, and guest execution remain outside scope."

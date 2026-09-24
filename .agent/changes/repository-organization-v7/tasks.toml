@@ -3,7 +3,7 @@ change = "repository-organization-v7"
 
 [[tasks]]
 id = "T001"
-status = "verified"
+status = "done"
 depends_on = []
 acceptance = "Adopt v7 project metadata/current-spec layout and mark the old numbered specs tree as historical."
 
@@ -21,6 +21,6 @@ acceptance = "Centralize duplicated ELF32 byte-decoding and checked guest-addres
 
 [[tasks]]
 id = "T004"
-status = "implemented"
+status = "done"
 depends_on = ["T003"]
 acceptance = "Reconcile repository docs/state and pass exact-head Linux plus both Android CI lanes."

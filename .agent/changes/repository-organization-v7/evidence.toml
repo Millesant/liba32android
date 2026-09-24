@@ -18,3 +18,12 @@ claim = "The v7 workflow/build organization and private ELF helper refactor pres
 source = "GitHub Actions CI #234 / run 35946857448"
 result = "At ff1792457f05bd9dd58740e1b768576b9ad4f1c3, Linux configured/built and passed 49/49 CTest; Android x86_64 address-space probe passed; Android arm64-v8a runtime/diagnostics configured and built successfully."
 limitations = "The subsequent documentation/state convergence revision requires its own exact-head gate before the maintenance change is done."
+
+[[evidence]]
+id = "convergence-exact-head-ci"
+kind = "validation"
+status = "passed"
+claim = "The v7 repository migration, modular build organization, helper cleanup, and reconciled documentation/state pass the required exact-head convergence gate."
+source = "GitHub Actions CI #235 / run 35947449163"
+result = "At f24c87026b66838c0742bf61ebafe27fba2f117e, Linux A32 smoke passed 49/49 CTest; Android x86_64 address-space probe and Android arm64-v8a cross-build passed."
+limitations = "This validates repository organization and current state convergence; it does not add new runtime compatibility claims."
