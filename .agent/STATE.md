@@ -1,7 +1,7 @@
 # Current State
 
 Last updated: 2026-09-24
-Current phase: M4 continuation; feature 010 GNU RELRO complete; repository v7 organization complete
+Current phase: M4 continuation; runtime feature work stable; v7.2 maintenance cleanup active
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
@@ -11,6 +11,7 @@ Persistence-only closeout head `38304a2e4fcb3bdb96cd77785256afe135c8653a` passed
 Completed maintenance change: `test-infrastructure-cleanup-v7` is DONE. Real-fixture binary loading is shared across 12 integration tests, the four duplicated guest-word readers are centralized under `tests/support/`, and CMake test executable setup is deduplicated while preserving all 30 target identities and 49 CTest names. Exact-head CI #238 / run `35979816632` at `56df3ec5a97add0b96f25e02183bdcfbe2aac1c9` passed Linux 49/49 plus both Android lanes.
 Persistence-only test-infrastructure closeout head `0b51069def55cfe3ce35621845d948ea2401a38f` passed CI #239 / run `35980275074` in all three required lanes.
 Completed maintenance change: `elf32-header-layering-v7` is DONE. `Elf32LoadError` and its formatter declaration now live in a focused shared header; loader callers retain the same API exposure, while load-plan and dynamic-placement headers no longer pull in the full loader header. Exact-head CI #240 / run `35980653513` at `2343c32cf0f44afb4bfeec14a5f97e3fa3e10ca6` passed Linux 49/49 plus both Android lanes.
+Active maintenance change: `elf32-load-contract-layering-v7-2` is IMPLEMENTED pending exact-head CI. This round is pinned to `.gpt@609e6cb9cff9d00e241aa5437d9904fc7492f407` (v7.2.0), adopts checks-first CI retrieval, and separates loader-produced ELF32 data contracts from the loader call surface so dynamic, RELRO, and dependency public headers can depend on focused load types.
 
 ## Working
 
@@ -46,7 +47,7 @@ Completed maintenance change: `elf32-header-layering-v7` is DONE. `Elf32LoadErro
 - `src/elf/elf32_relocation.*` now implements separate bounded main-REL and PLT-REL pipelines. Main `DT_REL` supports `R_ARM_NONE`, `R_ARM_RELATIVE`, `R_ARM_GLOB_DAT`, and `R_ARM_ABS32`; PLT REL accepts only eager `R_ARM_JUMP_SLOT`. Both paths use byte-explicit bounded planning, the same graph-local reference policy, plan-before-write validation, unresolved-weak `S=0`, and reverse rollback without permission broadening. `GLOB_DAT` and `JUMP_SLOT` write `S` without treating the in-place word as an addend.
 - `src/elf/elf32_relro.*` implements a separate bounded post-relocation GNU RELRO sealing contract: caller-selected declared-page limits, complete preflight before mutation, overlap deduplication, idempotent read-only pages, RW -> R sealing only, and reverse permission rollback on later protection failure. T002 is VERIFIED by CI #232; T003 real-fixture integration is VERIFIED by CI #234, proving the real GLOB_DAT targets survive sealing and become write-protected while non-RELRO permissions remain unchanged.
 - The reproducible real ARMv7/Android loader fixture remains generated with pinned NDK r27d / API 26 inputs. Feature 009 additionally generates a freestanding provider/consumer DSO pair twice byte-identically; the consumer has `DT_NEEDED liba32android_jump_slot_provider.so` and `R_ARM_JUMP_SLOT fixture_import`, and the real integration loads the two-object graph and rewrites that slot to the provider guest symbol value without guest execution.
-- Project-local workflow state follows v7: `.agent/project.toml` identifies the project; `.agent/specs/` is accepted current truth; `.agent/changes/` holds substantial-work identity/tasks/evidence; root `specs/` is retained historical feature-era material. Generic workflow/runtime/governance stays centralized in `Millesant/.gpt`.
+- Project-local workflow state follows v7.2: `.agent/project.toml` identifies the project; `.agent/specs/` is accepted current truth; `.agent/changes/` holds substantial-work identity/tasks/evidence; root `specs/` is retained historical feature-era material. Generic workflow/runtime/governance stays centralized in `Millesant/.gpt`, and routine CI status retrieval is pinned to exact-head commit checks before workflow/job escalation.
 
 ## Partial / not implemented
 

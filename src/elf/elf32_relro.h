@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <optional>
 
-#include "elf/elf32_loader.h"
+#include "elf/elf32_load_types.h"
 #include "memory/guest_memory.h"
 
 namespace liba32android::elf {

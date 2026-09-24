@@ -10,7 +10,7 @@
 #include "elf/elf32_dynamic_placement.h"
 #include "elf/elf32_linker_metadata.h"
 #include "elf/elf32_linker_strings.h"
-#include "elf/elf32_loader.h"
+#include "elf/elf32_load_types.h"
 #include "memory/guest_memory.h"
 
 namespace liba32android::elf {

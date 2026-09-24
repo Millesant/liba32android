@@ -1,12 +1,12 @@
 # Next Work
 
-Repository integration is on `bleeding`. The current control-plane round is pinned to `Millesant/.gpt@1df73390ad04c0909e3ca42daa690789f150f1ca` (v7.1.0).
+Repository integration is on `bleeding`. The current control-plane round is pinned to `Millesant/.gpt@609e6cb9cff9d00e241aa5437d9904fc7492f407` (v7.2.0, checks-first CI).
 
 Feature `010-elf32-gnu-relro`, `repository-organization-v7`, `test-infrastructure-cleanup-v7`, and `elf32-header-layering-v7` are DONE.
 
-The ELF32 header-layer implementation head `2343c32cf0f44afb4bfeec14a5f97e3fa3e10ca6` passed GitHub Actions CI #240 / run `35980653513`: Linux passed 49/49 CTest, Android x86_64 address-space probe passed, and Android arm64-v8a cross-build passed. The closeout revision still requires its persistence-only exact-head gate.
+Maintenance change `elf32-load-contract-layering-v7-2` is IMPLEMENTED pending exact-head validation. It moves loader-produced ELF32 data contracts into a focused shared header, keeps `elf32_loader.h` source-compatible for loader callers, and removes unnecessary full-loader dependencies from dynamic, RELRO, and dependency-loader public interfaces. Exact-head Linux plus both Android CI lanes must pass before convergence.
 
-No new runtime feature-scale implementation is selected. Additional cleanup should start from the verified closeout head with a new bounded change identity and should prefer dependency/ownership improvements over cosmetic churn.
+No new runtime feature-scale implementation is selected. Additional cleanup should continue to prefer dependency/ownership improvements over cosmetic churn.
 
 ## Independent follow-ups
 

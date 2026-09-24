@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "elf/elf32_load_plan.h"
+#include "elf/elf32_loader.h"
 
 namespace liba32android::elf {
 namespace {
