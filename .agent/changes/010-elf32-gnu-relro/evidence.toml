@@ -18,3 +18,12 @@ claim = "Feature 010 T002 seals validated GNU RELRO pages read-only through a bo
 source = "GitHub Actions CI #232 / run 35943552213"
 result = "At 655f933f46c4bb28e5c36fe34b628b92af1f679b, Linux A32 smoke passed 48/48 CTest including elf32_relro_seal; Android x86_64 and Android arm64-v8a jobs passed."
 limitations = "Synthetic coverage validates successful sealing and preflight boundaries. Real post-relocation sealing of the pinned ARMv7 fixture is T003."
+
+[[evidence]]
+id = "t003-real-relro-ci"
+kind = "validation"
+status = "passed"
+claim = "Feature 010 T003 applies the pinned real ARMv7 fixture relocations before sealing GNU RELRO, preserves relocated values, rejects post-seal writes, and preserves non-RELRO permissions."
+source = "GitHub Actions CI #234 / run 35946857448"
+result = "At ff1792457f05bd9dd58740e1b768576b9ad4f1c3, Linux A32 smoke passed 49/49 CTest including elf32_real_relro_seal; Android x86_64 address-space probe and Android arm64-v8a cross-build also passed."
+limitations = "This validates the implementation/refactor revision and real post-relocation RELRO integration. The documentation/state convergence commit still requires its own exact-head final gate."

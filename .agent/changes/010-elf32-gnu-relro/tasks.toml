@@ -15,12 +15,12 @@ acceptance = "Seal published GNU RELRO pages read-only through a bounded transac
 
 [[tasks]]
 id = "T003"
-status = "implemented"
+status = "verified"
 depends_on = ["T002"]
 acceptance = "Apply existing real ARMv7 relocations, seal its GNU RELRO range, and verify relocated bytes plus non-RELRO permissions remain correct."
 
 [[tasks]]
 id = "T004"
-status = "planned"
+status = "implemented"
 depends_on = ["T003"]
 acceptance = "Converge specs/docs/state/evidence and pass the final exact-head Linux and Android CI gate."

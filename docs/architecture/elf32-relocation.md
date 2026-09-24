@@ -1,6 +1,6 @@
 # ELF32 ARM relocation application
 
-Status: current through feature 009; final exact-head gate CI #229 PASSed
+Status: relocation semantics current through feature 009; feature 010 adds a separate verified post-relocation GNU RELRO hardening stage
 
 ## Boundary
 
@@ -108,6 +108,21 @@ The layer never changes guest page permissions to make a relocation succeed.
 - Failure before the write phase leaves relocation targets unchanged.
 - Main-`DT_REL` feature-007 formulas remain unchanged by feature 009.
 
+## Post-relocation hardening boundary
+
+Feature 010 does not fold GNU RELRO into relocation application. The eager ordering is explicit:
+
+```text
+load graph
+ -> apply supported main REL
+ -> apply eager PLT REL
+ -> seal GNU RELRO
+```
+
+`elf32_relocation` never broadens or hardens page permissions. `elf32_relro` consumes validated loader metadata only after callers have completed all relocation writes required by the object. CI #234 / run `35946857448` verifies this ordering against the pinned real ARMv7 fixture.
+
+See `docs/architecture/elf32-relro.md` for the hardening contract.
+
 ## Validation evidence
 
 ### Main REL — feature 007
@@ -144,7 +159,7 @@ The current relocation layer still does not implement:
 - symbol-version matching or requester-specific protected/`DT_SYMBOLIC` self-binding;
 - Android namespaces, preloads, global groups, or process-wide interposition policy;
 - TLS relocations/addressing or GNU IFUNC execution;
-- RELRO;
+- Android RELRO serialization/sharing and lazy-binding interactions beyond the implemented eager sealing contract;
 - text-relocation permission broadening;
 - constructors/destructors, `dlopen`, `dlsym`, unload, or guest execution.
 

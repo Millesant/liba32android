@@ -39,7 +39,7 @@ The separate PLT REL path accepts eager `R_ARM_JUMP_SLOT`, resolves through the 
 
 Validated `PT_GNU_RELRO` ranges are exposed as guest-only loader metadata without early sealing. The explicit post-relocation sealing API is caller-bounded, preflights the full page set, deduplicates overlaps, accepts already-read-only pages, changes only RW pages to R, never broadens permissions, and rolls back earlier changes on a later protection failure when possible.
 
-Real post-relocation fixture integration for feature `010-elf32-gnu-relro` is implemented but remains unverified until exact-head CI is observed.
+Real post-relocation fixture integration is verified by CI #234 / run `35946857448` at `ff1792457f05bd9dd58740e1b768576b9ad4f1c3`: the real GLOB_DAT targets survive sealing, RELRO becomes read-only, direct writes fail, and non-RELRO permissions remain unchanged.
 
 ## L32-E010 — Deferred linker scope
 
