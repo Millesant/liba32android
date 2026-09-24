@@ -2,19 +2,19 @@ schema = 1
 change = "elf32-load-contract-layering-v7-2"
 
 [[evidence]]
-id = "planned-tree-inspection"
+id = "persisted-tree-inspection"
 kind = "inspection"
 status = "passed"
 claim = "The bounded refactor changes declaration ownership and include dependencies only."
-source = "Pre-write structural audit against 65a80b9bc002e92d6eb04b8526b0782c2ca93d2d"
-result = "Elf32LoadedSegment, Elf32DynamicSegment, Elf32RelroSegment, and Elf32LoadResult are moved verbatim from elf32_loader.h to elf32_load_types.h; elf32_loader.h re-exports that header; dynamic/RELRO/dependency public headers consume the focused types; elf32_dependency_loader.cpp explicitly includes elf32_loader.h for load_elf32 and Elf32LoadOptions."
-limitations = "This establishes the intended declaration/include delta only; compilation and runtime behavior require exact-head CI."
+source = "Persisted-tree inspection at 36b5dc8ddf9b06654fb075d33106f9eb4a417be4"
+result = "Elf32LoadedSegment, Elf32DynamicSegment, Elf32RelroSegment, and Elf32LoadResult moved verbatim from elf32_loader.h to elf32_load_types.h; elf32_loader.h re-exports the focused header; dynamic/RELRO/dependency public headers consume load types; elf32_dependency_loader.cpp explicitly includes elf32_loader.h for load_elf32 and Elf32LoadOptions."
+limitations = "Structural inspection validates declaration/include ownership; compile/runtime behavior is validated separately by exact-head checks."
 
 [[evidence]]
 id = "exact-head-ci"
 kind = "validation"
-status = "not_run"
-claim = "The load-contract layering cleanup preserves the full repository build/test matrix."
-source = "Exact-head GitHub Actions validation of the implementation revision"
-result = ""
-limitations = "Not run at implementation persistence time."
+status = "passed"
+claim = "The load-contract layering cleanup preserves the required repository build/test matrix."
+source = "GitHub exact-head checks at 36b5dc8ddf9b06654fb075d33106f9eb4a417be4: Linux A32 smoke 107812244467; Android arm64-v8a cross-build 107812244430; Android x86_64 address-space probe 107812244098"
+result = "All three required checks completed successfully on the exact implementation revision."
+limitations = "Check conclusions establish the required CI lanes; no failure-only job-step or log escalation was needed."
