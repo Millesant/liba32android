@@ -69,7 +69,7 @@ std::uint16_t read_u16(std::span<const std::uint8_t> bytes, std::size_t offset) 
            static_cast<std::uint16_t>(bytes[offset + 1]) << 8U;
 }
 
-std::uint32_t liba32android::test_support::read_u32_le(std::span<const std::uint8_t> bytes, std::size_t offset) {
+std::uint32_t read_u32(std::span<const std::uint8_t> bytes, std::size_t offset) {
     return static_cast<std::uint32_t>(bytes[offset]) |
            static_cast<std::uint32_t>(bytes[offset + 1]) << 8U |
            static_cast<std::uint32_t>(bytes[offset + 2]) << 16U |
@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
         return fail("generated fixture is not an ARM ELF32 ET_DYN image");
     }
 
-    const std::uint32_t program_header_offset = liba32android::test_support::read_u32_le(image, 28);
+    const std::uint32_t program_header_offset = read_u32(image, 28);
     const std::uint16_t program_header_size = read_u16(image, 42);
     const std::uint16_t program_header_count = read_u16(image, 44);
     if (program_header_size != kElf32ProgramHeaderSize ||
@@ -145,22 +145,22 @@ int main(int argc, char** argv) {
     for (std::uint16_t index = 0; index < program_header_count; ++index) {
         const std::size_t offset = static_cast<std::size_t>(program_header_offset) +
                                    static_cast<std::size_t>(index) * kElf32ProgramHeaderSize;
-        const std::uint32_t type = liba32android::test_support::read_u32_le(image, offset);
+        const std::uint32_t type = read_u32(image, offset);
         if (type == kProgramTypeDynamic) {
             if (dynamic_segment.has_value()) {
                 return fail("generated fixture unexpectedly contains multiple PT_DYNAMIC segments");
             }
             dynamic_segment = DynamicSegment{
-                .offset = liba32android::test_support::read_u32_le(image, offset + 4),
-                .virtual_address = liba32android::test_support::read_u32_le(image, offset + 8),
-                .file_size = liba32android::test_support::read_u32_le(image, offset + 16),
-                .memory_size = liba32android::test_support::read_u32_le(image, offset + 20),
+                .offset = read_u32(image, offset + 4),
+                .virtual_address = read_u32(image, offset + 8),
+                .file_size = read_u32(image, offset + 16),
+                .memory_size = read_u32(image, offset + 20),
             };
         }
         if (type == kProgramTypeGnuRelro) {
             relro_segments.push_back({
-                .virtual_address = liba32android::test_support::read_u32_le(image, offset + 8),
-                .memory_size = liba32android::test_support::read_u32_le(image, offset + 20),
+                .virtual_address = read_u32(image, offset + 8),
+                .memory_size = read_u32(image, offset + 20),
             });
         }
         if (type != kProgramTypeLoad) {
@@ -168,12 +168,12 @@ int main(int argc, char** argv) {
         }
 
         LoadSegment segment;
-        segment.offset = liba32android::test_support::read_u32_le(image, offset + 4);
-        segment.virtual_address = liba32android::test_support::read_u32_le(image, offset + 8);
-        segment.file_size = liba32android::test_support::read_u32_le(image, offset + 16);
-        segment.memory_size = liba32android::test_support::read_u32_le(image, offset + 20);
-        segment.flags = liba32android::test_support::read_u32_le(image, offset + 24);
-        segment.alignment = liba32android::test_support::read_u32_le(image, offset + 28);
+        segment.offset = read_u32(image, offset + 4);
+        segment.virtual_address = read_u32(image, offset + 8);
+        segment.file_size = read_u32(image, offset + 16);
+        segment.memory_size = read_u32(image, offset + 20);
+        segment.flags = read_u32(image, offset + 24);
+        segment.alignment = read_u32(image, offset + 28);
         loads.push_back(segment);
 
         has_executable = has_executable || (segment.flags & kFlagExecute) != 0;
