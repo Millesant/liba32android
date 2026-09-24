@@ -1,11 +1,11 @@
-#include <array>
 #include <cstdint>
-#include <fstream>
 #include <iostream>
 #include <limits>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include "support/fixture_io.h"
 
 #include "elf/elf32_dependency_loader.h"
 #include "elf/elf32_relocation.h"
@@ -43,35 +43,6 @@ constexpr const char* kImportedSymbol = "fixture_import";
 int fail(const std::string& message) {
     std::cerr << message << '\n';
     return 1;
-}
-
-std::vector<std::uint8_t> read_file(const char* path) {
-    std::ifstream input(path, std::ios::binary | std::ios::ate);
-    if (!input) return {};
-
-    const std::streamoff end = input.tellg();
-    if (end <= 0 ||
-        static_cast<std::uint64_t>(end) >
-            std::numeric_limits<std::size_t>::max()) {
-        return {};
-    }
-
-    std::vector<std::uint8_t> bytes(static_cast<std::size_t>(end));
-    input.seekg(0, std::ios::beg);
-    if (!input.read(reinterpret_cast<char*>(bytes.data()), end)) return {};
-    return bytes;
-}
-
-bool read_u32(const MappedGuestMemory& memory,
-              std::uint32_t address,
-              std::uint32_t& value) {
-    std::array<std::uint8_t, 4> bytes{};
-    if (!memory.read(address, bytes)) return false;
-    value = static_cast<std::uint32_t>(bytes[0]) |
-            (static_cast<std::uint32_t>(bytes[1]) << 8U) |
-            (static_cast<std::uint32_t>(bytes[2]) << 16U) |
-            (static_cast<std::uint32_t>(bytes[3]) << 24U);
-    return true;
 }
 
 class FixtureProvider final : public Elf32DependencyProvider {
@@ -221,8 +192,8 @@ int main(int argc, char** argv) {
             "expected paths to generated ARM32 JUMP_SLOT consumer and provider");
     }
 
-    const std::vector<std::uint8_t> consumer = read_file(argv[1]);
-    const std::vector<std::uint8_t> provider_image = read_file(argv[2]);
+    const std::vector<std::uint8_t> consumer = liba32android::test_support::read_binary_file(argv[1]);
+    const std::vector<std::uint8_t> provider_image = liba32android::test_support::read_binary_file(argv[2]);
     if (consumer.empty() || provider_image.empty()) {
         return fail("generated ARM32 JUMP_SLOT fixture is missing or empty");
     }
@@ -312,7 +283,7 @@ int main(int argc, char** argv) {
     const std::uint32_t original_word =
         *plan.plan.entries[0].original_word;
     std::uint32_t target_before = 0;
-    if (!read_u32(memory, target, target_before) ||
+    if (!liba32android::test_support::read_u32_le(memory, target, target_before) ||
         target_before != original_word) {
         return fail("real JUMP_SLOT target could not be read before application");
     }
@@ -341,7 +312,7 @@ int main(int argc, char** argv) {
     }
 
     std::uint32_t target_after = 0;
-    if (!read_u32(memory, target, target_after) ||
+    if (!liba32android::test_support::read_u32_le(memory, target, target_after) ||
         target_after != independent.symbol.symbol.guest_value) {
         return fail("real JUMP_SLOT target did not equal provider guest symbol value");
     }

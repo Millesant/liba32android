@@ -7,6 +7,8 @@ Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
 Completed runtime change: `010-elf32-gnu-relro` is DONE. T001/T002 passed CI #231/#232, T003 real post-relocation sealing passed CI #234, and T004 convergence passed exact-head CI #235 / run `35947449163` at `f24c87026b66838c0742bf61ebafe27fba2f117e`.
 Completed maintenance change: `repository-organization-v7` is DONE. The v7.1 project/spec/change migration, modular CMake organization, private ELF32 helper cleanup, and reconciled docs/state passed CI #234 and final exact-head convergence CI #235.
+Persistence-only closeout head `38304a2e4fcb3bdb96cd77785256afe135c8653a` passed CI #236 / run `35979083056` in all three required lanes.
+Active maintenance work: `test-infrastructure-cleanup-v7` reduces duplicated real-fixture test I/O/guest-word helpers and CMake test-target boilerplate without intended runtime or test-semantic changes.
 
 ## Working
 

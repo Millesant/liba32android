@@ -1,11 +1,11 @@
-#include <array>
 #include <cstdint>
-#include <fstream>
 #include <iostream>
 #include <limits>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include "support/fixture_io.h"
 
 #include "elf/elf32_dependency_loader.h"
 #include "elf/elf32_symbol_lookup.h"
@@ -36,34 +36,6 @@ constexpr std::uint32_t kExpectedFixtureData = 0x12345678U;
 int fail(const std::string& message) {
     std::cerr << message << '\n';
     return 1;
-}
-
-std::vector<std::uint8_t> read_file(const char* path) {
-    std::ifstream input(path, std::ios::binary | std::ios::ate);
-    if (!input) return {};
-
-    const std::streamoff end = input.tellg();
-    if (end <= 0 ||
-        static_cast<std::uint64_t>(end) > std::numeric_limits<std::size_t>::max()) {
-        return {};
-    }
-
-    std::vector<std::uint8_t> bytes(static_cast<std::size_t>(end));
-    input.seekg(0, std::ios::beg);
-    if (!input.read(reinterpret_cast<char*>(bytes.data()), end)) return {};
-    return bytes;
-}
-
-bool read_u32(const MappedGuestMemory& memory,
-              std::uint32_t address,
-              std::uint32_t& value) {
-    std::array<std::uint8_t, 4> bytes{};
-    if (!memory.read(address, bytes)) return false;
-    value = static_cast<std::uint32_t>(bytes[0]) |
-            (static_cast<std::uint32_t>(bytes[1]) << 8U) |
-            (static_cast<std::uint32_t>(bytes[2]) << 16U) |
-            (static_cast<std::uint32_t>(bytes[3]) << 24U);
-    return true;
 }
 
 class FailIfCalledProvider final : public Elf32DependencyProvider {
@@ -183,7 +155,7 @@ int main(int argc, char** argv) {
         return fail("expected path to generated ARM32 fixture");
     }
 
-    const std::vector<std::uint8_t> image = read_file(argv[1]);
+    const std::vector<std::uint8_t> image = liba32android::test_support::read_binary_file(argv[1]);
     if (image.empty()) {
         return fail("generated ARM32 fixture is missing or empty");
     }
@@ -257,13 +229,13 @@ int main(int argc, char** argv) {
     }
 
     std::uint32_t data_value = 0;
-    if (!read_u32(memory, data.symbol.symbol.guest_value, data_value) ||
+    if (!liba32android::test_support::read_u32_le(memory, data.symbol.symbol.guest_value, data_value) ||
         data_value != kExpectedFixtureData) {
         return fail("resolved fixture_data did not read back 0x12345678");
     }
 
     std::uint32_t bss_value = std::numeric_limits<std::uint32_t>::max();
-    if (!read_u32(memory, bss.symbol.symbol.guest_value, bss_value) ||
+    if (!liba32android::test_support::read_u32_le(memory, bss.symbol.symbol.guest_value, bss_value) ||
         bss_value != 0) {
         return fail("resolved fixture_bss did not read back zero");
     }

@@ -1,0 +1,20 @@
+schema = 1
+change = "test-infrastructure-cleanup-v7"
+
+[[tasks]]
+id = "T001"
+status = "active"
+depends_on = []
+acceptance = "Extract shared real-fixture binary loading and guest little-endian word reads into tests/support without changing test semantics."
+
+[[tasks]]
+id = "T002"
+status = "planned"
+depends_on = ["T001"]
+acceptance = "Replace repeated CMake test executable boilerplate with one helper while preserving all target/source mappings and CTest registration."
+
+[[tasks]]
+id = "T003"
+status = "planned"
+depends_on = ["T002"]
+acceptance = "Inspect the persisted refactor and pass exact-head Linux plus Android CI before convergence."

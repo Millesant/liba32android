@@ -1,143 +1,43 @@
 if(LIBA32ANDROID_BUILD_TESTS)
-    add_executable(cpu_smoke tests/cpu_smoke.cpp)
-    target_include_directories(cpu_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(cpu_smoke PRIVATE liba32android)
+    function(liba32android_add_test_executable target source)
+        add_executable(${target} ${source})
+        target_include_directories(${target}
+            PRIVATE
+                ${CMAKE_CURRENT_SOURCE_DIR}/src
+        )
+        target_link_libraries(${target} PRIVATE liba32android)
+    endfunction()
 
-    add_executable(cpu_execution tests/cpu_execution.cpp)
-    target_include_directories(cpu_execution PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(cpu_execution PRIVATE liba32android)
-
-    add_executable(guest_memory_test tests/guest_memory.cpp)
-    target_include_directories(guest_memory_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(guest_memory_test PRIVATE liba32android)
-
-    add_executable(mapped_guest_memory_test tests/mapped_guest_memory.cpp)
-    target_include_directories(mapped_guest_memory_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(mapped_guest_memory_test PRIVATE liba32android)
-
-    add_executable(guest_va_allocator_test tests/guest_va_allocator.cpp)
-    target_include_directories(guest_va_allocator_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(guest_va_allocator_test PRIVATE liba32android)
-
-    add_executable(cpu_fastmem_test tests/cpu_fastmem.cpp)
-    target_include_directories(cpu_fastmem_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(cpu_fastmem_test PRIVATE liba32android)
-
-    add_executable(elf32_loader_test tests/elf32_loader.cpp)
-    target_include_directories(elf32_loader_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_loader_test PRIVATE liba32android)
-
-    add_executable(elf32_load_plan_test tests/elf32_load_plan.cpp)
-    target_include_directories(elf32_load_plan_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_load_plan_test PRIVATE liba32android)
-
-    add_executable(elf32_dynamic_test tests/elf32_dynamic.cpp)
-    target_include_directories(elf32_dynamic_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_dynamic_test PRIVATE liba32android)
-
-    add_executable(elf32_dynamic_placement_test tests/elf32_dynamic_placement.cpp)
-    target_include_directories(elf32_dynamic_placement_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_dynamic_placement_test PRIVATE liba32android)
-
-    add_executable(elf32_linker_metadata_test tests/elf32_linker_metadata.cpp)
-    target_include_directories(elf32_linker_metadata_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_linker_metadata_test PRIVATE liba32android)
-
-    add_executable(elf32_linker_strings_test tests/elf32_linker_strings.cpp)
-    target_include_directories(elf32_linker_strings_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_linker_strings_test PRIVATE liba32android)
-
-    add_executable(elf32_symbol_lookup_test tests/elf32_symbol_lookup.cpp)
-    target_include_directories(elf32_symbol_lookup_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_symbol_lookup_test PRIVATE liba32android)
-
-    add_executable(elf32_relocation_test tests/elf32_relocation.cpp)
-    target_include_directories(elf32_relocation_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_relocation_test PRIVATE liba32android)
-
-    add_executable(elf32_relocation_apply_test tests/elf32_relocation_apply.cpp)
-    target_include_directories(elf32_relocation_apply_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_relocation_apply_test PRIVATE liba32android)
-
-    add_executable(elf32_relro_test tests/elf32_relro.cpp)
-    target_include_directories(elf32_relro_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_relro_test PRIVATE liba32android)
-
-    add_executable(elf32_dependency_resolver_test tests/elf32_dependency_resolver.cpp)
-    target_include_directories(elf32_dependency_resolver_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_dependency_resolver_test PRIVATE liba32android)
-
-    add_executable(elf32_dependency_loader_test tests/elf32_dependency_loader.cpp)
-    target_include_directories(elf32_dependency_loader_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_dependency_loader_test PRIVATE liba32android)
-
-    add_executable(elf32_real_fixture_test tests/elf32_real_fixture.cpp)
-    target_include_directories(elf32_real_fixture_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_real_fixture_test PRIVATE liba32android)
-
-    add_executable(elf32_dynamic_real_fixture_test tests/elf32_dynamic_real_fixture.cpp)
-    target_include_directories(elf32_dynamic_real_fixture_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_dynamic_real_fixture_test PRIVATE liba32android)
-
-    add_executable(elf32_linker_metadata_real_fixture_test
-                   tests/elf32_linker_metadata_real_fixture.cpp)
-    target_include_directories(elf32_linker_metadata_real_fixture_test
-                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_linker_metadata_real_fixture_test PRIVATE liba32android)
-
-    add_executable(elf32_linker_strings_real_fixture_test
-                   tests/elf32_linker_strings_real_fixture.cpp)
-    target_include_directories(elf32_linker_strings_real_fixture_test
-                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_linker_strings_real_fixture_test PRIVATE liba32android)
-
-    add_executable(elf32_dependency_resolver_real_fixture_test
-                   tests/elf32_dependency_resolver_real_fixture.cpp)
-    target_include_directories(elf32_dependency_resolver_real_fixture_test
-                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_dependency_resolver_real_fixture_test PRIVATE liba32android)
-
-    add_executable(elf32_dynamic_placement_real_fixture_test
-                   tests/elf32_dynamic_placement_real_fixture.cpp)
-    target_include_directories(elf32_dynamic_placement_real_fixture_test
-                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_dynamic_placement_real_fixture_test PRIVATE liba32android)
-
-    add_executable(elf32_dependency_loader_real_fixture_test
-                   tests/elf32_dependency_loader_real_fixture.cpp)
-    target_include_directories(elf32_dependency_loader_real_fixture_test
-                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_dependency_loader_real_fixture_test PRIVATE liba32android)
-
-    add_executable(elf32_symbol_lookup_real_fixture_test
-                   tests/elf32_symbol_lookup_real_fixture.cpp)
-    target_include_directories(elf32_symbol_lookup_real_fixture_test
-                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_symbol_lookup_real_fixture_test PRIVATE liba32android)
-
-    add_executable(elf32_relocation_real_fixture_test
-                   tests/elf32_relocation_real_fixture.cpp)
-    target_include_directories(elf32_relocation_real_fixture_test
-                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_relocation_real_fixture_test PRIVATE liba32android)
-
-    add_executable(elf32_relocation_apply_real_fixture_test
-                   tests/elf32_relocation_apply_real_fixture.cpp)
-    target_include_directories(elf32_relocation_apply_real_fixture_test
-                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_relocation_apply_real_fixture_test PRIVATE liba32android)
-
-    add_executable(elf32_relro_real_fixture_test
-                   tests/elf32_relro_real_fixture.cpp)
-    target_include_directories(elf32_relro_real_fixture_test
-                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_relro_real_fixture_test PRIVATE liba32android)
-
-    add_executable(elf32_jump_slot_real_fixture_test
-                   tests/elf32_jump_slot_real_fixture.cpp)
-    target_include_directories(elf32_jump_slot_real_fixture_test
-                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(elf32_jump_slot_real_fixture_test PRIVATE liba32android)
+    liba32android_add_test_executable(cpu_smoke tests/cpu_smoke.cpp)
+    liba32android_add_test_executable(cpu_execution tests/cpu_execution.cpp)
+    liba32android_add_test_executable(guest_memory_test tests/guest_memory.cpp)
+    liba32android_add_test_executable(mapped_guest_memory_test tests/mapped_guest_memory.cpp)
+    liba32android_add_test_executable(guest_va_allocator_test tests/guest_va_allocator.cpp)
+    liba32android_add_test_executable(cpu_fastmem_test tests/cpu_fastmem.cpp)
+    liba32android_add_test_executable(elf32_loader_test tests/elf32_loader.cpp)
+    liba32android_add_test_executable(elf32_load_plan_test tests/elf32_load_plan.cpp)
+    liba32android_add_test_executable(elf32_dynamic_test tests/elf32_dynamic.cpp)
+    liba32android_add_test_executable(elf32_dynamic_placement_test tests/elf32_dynamic_placement.cpp)
+    liba32android_add_test_executable(elf32_linker_metadata_test tests/elf32_linker_metadata.cpp)
+    liba32android_add_test_executable(elf32_linker_strings_test tests/elf32_linker_strings.cpp)
+    liba32android_add_test_executable(elf32_symbol_lookup_test tests/elf32_symbol_lookup.cpp)
+    liba32android_add_test_executable(elf32_relocation_test tests/elf32_relocation.cpp)
+    liba32android_add_test_executable(elf32_relocation_apply_test tests/elf32_relocation_apply.cpp)
+    liba32android_add_test_executable(elf32_relro_test tests/elf32_relro.cpp)
+    liba32android_add_test_executable(elf32_dependency_resolver_test tests/elf32_dependency_resolver.cpp)
+    liba32android_add_test_executable(elf32_dependency_loader_test tests/elf32_dependency_loader.cpp)
+    liba32android_add_test_executable(elf32_real_fixture_test tests/elf32_real_fixture.cpp)
+    liba32android_add_test_executable(elf32_dynamic_real_fixture_test tests/elf32_dynamic_real_fixture.cpp)
+    liba32android_add_test_executable(elf32_linker_metadata_real_fixture_test tests/elf32_linker_metadata_real_fixture.cpp)
+    liba32android_add_test_executable(elf32_linker_strings_real_fixture_test tests/elf32_linker_strings_real_fixture.cpp)
+    liba32android_add_test_executable(elf32_dependency_resolver_real_fixture_test tests/elf32_dependency_resolver_real_fixture.cpp)
+    liba32android_add_test_executable(elf32_dynamic_placement_real_fixture_test tests/elf32_dynamic_placement_real_fixture.cpp)
+    liba32android_add_test_executable(elf32_dependency_loader_real_fixture_test tests/elf32_dependency_loader_real_fixture.cpp)
+    liba32android_add_test_executable(elf32_symbol_lookup_real_fixture_test tests/elf32_symbol_lookup_real_fixture.cpp)
+    liba32android_add_test_executable(elf32_relocation_real_fixture_test tests/elf32_relocation_real_fixture.cpp)
+    liba32android_add_test_executable(elf32_relocation_apply_real_fixture_test tests/elf32_relocation_apply_real_fixture.cpp)
+    liba32android_add_test_executable(elf32_relro_real_fixture_test tests/elf32_relro_real_fixture.cpp)
+    liba32android_add_test_executable(elf32_jump_slot_real_fixture_test tests/elf32_jump_slot_real_fixture.cpp)
 
     add_test(NAME guest_arm_return_42 COMMAND cpu_smoke arm)
     add_test(NAME guest_thumb_return_42 COMMAND cpu_smoke thumb)

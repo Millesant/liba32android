@@ -1,11 +1,11 @@
 #include <array>
 #include <cstdint>
-#include <fstream>
 #include <iostream>
-#include <limits>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include "support/fixture_io.h"
 
 #include "elf/elf32_dependency_loader.h"
 #include "elf/elf32_relocation.h"
@@ -37,23 +37,6 @@ int fail(const std::string& message) {
     return 1;
 }
 
-std::vector<std::uint8_t> read_file(const char* path) {
-    std::ifstream input(path, std::ios::binary | std::ios::ate);
-    if (!input) return {};
-
-    const std::streamoff end = input.tellg();
-    if (end <= 0 ||
-        static_cast<std::uint64_t>(end) >
-            std::numeric_limits<std::size_t>::max()) {
-        return {};
-    }
-
-    std::vector<std::uint8_t> bytes(static_cast<std::size_t>(end));
-    input.seekg(0, std::ios::beg);
-    if (!input.read(reinterpret_cast<char*>(bytes.data()), end)) return {};
-    return bytes;
-}
-
 class FailIfCalledProvider final : public Elf32DependencyProvider {
 public:
     std::size_t calls{};
@@ -75,7 +58,7 @@ int main(int argc, char** argv) {
         return fail("expected path to generated ARM32 fixture");
     }
 
-    const std::vector<std::uint8_t> image = read_file(argv[1]);
+    const std::vector<std::uint8_t> image = liba32android::test_support::read_binary_file(argv[1]);
     if (image.empty()) {
         return fail("generated ARM32 fixture is missing or empty");
     }
