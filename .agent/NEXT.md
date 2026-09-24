@@ -2,11 +2,14 @@
 
 Repository integration is on `bleeding`. The current control-plane round is pinned to `Millesant/.gpt@1df73390ad04c0909e3ca42daa690789f150f1ca` (v7.1.0).
 
-Feature `010-elf32-gnu-relro`, `repository-organization-v7`, and `test-infrastructure-cleanup-v7` are DONE.
+Feature `010-elf32-gnu-relro`, `repository-organization-v7`, and `test-infrastructure-cleanup-v7` are DONE. The test-infrastructure persistence-only closeout head `0b51069def55cfe3ce35621845d948ea2401a38f` passed CI #239 / run `35980275074`.
 
-The test-infrastructure cleanup implementation head `56df3ec5a97add0b96f25e02183bdcfbe2aac1c9` passed GitHub Actions CI #238 / run `35979816632`: Linux passed 49/49 CTest, Android x86_64 address-space probe passed, and Android arm64-v8a cross-build passed. The closeout revision still requires its persistence-only exact-head gate.
+Active maintenance change: `elf32-header-layering-v7`.
 
-No new runtime feature-scale implementation is selected. Further repository cleanup should start from the verified closeout head with a new bounded change identity and preserve current runtime/linker contracts.
+1. T001 — extract the shared `Elf32LoadError` contract and preserve loader API exposure — ACTIVE.
+2. T002 — remove unnecessary loader-header dependencies from load plan/placement and pass exact-head Linux + Android CI — PLANNED.
+
+This cleanup must not change ELF load behavior, enum ordering, public function signatures, or compatibility claims.
 
 ## Independent follow-ups
 

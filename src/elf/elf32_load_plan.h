@@ -5,7 +5,8 @@
 #include <span>
 #include <vector>
 
-#include "elf/elf32_loader.h"
+#include "elf/elf32_load_error.h"
+#include "memory/guest_memory.h"
 
 namespace liba32android::elf {
 
