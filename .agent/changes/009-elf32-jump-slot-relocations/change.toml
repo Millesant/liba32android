@@ -2,7 +2,7 @@ schema = 1
 id = "009-elf32-jump-slot-relocations"
 kind = "feature"
 size = "S2"
-status = "active"
+status = "implemented"
 workflow = "feature"
 control_revision = "9240ab19507b86491398a5c9fdf0deb58e2fdc91"
 base_revision = "bbad7db39e430ba87a373841e3ede954696c85c5"
@@ -21,7 +21,7 @@ acceptance = [
 [convergence]
 requirements = "aligned"
 specs = "aligned"
-implementation = "pending"
+implementation = "aligned"
 tests = "pending"
 documentation = "pending"
 decisions = "not_applicable"

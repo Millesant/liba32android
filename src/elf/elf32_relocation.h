@@ -15,11 +15,12 @@ namespace liba32android::elf {
 inline constexpr std::uint8_t kRArmNone = 0;
 inline constexpr std::uint8_t kRArmAbs32 = 2;
 inline constexpr std::uint8_t kRArmGlobDat = 21;
+inline constexpr std::uint8_t kRArmJumpSlot = 22;
 inline constexpr std::uint8_t kRArmRelative = 23;
 
-// Caller-selected bounds for relocation work. T001 planning consumes only
-// max_relocations. The symbol limits are carried here for the later
-// resolution/application stages so one call surface owns all finite bounds.
+// Caller-selected bounds for one relocation-table operation. max_relocations
+// applies independently to the selected main REL or PLT REL table. Symbol
+// limits are shared by the reference-resolution/application stages.
 struct Elf32RelocationOptions {
     std::uint32_t max_relocations{};
     Elf32SymbolLookupOptions symbols{};
@@ -181,12 +182,35 @@ struct Elf32RelocationApplyResult {
     std::size_t object_index,
     const Elf32RelocationOptions& options);
 
+// Decode and validate one loaded object's feature-008 PLT REL table without
+// mutating guest memory. This path accepts only R_ARM_JUMP_SLOT. Each entry
+// requires a word-aligned readable target and captures the original word only
+// as rollback state; eager JUMP_SLOT semantics do not use it as an addend.
+// Planning is independently bounded by max_relocations and returns only
+// logical 32-bit guest addresses/values.
+[[nodiscard]] Elf32RelocationPlanResult build_elf32_plt_rel_relocation_plan(
+    const memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t object_index,
+    const Elf32RelocationOptions& options);
+
 // Resolve symbol-bearing ABS32/GLOB_DAT references without writing guest
 // memory. Only GLOBAL/WEAK DEFAULT NOTYPE/OBJECT/FUNC references are accepted.
 // Protected/versioned/TLS/IFUNC/common/XINDEX semantics fail explicitly.
 // A graph miss becomes S=0 only for a WEAK reference.
 [[nodiscard]] Elf32RelocationResolutionResult
 resolve_elf32_rel_relocation_references(
+    const memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t object_index,
+    const Elf32RelocationOptions& options);
+
+// Resolve PLT R_ARM_JUMP_SLOT references without writing guest memory. The
+// same bounded GLOBAL/WEAK DEFAULT NOTYPE/OBJECT/FUNC graph-local policy used
+// by main REL relocations applies here. A graph miss becomes S=0 only for a
+// WEAK reference. Lazy binding and DT_PLTGOT resolver state are not involved.
+[[nodiscard]] Elf32RelocationResolutionResult
+resolve_elf32_plt_rel_relocation_references(
     const memory::GuestMemory& memory,
     const Elf32DependencyGraph& graph,
     std::size_t object_index,

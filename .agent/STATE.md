@@ -5,7 +5,7 @@ Current phase: M4 continuation; feature 009 eager ELF32 ARM JUMP_SLOT relocation
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `009-elf32-jump-slot-relocations` T001. The S2 change/spec is readiness-checked against project base `bbad7db39e430ba87a373841e3ede954696c85c5` under control revision `9240ab19507b86491398a5c9fdf0deb58e2fdc91`. T001 read-only PLT planning/reference resolution is ACTIVE; implementation validation is NOT RUN.
+Active runtime work: `009-elf32-jump-slot-relocations` T001. The read-only PLT planning/reference-resolution implementation and focused synthetic coverage are prepared on top of spec head `ff402cf9ff98d2c4615b94b495ece399acada0cd`; exact-head validation is NOT RUN.
 
 ## Working
 

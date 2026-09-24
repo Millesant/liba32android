@@ -7,7 +7,7 @@ Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
 
 ## T001 — PLT REL planning and reference resolution
 
-- Status: ACTIVE
+- Status: IMPLEMENTED — exact-head validation NOT RUN
 - Requirements: R1-R7, R13-R14; AC1-AC5, AC8
 - Scope:
   - add `kRArmJumpSlot = 22`;

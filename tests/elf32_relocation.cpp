@@ -21,16 +21,20 @@ using liba32android::elf::Elf32RelocationResolveError;
 using liba32android::elf::Elf32StringTableMetadata;
 using liba32android::elf::Elf32SymbolIndexError;
 using liba32android::elf::Elf32SymbolTableMetadata;
+using liba32android::elf::build_elf32_plt_rel_relocation_plan;
 using liba32android::elf::build_elf32_rel_relocation_plan;
+using liba32android::elf::resolve_elf32_plt_rel_relocation_references;
 using liba32android::elf::resolve_elf32_rel_relocation_references;
 using liba32android::elf::kRArmAbs32;
 using liba32android::elf::kRArmGlobDat;
+using liba32android::elf::kRArmJumpSlot;
 using liba32android::elf::kRArmNone;
 using liba32android::elf::kRArmRelative;
 using liba32android::memory::LinearGuestMemory;
 
 constexpr std::uint32_t kMemoryBase = 0x1000;
 constexpr std::uint32_t kRelTable = 0x1100;
+constexpr std::uint32_t kPltRelTable = 0x1180;
 
 int fail(const char* message) {
     std::cerr << message << '\n';
@@ -61,14 +65,24 @@ bool read_u32(const LinearGuestMemory& memory,
     return true;
 }
 
+bool write_rel_at(LinearGuestMemory& memory,
+                  std::uint32_t table,
+                  std::uint32_t index,
+                  std::uint32_t offset,
+                  std::uint32_t symbol_index,
+                  std::uint8_t type) {
+    return write_u32(memory, table + index * 8U, offset) &&
+           write_u32(memory, table + index * 8U + 4U,
+                     (symbol_index << 8U) | type);
+}
+
 bool write_rel(LinearGuestMemory& memory,
                std::uint32_t index,
                std::uint32_t offset,
                std::uint32_t symbol_index,
                std::uint8_t type) {
-    return write_u32(memory, kRelTable + index * 8U, offset) &&
-           write_u32(memory, kRelTable + index * 8U + 4U,
-                     (symbol_index << 8U) | type);
+    return write_rel_at(
+        memory, kRelTable, index, offset, symbol_index, type);
 }
 
 Elf32DependencyGraph graph_with_rel(std::uint32_t load_bias,
@@ -79,6 +93,22 @@ Elf32DependencyGraph graph_with_rel(std::uint32_t load_bias,
     graph.objects[0].identity = "relocation-test";
     graph.objects[0].load.load_bias = load_bias;
     graph.objects[0].linker_metadata.rel_table =
+        Elf32RelTableMetadata{
+            .guest_address = table_address,
+            .size = table_size,
+            .entry_size = 8,
+        };
+    return graph;
+}
+
+Elf32DependencyGraph graph_with_plt_rel(std::uint32_t load_bias,
+                                        std::uint32_t table_address,
+                                        std::uint32_t table_size) {
+    Elf32DependencyGraph graph;
+    graph.objects.resize(1);
+    graph.objects[0].identity = "plt-relocation-test";
+    graph.objects[0].load.load_bias = load_bias;
+    graph.objects[0].linker_metadata.plt_rel_table =
         Elf32RelTableMetadata{
             .guest_address = table_address,
             .size = table_size,
@@ -320,7 +350,7 @@ int test_read_place_and_type_failures() {
     {
         LinearGuestMemory memory(0x2000, kMemoryBase);
         auto graph = graph_with_rel(0x1000, kRelTable, 8);
-        if (!write_rel(memory, 0, 0x3000, 1, 22)) {
+        if (!write_rel(memory, 0, 0x3000, 1, kRArmJumpSlot)) {
             return fail("could not stage unsupported-type test");
         }
         if (build_elf32_rel_relocation_plan(memory, graph, 0, options()).error !=
@@ -605,6 +635,278 @@ int test_duplicate_target_rejected_without_mutation() {
     return 0;
 }
 
+int test_plt_empty_and_exact_decode() {
+    {
+        LinearGuestMemory memory(0x4000, kMemoryBase);
+        Elf32DependencyGraph graph;
+        graph.objects.resize(1);
+        const auto result =
+            build_elf32_plt_rel_relocation_plan(
+                memory, graph, 0, options(0));
+        if (!result || !result.plan.entries.empty()) {
+            return fail("object without PLT REL table did not produce empty success");
+        }
+    }
+
+    LinearGuestMemory memory(0x5000, kMemoryBase);
+    auto graph = graph_with_plt_rel(0x1000, kPltRelTable, 16);
+    if (!write_rel_at(memory, kPltRelTable, 0, 0x1000, 1,
+                      kRArmJumpSlot) ||
+        !write_rel_at(memory, kPltRelTable, 1, 0x1004, 2,
+                      kRArmJumpSlot) ||
+        !write_u32(memory, 0x2000, 0x11223344U) ||
+        !write_u32(memory, 0x2004, 0xaabbccddU)) {
+        return fail("could not stage valid PLT REL plan");
+    }
+
+    const auto result =
+        build_elf32_plt_rel_relocation_plan(memory, graph, 0, options());
+    if (!result || result.plan.object_index != 0 ||
+        result.plan.entries.size() != 2) {
+        return fail("valid PLT REL table did not decode");
+    }
+    const auto& first = result.plan.entries[0];
+    const auto& second = result.plan.entries[1];
+    if (first.offset != 0x1000 || first.symbol_index != 1 ||
+        first.type != kRArmJumpSlot ||
+        first.place_guest_address != 0x2000 ||
+        !first.original_word.has_value() ||
+        *first.original_word != 0x11223344U ||
+        second.offset != 0x1004 || second.symbol_index != 2 ||
+        second.type != kRArmJumpSlot ||
+        second.place_guest_address != 0x2004 ||
+        !second.original_word.has_value() ||
+        *second.original_word != 0xaabbccddU) {
+        return fail("PLT JUMP_SLOT plan metadata was incorrect");
+    }
+
+    std::uint32_t value = 0;
+    if (!read_u32(memory, 0x2000, value) || value != 0x11223344U ||
+        !read_u32(memory, 0x2004, value) || value != 0xaabbccddU) {
+        return fail("read-only PLT planning mutated target words");
+    }
+    return 0;
+}
+
+int test_plt_plan_failures() {
+    {
+        LinearGuestMemory memory(0x4000, kMemoryBase);
+        auto graph = graph_with_plt_rel(0x1000, kPltRelTable, 16);
+        if (!write_rel_at(memory, kPltRelTable, 0, 0x1000, 1,
+                          kRArmJumpSlot) ||
+            !write_rel_at(memory, kPltRelTable, 1, 0x1004, 2,
+                          kRArmJumpSlot) ||
+            !write_u32(memory, 0x2000, 1) ||
+            !write_u32(memory, 0x2004, 2)) {
+            return fail("could not stage PLT limit test");
+        }
+        if (build_elf32_plt_rel_relocation_plan(
+                memory, graph, 0, options(0)).error !=
+            Elf32RelocationPlanError::InvalidOptions) {
+            return fail("zero relocation limit with PLT table was not rejected");
+        }
+        if (build_elf32_plt_rel_relocation_plan(
+                memory, graph, 0, options(1)).error !=
+            Elf32RelocationPlanError::TooManyRelocations) {
+            return fail("PLT relocation count ceiling was not enforced");
+        }
+        graph.objects[0].linker_metadata.plt_rel_table->entry_size = 4;
+        if (build_elf32_plt_rel_relocation_plan(
+                memory, graph, 0, options()).error !=
+            Elf32RelocationPlanError::RelocationReadFailed) {
+            return fail("crafted invalid PLT REL entry size was not rejected");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x2000, kMemoryBase);
+        auto graph = graph_with_plt_rel(0x1000, kPltRelTable, 8);
+        if (!write_rel_at(memory, kPltRelTable, 0, 0x3000, 1,
+                          kRArmGlobDat)) {
+            return fail("could not stage PLT unsupported-type test");
+        }
+        if (build_elf32_plt_rel_relocation_plan(
+                memory, graph, 0, options()).error !=
+            Elf32RelocationPlanError::UnsupportedRelocationType) {
+            return fail("non-JUMP_SLOT PLT type was not rejected before target access");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x4000, kMemoryBase);
+        auto graph =
+            graph_with_plt_rel(0xfffffff0U, kPltRelTable, 8);
+        if (!write_rel_at(memory, kPltRelTable, 0, 0x20, 1,
+                          kRArmJumpSlot) ||
+            build_elf32_plt_rel_relocation_plan(
+                memory, graph, 0, options()).error !=
+                Elf32RelocationPlanError::PlaceOverflow) {
+            return fail("PLT place overflow was not rejected");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x4000, kMemoryBase);
+        auto graph = graph_with_plt_rel(0x1000, kPltRelTable, 8);
+        if (!write_rel_at(memory, kPltRelTable, 0, 0x1001, 1,
+                          kRArmJumpSlot) ||
+            build_elf32_plt_rel_relocation_plan(
+                memory, graph, 0, options()).error !=
+                Elf32RelocationPlanError::UnalignedPlace) {
+            return fail("unaligned PLT target was not rejected");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x2000, kMemoryBase);
+        auto graph = graph_with_plt_rel(0x1000, kPltRelTable, 8);
+        if (!write_rel_at(memory, kPltRelTable, 0, 0x3000, 1,
+                          kRArmJumpSlot) ||
+            build_elf32_plt_rel_relocation_plan(
+                memory, graph, 0, options()).error !=
+                Elf32RelocationPlanError::TargetReadFailed) {
+            return fail("unreadable PLT target was not rejected");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x4000, kMemoryBase);
+        auto graph = graph_with_plt_rel(0x1000, kPltRelTable, 16);
+        if (!write_rel_at(memory, kPltRelTable, 0, 0x1000, 1,
+                          kRArmJumpSlot) ||
+            !write_rel_at(memory, kPltRelTable, 1, 0x1000, 2,
+                          kRArmJumpSlot) ||
+            !write_u32(memory, 0x2000, 0xfeedfaceU)) {
+            return fail("could not stage PLT duplicate-target test");
+        }
+        if (build_elf32_plt_rel_relocation_plan(
+                memory, graph, 0, options()).error !=
+            Elf32RelocationPlanError::DuplicateTarget) {
+            return fail("duplicate PLT target was not rejected");
+        }
+        std::uint32_t value = 0;
+        if (!read_u32(memory, 0x2000, value) ||
+            value != 0xfeedfaceU) {
+            return fail("PLT duplicate-target failure mutated target");
+        }
+    }
+    return 0;
+}
+
+int test_plt_reference_resolution() {
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_plt_rel(0x1000, kPltRelTable, 8);
+        graph.objects.resize(2);
+        if (!stage_symbol_object(memory, graph.objects[0], 0, "target",
+                                 0x1000, 1, 2, 0, 0) ||
+            !stage_symbol_object(memory, graph.objects[1], 1, "target",
+                                 0x5000, 1, 2, 0, 1, 0x120) ||
+            !write_rel_at(memory, kPltRelTable, 0, 0x11000, 1,
+                          kRArmJumpSlot) ||
+            !write_u32(memory, 0x12000, 0xdeadbeefU)) {
+            return fail("could not stage graph-local PLT reference");
+        }
+        graph.objects[0].dependencies = {
+            Elf32DependencyEdge{.requested_name = "dep", .target_object = 1},
+        };
+        const auto result = resolve_elf32_plt_rel_relocation_references(
+            memory, graph, 0, options());
+        if (!result || result.resolution.entries.size() != 1 ||
+            !result.resolution.entries[0].reference.has_value()) {
+            return fail("valid PLT reference did not resolve");
+        }
+        const auto& reference = *result.resolution.entries[0].reference;
+        if (reference.name != "target" ||
+            reference.symbol_index != 1 ||
+            reference.symbol_value != 0x5120 ||
+            reference.unresolved_weak ||
+            !reference.defining_object_index.has_value() ||
+            *reference.defining_object_index != 1) {
+            return fail("graph-local PLT reference result was incorrect");
+        }
+        std::uint32_t target = 0;
+        if (!read_u32(memory, 0x12000, target) ||
+            target != 0xdeadbeefU) {
+            return fail("PLT reference resolution mutated target memory");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_plt_rel(0x1000, kPltRelTable, 8);
+        if (!stage_symbol_object(memory, graph.objects[0], 0, "missing",
+                                 0x1000, 2, 2, 0, 0) ||
+            !write_rel_at(memory, kPltRelTable, 0, 0x11000, 1,
+                          kRArmJumpSlot) ||
+            !write_u32(memory, 0x12000, 0x12345678U)) {
+            return fail("could not stage unresolved weak PLT reference");
+        }
+        const auto result = resolve_elf32_plt_rel_relocation_references(
+            memory, graph, 0, options());
+        if (!result || result.resolution.entries.size() != 1 ||
+            !result.resolution.entries[0].reference.has_value() ||
+            !result.resolution.entries[0].reference->unresolved_weak ||
+            result.resolution.entries[0].reference->symbol_value != 0) {
+            return fail("unresolved weak PLT reference did not become S=0");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_plt_rel(0x1000, kPltRelTable, 8);
+        if (!stage_symbol_object(memory, graph.objects[0], 0, "missing",
+                                 0x1000, 1, 2, 0, 0) ||
+            !write_rel_at(memory, kPltRelTable, 0, 0x11000, 1,
+                          kRArmJumpSlot) ||
+            !write_u32(memory, 0x12000, 0)) {
+            return fail("could not stage unresolved strong PLT reference");
+        }
+        const auto result = resolve_elf32_plt_rel_relocation_references(
+            memory, graph, 0, options());
+        if (result.error !=
+            Elf32RelocationResolveError::UnresolvedStrongSymbol) {
+            return fail("unresolved strong PLT reference was not rejected");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_plt_rel(0x1000, kPltRelTable, 8);
+        if (!stage_symbol_object(memory, graph.objects[0], 0, "target",
+                                 0x1000, 1, 2, 0, 0) ||
+            !write_rel_at(memory, kPltRelTable, 0, 0x11000, 0,
+                          kRArmJumpSlot) ||
+            !write_u32(memory, 0x12000, 0)) {
+            return fail("could not stage zero-symbol PLT reference");
+        }
+        if (resolve_elf32_plt_rel_relocation_references(
+                memory, graph, 0, options()).error !=
+            Elf32RelocationResolveError::MissingReferenceSymbol) {
+            return fail("PLT symbol index zero was not rejected");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_plt_rel(0x1000, kPltRelTable, 8);
+        if (!stage_symbol_object(memory, graph.objects[0], 0, "target",
+                                 0x1000, 1, 2, 0, 0) ||
+            !write_rel_at(memory, kPltRelTable, 0, 0x11000, 1,
+                          kRArmJumpSlot) ||
+            !write_u32(memory, 0x12000, 0)) {
+            return fail("could not stage versioned PLT reference");
+        }
+        graph.objects[0].linker_metadata.has_symbol_versioning = true;
+        if (resolve_elf32_plt_rel_relocation_references(
+                memory, graph, 0, options()).error !=
+            Elf32RelocationResolveError::UnsupportedVersioning) {
+            return fail("versioned PLT requester was not rejected");
+        }
+    }
+    return 0;
+}
+
 }  // namespace
 
 int main() {
@@ -615,5 +917,8 @@ int main() {
     if (const int status = test_reference_validation_failures(); status != 0) return status;
     if (const int status = test_reference_nested_failures(); status != 0) return status;
     if (const int status = test_duplicate_target_rejected_without_mutation(); status != 0) return status;
+    if (const int status = test_plt_empty_and_exact_decode(); status != 0) return status;
+    if (const int status = test_plt_plan_failures(); status != 0) return status;
+    if (const int status = test_plt_reference_resolution(); status != 0) return status;
     return 0;
 }

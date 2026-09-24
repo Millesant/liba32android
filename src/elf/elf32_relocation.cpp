@@ -63,7 +63,9 @@ constexpr std::uint16_t kShnXindex = 0xffff;
 }
 
 [[nodiscard]] bool symbol_bearing_type(std::uint8_t type) noexcept {
-    return type == kRArmAbs32 || type == kRArmGlobDat;
+    return type == kRArmAbs32 ||
+           type == kRArmGlobDat ||
+           type == kRArmJumpSlot;
 }
 
 [[nodiscard]] bool valid_symbol_options(
@@ -131,11 +133,28 @@ struct PendingRelocationWrite {
 
 }  // namespace
 
-Elf32RelocationPlanResult build_elf32_rel_relocation_plan(
+namespace {
+
+enum class RelocationTableKind : std::uint8_t {
+    MainRel,
+    PltRel,
+};
+
+[[nodiscard]] bool supported_type_for_table(
+    std::uint8_t type,
+    RelocationTableKind kind) noexcept {
+    if (kind == RelocationTableKind::PltRel) {
+        return type == kRArmJumpSlot;
+    }
+    return supported_type(type);
+}
+
+[[nodiscard]] Elf32RelocationPlanResult build_relocation_plan_for_table(
     const memory::GuestMemory& memory,
     const Elf32DependencyGraph& graph,
     std::size_t object_index,
-    const Elf32RelocationOptions& options) {
+    const Elf32RelocationOptions& options,
+    RelocationTableKind kind) {
     if (object_index >= graph.objects.size()) {
         return failure(Elf32RelocationPlanError::InvalidGraphObject,
                        object_index);
@@ -145,7 +164,11 @@ Elf32RelocationPlanResult build_elf32_rel_relocation_plan(
     result.plan.object_index = object_index;
 
     const Elf32LoadedDependencyObject& object = graph.objects[object_index];
-    if (!object.linker_metadata.rel_table.has_value()) {
+    const std::optional<Elf32RelTableMetadata>& selected_table =
+        kind == RelocationTableKind::PltRel
+            ? object.linker_metadata.plt_rel_table
+            : object.linker_metadata.rel_table;
+    if (!selected_table.has_value()) {
         return result;
     }
 
@@ -154,8 +177,7 @@ Elf32RelocationPlanResult build_elf32_rel_relocation_plan(
                        object_index);
     }
 
-    const Elf32RelTableMetadata& table =
-        *object.linker_metadata.rel_table;
+    const Elf32RelTableMetadata& table = *selected_table;
     // Validated linker metadata guarantees these invariants. Keep a
     // defensive check because callers can construct the public metadata type
     // directly in tests/embedders.
@@ -198,7 +220,7 @@ Elf32RelocationPlanResult build_elf32_rel_relocation_plan(
         entry.symbol_index = entry.info >> 8U;
         entry.type = static_cast<std::uint8_t>(entry.info & 0xffU);
 
-        if (!supported_type(entry.type)) {
+        if (!supported_type_for_table(entry.type, kind)) {
             return failure(
                 Elf32RelocationPlanError::UnsupportedRelocationType,
                 object_index);
@@ -236,13 +258,16 @@ Elf32RelocationPlanResult build_elf32_rel_relocation_plan(
     return result;
 }
 
-Elf32RelocationResolutionResult resolve_elf32_rel_relocation_references(
+[[nodiscard]] Elf32RelocationResolutionResult
+resolve_relocation_references_for_table(
     const memory::GuestMemory& memory,
     const Elf32DependencyGraph& graph,
     std::size_t object_index,
-    const Elf32RelocationOptions& options) {
+    const Elf32RelocationOptions& options,
+    RelocationTableKind kind) {
     const Elf32RelocationPlanResult plan =
-        build_elf32_rel_relocation_plan(memory, graph, object_index, options);
+        build_relocation_plan_for_table(
+            memory, graph, object_index, options, kind);
     if (!plan) {
         auto result = resolve_failure(
             Elf32RelocationResolveError::PlanFailed, object_index);
@@ -407,6 +432,45 @@ Elf32RelocationResolutionResult resolve_elf32_rel_relocation_references(
         result.resolution.entries.push_back(std::move(resolved));
     }
     return result;
+}
+
+}  // namespace
+
+Elf32RelocationPlanResult build_elf32_rel_relocation_plan(
+    const memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t object_index,
+    const Elf32RelocationOptions& options) {
+    return build_relocation_plan_for_table(
+        memory, graph, object_index, options, RelocationTableKind::MainRel);
+}
+
+Elf32RelocationPlanResult build_elf32_plt_rel_relocation_plan(
+    const memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t object_index,
+    const Elf32RelocationOptions& options) {
+    return build_relocation_plan_for_table(
+        memory, graph, object_index, options, RelocationTableKind::PltRel);
+}
+
+Elf32RelocationResolutionResult resolve_elf32_rel_relocation_references(
+    const memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t object_index,
+    const Elf32RelocationOptions& options) {
+    return resolve_relocation_references_for_table(
+        memory, graph, object_index, options, RelocationTableKind::MainRel);
+}
+
+Elf32RelocationResolutionResult
+resolve_elf32_plt_rel_relocation_references(
+    const memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t object_index,
+    const Elf32RelocationOptions& options) {
+    return resolve_relocation_references_for_table(
+        memory, graph, object_index, options, RelocationTableKind::PltRel);
 }
 
 Elf32RelocationApplyResult apply_elf32_rel_relocations(
