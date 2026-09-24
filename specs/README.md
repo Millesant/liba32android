@@ -1,31 +1,15 @@
-# Feature Specifications
+# Historical Feature Specifications
 
-This directory holds the durable requirements/design/tasks chain for feature-scale and larger work.
+This tree preserves the numbered requirements/design/tasks packages used by the pre-v7 project workflow. They remain useful historical design records and validation context, but they are no longer the canonical location for accepted current project truth.
 
-## Layout
+## Current workflow
 
-Use the smallest useful package:
+- Accepted current contracts live under `.agent/specs/`.
+- Substantial work is tracked under `.agent/changes/<change-id>/`.
+- `.agent/STATE.md` records observed reality and validation evidence.
+- `.agent/NEXT.md` records dependency-ordered next work.
+- `.agent/DECISIONS.md` records durable project rationale.
 
-```text
-specs/<id>-<feature>/
-├── requirements.md
-├── design.md
-├── tasks.md
-├── research.md       # optional
-├── contracts/        # optional
-└── checklists/       # optional
-```
+Do not create new active feature packages in this directory. When historical details are needed, read the smallest relevant numbered package and reconcile it against current specs/source/tests before relying on it.
 
-Do not create optional files unless they preserve information that would otherwise need to be rediscovered.
-
-## Use
-
-This directory stores project-owned specification artifacts, not the generic agent workflow. When the routed control-plane workflow or project requirements call for feature-scale specification, create the smallest package that preserves requirements, design decisions, dependency-ordered tasks, and their validation paths.
-
-Tiny and routine changes do not need a package solely for ceremony. `.agent/NEXT.md` owns project priority, and `.agent/STATE.md` records current observed reality.
-
-## Current baseline
-
-`000-current-baseline/` converts the already implemented M0-M3 runtime work into the current spec structure without changing runtime behavior. It is the architectural baseline for subsequent feature packages, not a replacement for Git history or detailed architecture/research evidence.
-
-The next feature-scale package should use the next free numeric ID and a descriptive feature slug. `.agent/NEXT.md` owns priority and points to the package once it exists.
+`000-current-baseline/` through later numbered packages are intentionally retained without retroactive rewriting; Git history remains the authoritative historical record.

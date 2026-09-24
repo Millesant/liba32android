@@ -1,5 +1,7 @@
 #include "elf/elf32_dynamic.h"
 
+#include "elf/elf32_bytes.h"
+
 #include <array>
 #include <bit>
 #include <cstddef>
@@ -11,14 +13,6 @@ namespace {
 constexpr std::size_t kElf32DynamicEntrySize = 8;
 constexpr std::int32_t kDynamicTagNull = 0;
 constexpr std::uint64_t kGuestAddressSpaceSize = std::uint64_t{1} << 32;
-
-[[nodiscard]] std::uint32_t read_u32(const std::array<std::uint8_t, kElf32DynamicEntrySize>& bytes,
-                                     std::size_t offset) noexcept {
-    return static_cast<std::uint32_t>(bytes[offset]) |
-           static_cast<std::uint32_t>(bytes[offset + 1]) << 8U |
-           static_cast<std::uint32_t>(bytes[offset + 2]) << 16U |
-           static_cast<std::uint32_t>(bytes[offset + 3]) << 24U;
-}
 
 [[nodiscard]] Elf32DynamicResult failure(Elf32DynamicError error) {
     Elf32DynamicResult result;
@@ -49,10 +43,10 @@ Elf32DynamicResult parse_elf32_dynamic(const memory::GuestMemory& memory,
             return failure(Elf32DynamicError::ReadFailed);
         }
 
-        const std::uint32_t raw_tag = read_u32(bytes, 0);
+        const std::uint32_t raw_tag = detail::decode_u32_le(bytes, 0);
         const Elf32DynamicEntry entry{
             .tag = std::bit_cast<std::int32_t>(raw_tag),
-            .value = read_u32(bytes, 4),
+            .value = detail::decode_u32_le(bytes, 4),
         };
         result.entries.push_back(entry);
         if (entry.tag == kDynamicTagNull) {

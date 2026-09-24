@@ -6,7 +6,7 @@ The project is intentionally layered: CPU execution, guest memory, ELF32 mapping
 
 ## Current phase
 
-The current runtime baseline is C++20/CMake with Dynarmic pinned behind `src/cpu/`. The guest address space, ELF32 mapping/structural parsing, validated linker metadata including separate main-REL and AArch32 PLT-REL descriptors, bounded SONAME/`DT_NEEDED` string consumption, bounded provider-backed dependency image acquisition, deterministic automatic `ET_DYN` guest-VA placement, transactional recursive dependency-graph loading, bounded SysV/GNU dynamic-symbol indexing, exact per-object lookup, deterministic graph-local breadth-first symbol lookup, bounded transactional main-`DT_REL` ARM relocation application, and bounded eager PLT `R_ARM_JUMP_SLOT` application are implemented. Symbol version matching, lazy binding/`DT_PLTGOT`, process-wide/global-group interposition policy, RELRO, and TLS remain later linker work.
+The current runtime baseline is C++20/CMake with Dynarmic pinned behind `src/cpu/`. The guest address space, ELF32 mapping/structural parsing, validated linker metadata including separate main-REL and AArch32 PLT-REL descriptors, bounded SONAME/`DT_NEEDED` string consumption, bounded provider-backed dependency image acquisition, deterministic automatic `ET_DYN` guest-VA placement, transactional recursive dependency-graph loading, bounded SysV/GNU dynamic-symbol indexing, exact per-object lookup, deterministic graph-local breadth-first symbol lookup, bounded transactional main-`DT_REL` ARM relocation application, bounded eager PLT `R_ARM_JUMP_SLOT` application, and verified GNU RELRO metadata/sealing primitives are implemented. Real post-relocation RELRO fixture integration is implemented but not yet exact-head validated. Symbol version matching, lazy binding/`DT_PLTGOT`, process-wide/global-group interposition policy, and TLS remain later linker work.
 
 Implemented in the current baseline:
 
@@ -32,7 +32,7 @@ Still outside the implemented baseline:
 - Android search-path/namespace/pathname policy and process-wide loaded-object/link-map lifetime across independent graph-loading calls;
 - symbol version matching and Android/process-wide global-group interposition beyond the implemented graph-local unversioned lookup;
 - lazy PLT binding/`DT_PLTGOT`, combined main+PLT atomic application, and ARM relocation forms beyond the implemented main-REL set plus eager `R_ARM_JUMP_SLOT`;
-- RELRO and TLS processing;
+- RELRO real-fixture closeout and TLS processing;
 - Android libc/JNI/graphics/audio compatibility layers;
 - end-to-end execution of the real ARM32 ELF fixture on Android;
 - general application/game compatibility.
@@ -72,6 +72,6 @@ GitHub Actions also cross-builds the shared runtime and Android diagnostics for 
 
 ## Project workflow metadata
 
-The maintainer's generic agent workflow, runtime capability rules, and governance are centralized in `Millesant/.gpt` and are intentionally not vendored into this repository. `AGENTS.md` is only the project-specific overlay. Durable project continuation state lives under `.agent/`, while feature-scale project specifications use the requirements -> design -> tasks packages under `specs/`; `specs/000-current-baseline/` converts the completed runtime work through PR #11 into that structure.
+The maintainer's generic agent workflow, runtime capability rules, and governance are centralized in `Millesant/.gpt` and are intentionally not vendored into this repository. `AGENTS.md` is only the project-specific overlay. `.agent/project.toml` declares project identity, accepted current contracts live under `.agent/specs/`, and substantial work lives under `.agent/changes/<change-id>/`. The numbered root `specs/` packages are retained as historical pre-v7 feature records and are not canonical current truth.
 
 Architecture and evidence details remain under `docs/architecture/` and `docs/research/`. The current linker boundaries are documented in `docs/architecture/elf32-linker-metadata.md`, `docs/architecture/elf32-linker-strings.md`, `docs/architecture/elf32-dependency-resolution.md`, `docs/architecture/elf32-dependency-loading.md`, `docs/architecture/elf32-symbol-resolution.md`, and `docs/architecture/elf32-relocation.md`.

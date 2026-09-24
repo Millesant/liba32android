@@ -1,0 +1,46 @@
+# ELF32 and dynamic-linking contract
+
+Status: Accepted current project contract
+Last reconciled: 2026-09-23
+
+## L32-E001 — ELF32 mapping
+
+The loader accepts validated little-endian ARM ELF32 `ET_EXEC` and explicit-base `ET_DYN`, maps validated `PT_LOAD` segments through `MappedGuestMemory`, copies file bytes, zero-fills BSS, applies final segment permissions, detects conflicts, and rolls back loader-owned mappings on failure.
+
+## L32-E002 — Shared load planning and placement
+
+Pre-mutation ELF validation/layout is shared through `elf32_load_plan`. Automatic `ET_DYN` placement is deterministic, caller-bounded, non-mutating, preserves host-page and `p_align` constraints, and returns a loader-ready guest base.
+
+## L32-E003 — Structural dynamic metadata
+
+`PT_DYNAMIC` discovery and `Elf32_Dyn` parsing remain structural. Dynamic entries preserve raw signed tags/raw values, require bounded valid guest ranges and `DT_NULL` termination, and do not themselves perform dynamic linking.
+
+## L32-E004 — Linker metadata and strings
+
+Validated linker metadata covers STRTAB/STRSZ, SYMTAB/SYMENT, main REL/RELSZ/RELENT, separate AArch32 PLT REL metadata, SONAME, and ordered `DT_NEEDED` offsets. String materialization is explicitly bounded and preserves ordered/repeated dependency names.
+
+## L32-E005 — Dependency acquisition and graph loading
+
+Dependency acquisition is provider-backed and bounded; filesystem/search-path/namespace policy stays outside the generic core. Recursive graph loading is transactional, uses provider identity as the per-call object key, preserves ordered/repeated edges, reuses cycles/aliases, automatically places dependency `ET_DYN` images, and rolls back graph-owned mappings on aggregate failure.
+
+## L32-E006 — Symbol resolution
+
+Dynamic-symbol indexing supports bounded SysV/GNU hash processing and exact byte-name lookup. Graph-local resolution uses deterministic breadth-first dependency scope. Version-aware/process-wide interposition, TLS, IFUNC, and unsupported special-section semantics fail explicitly rather than being approximated.
+
+## L32-E007 — Main REL relocations
+
+Main `DT_REL` supports bounded planning/resolution/application for `R_ARM_NONE`, `R_ARM_RELATIVE`, `R_ARM_GLOB_DAT`, and `R_ARM_ABS32`. All semantic checks complete before writes; later write failures trigger reverse rollback. `GLOB_DAT` writes `S` and does not use the in-place word as an addend.
+
+## L32-E008 — Eager PLT relocation
+
+The separate PLT REL path accepts eager `R_ARM_JUMP_SLOT`, resolves through the same bounded graph-local symbol policy, writes `S` directly, and uses the original slot word only for rollback. Lazy binding and `DT_PLTGOT` resolver state remain outside the accepted contract.
+
+## L32-E009 — GNU RELRO
+
+Validated `PT_GNU_RELRO` ranges are exposed as guest-only loader metadata without early sealing. The explicit post-relocation sealing API is caller-bounded, preflights the full page set, deduplicates overlaps, accepts already-read-only pages, changes only RW pages to R, never broadens permissions, and rolls back earlier changes on a later protection failure when possible.
+
+Real post-relocation fixture integration for feature `010-elf32-gnu-relro` is implemented but remains unverified until exact-head CI is observed.
+
+## L32-E010 — Deferred linker scope
+
+Still outside the accepted implementation: Android namespace/search-path/link-map lifetime policy across independent graph loads; version-aware/process-wide/global-group interposition; lazy binding; combined main+PLT atomic application; broader ARM relocation families; RELA/RELR/Android packed relocations; TLS/IFUNC; constructors/destructors; `dlopen`/`dlsym`/unload; and guest execution of the real ARM32 fixture.

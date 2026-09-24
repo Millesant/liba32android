@@ -1,5 +1,7 @@
 #include "elf/elf32_relocation.h"
 
+#include "elf/elf32_bytes.h"
+
 #include <array>
 #include <cstdint>
 #include <limits>
@@ -29,29 +31,12 @@ constexpr std::uint16_t kShnXindex = 0xffff;
     return result;
 }
 
-[[nodiscard]] std::uint32_t decode_u32_le(
-    const std::uint8_t* bytes) noexcept {
-    return static_cast<std::uint32_t>(bytes[0]) |
-           (static_cast<std::uint32_t>(bytes[1]) << 8U) |
-           (static_cast<std::uint32_t>(bytes[2]) << 16U) |
-           (static_cast<std::uint32_t>(bytes[3]) << 24U);
-}
-
-[[nodiscard]] bool checked_add(std::uint32_t base,
-                               std::uint64_t offset,
-                               std::uint32_t& result) noexcept {
-    const std::uint64_t value = static_cast<std::uint64_t>(base) + offset;
-    if (value > std::numeric_limits<std::uint32_t>::max()) return false;
-    result = static_cast<std::uint32_t>(value);
-    return true;
-}
-
 [[nodiscard]] bool read_word(const memory::GuestMemory& memory,
                              std::uint32_t address,
                              std::uint32_t& value) {
     std::array<std::uint8_t, 4> bytes{};
     if (!memory.read(address, bytes)) return false;
-    value = decode_u32_le(bytes.data());
+    value = detail::decode_u32_le(bytes.data());
     return true;
 }
 
@@ -199,7 +184,7 @@ enum class RelocationTableKind : std::uint8_t {
 
     for (std::uint32_t i = 0; i < count; ++i) {
         std::uint32_t entry_address = 0;
-        if (!checked_add(table.guest_address,
+        if (!detail::checked_add_guest_address(table.guest_address,
                          static_cast<std::uint64_t>(i) *
                              kElf32RelEntrySize,
                          entry_address)) {
@@ -215,8 +200,8 @@ enum class RelocationTableKind : std::uint8_t {
 
         Elf32RelocationEntry entry;
         entry.index = i;
-        entry.offset = decode_u32_le(bytes.data());
-        entry.info = decode_u32_le(bytes.data() + 4);
+        entry.offset = detail::decode_u32_le(bytes.data());
+        entry.info = detail::decode_u32_le(bytes.data() + 4);
         entry.symbol_index = entry.info >> 8U;
         entry.type = static_cast<std::uint8_t>(entry.info & 0xffU);
 
@@ -226,7 +211,7 @@ enum class RelocationTableKind : std::uint8_t {
                 object_index);
         }
 
-        if (!checked_add(object.load.load_bias,
+        if (!detail::checked_add_guest_address(object.load.load_bias,
                          entry.offset,
                          entry.place_guest_address)) {
             return failure(Elf32RelocationPlanError::PlaceOverflow,

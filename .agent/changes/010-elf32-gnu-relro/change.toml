@@ -4,7 +4,7 @@ kind = "feature"
 size = "S2"
 status = "active"
 workflow = "feature"
-control_revision = "9240ab19507b86491398a5c9fdf0deb58e2fdc91"
+control_revision = "1df73390ad04c0909e3ca42daa690789f150f1ca"
 base_revision = "fd6670f3d40d51ad6fa5995b27ede87e4aa1b51c"
 acceptance = [
   "PT_GNU_RELRO ranges are validated by the shared ELF32 load plan and exposed as biased guest-only loader metadata",

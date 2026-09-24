@@ -5,7 +5,8 @@ Current phase: M4 continuation; feature 010 ELF32 GNU RELRO protection
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `010-elf32-gnu-relro` T003. T001 loader/load-plan metadata is VERIFIED by CI #231 at `e3ea30a9445c86546933d008ee5a336bd9e91e8e`; T002 bounded transactional sealing is VERIFIED by CI #232 / run `35943552213` at `655f933f46c4bb28e5c36fe34b628b92af1f679b`. T003 real post-relocation GNU RELRO sealing coverage is prepared; exact-head validation is NOT RUN.
+Active runtime work: `010-elf32-gnu-relro` T003. T001 loader/load-plan metadata is VERIFIED by CI #231 at `e3ea30a9445c86546933d008ee5a336bd9e91e8e`; T002 bounded transactional sealing is VERIFIED by CI #232 / run `35943552213` at `655f933f46c4bb28e5c36fe34b628b92af1f679b`. T003 real post-relocation GNU RELRO sealing coverage is implemented; exact-head validation is NOT RUN.
+Active maintenance work: `repository-organization-v7` converts project state/spec/change layout to the v7.1 control-plane model, modularizes CMake declarations, and removes duplicated private ELF32 byte/address helpers without intended runtime behavior changes.
 
 ## Working
 
@@ -41,7 +42,7 @@ Active runtime work: `010-elf32-gnu-relro` T003. T001 loader/load-plan metadata 
 - `src/elf/elf32_relocation.*` now implements separate bounded main-REL and PLT-REL pipelines. Main `DT_REL` supports `R_ARM_NONE`, `R_ARM_RELATIVE`, `R_ARM_GLOB_DAT`, and `R_ARM_ABS32`; PLT REL accepts only eager `R_ARM_JUMP_SLOT`. Both paths use byte-explicit bounded planning, the same graph-local reference policy, plan-before-write validation, unresolved-weak `S=0`, and reverse rollback without permission broadening. `GLOB_DAT` and `JUMP_SLOT` write `S` without treating the in-place word as an addend.
 - `src/elf/elf32_relro.*` implements a separate bounded post-relocation GNU RELRO sealing contract: caller-selected declared-page limits, complete preflight before mutation, overlap deduplication, idempotent read-only pages, RW -> R sealing only, and reverse permission rollback on later protection failure. T002 is VERIFIED by CI #232. T003 additionally prepares pinned-fixture proof that real GLOB_DAT targets survive sealing and become write-protected.
 - The reproducible real ARMv7/Android loader fixture remains generated with pinned NDK r27d / API 26 inputs. Feature 009 additionally generates a freestanding provider/consumer DSO pair twice byte-identically; the consumer has `DT_NEEDED liba32android_jump_slot_provider.so` and `R_ARM_JUMP_SLOT fixture_import`, and the real integration loads the two-object graph and rewrites that slot to the provider guest symbol value without guest execution.
-- Project-local agent material is limited to the root `AGENTS.md` project overlay, durable `.agent/` project state/decisions, and project-owned `specs/<id>-<feature>/{requirements,design,tasks}.md` packages. Generic workflow/runtime/governance is centralized in `Millesant/.gpt` rather than copied into this repository.
+- Project-local workflow state follows v7: `.agent/project.toml` identifies the project; `.agent/specs/` is accepted current truth; `.agent/changes/` holds substantial-work identity/tasks/evidence; root `specs/` is retained historical feature-era material. Generic workflow/runtime/governance stays centralized in `Millesant/.gpt`.
 
 ## Partial / not implemented
 
@@ -204,7 +205,7 @@ No x86_64 16 KiB address-space blocker remains on the validated Fedora/KVM envir
 - `specs/000-current-baseline/` is a documentation conversion of already implemented behavior; the runtime evidence above remains its validation basis.
 - User-owned WSL local validation is now available: pinned NDK r27d (`27.3.13750724`) fixture/host build PASS, 26/26 CTest PASS, and Android `arm64-v8a` cross-build PASS were reported on 2026-09-19. The pasted local logs did not include a Git commit identity, so this is environment-capability evidence rather than an exact-commit release gate.
 - Real Android/AArch64 runtime behavior still requires Termux/device execution; the user prefers downloading the CI-produced runtime-smoke artifact for those runs.
-- The next feature-scale implementation must get a new `specs/<id>-<feature>/` requirements/design/tasks chain instead of extending `specs/000-current-baseline/`.
+- Future substantial features use stable `.agent/changes/<change-id>/` records and explicit deltas against accepted `.agent/specs/`; the historical root `specs/` tree is not extended.
 
 
 - Spec `005-elf32-dependency-loading` is DONE and merged through PR #32 as `17c2aa78535adbd2084c9396f525750e10c0eff8`. Final head CI #199 PASSed all three jobs with 39/39 CTest, including focused recursive graph coverage and pinned real-fixture graph integration. The feature preserves the acquisition-only resolver boundary and adds provider-identity dedup/cycles, deterministic ordered edges, ET_DYN dependency placement/loading, graph-wide limits, and reverse-order rollback.

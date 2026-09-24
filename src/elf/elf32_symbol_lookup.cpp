@@ -1,5 +1,7 @@
 #include "elf/elf32_symbol_lookup.h"
 
+#include "elf/elf32_bytes.h"
+
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -57,29 +59,12 @@ constexpr std::size_t kReadValidationChunkSize = 256;
     return result;
 }
 
-[[nodiscard]] std::uint32_t decode_u32_le(
-    const std::array<std::uint8_t, 4>& bytes) noexcept {
-    return static_cast<std::uint32_t>(bytes[0]) |
-           (static_cast<std::uint32_t>(bytes[1]) << 8U) |
-           (static_cast<std::uint32_t>(bytes[2]) << 16U) |
-           (static_cast<std::uint32_t>(bytes[3]) << 24U);
-}
-
 [[nodiscard]] bool read_u32(const memory::GuestMemory& memory,
                             std::uint32_t address,
                             std::uint32_t& value) {
     std::array<std::uint8_t, 4> bytes{};
     if (!memory.read(address, bytes)) return false;
-    value = decode_u32_le(bytes);
-    return true;
-}
-
-[[nodiscard]] bool checked_add(std::uint32_t base,
-                               std::uint64_t offset,
-                               std::uint32_t& result) {
-    const std::uint64_t value = static_cast<std::uint64_t>(base) + offset;
-    if (value > std::numeric_limits<std::uint32_t>::max()) return false;
-    result = static_cast<std::uint32_t>(value);
+    value = detail::decode_u32_le(bytes.data());
     return true;
 }
 
@@ -120,22 +105,10 @@ constexpr std::size_t kReadValidationChunkSize = 256;
                                      std::uint32_t index,
                                      std::uint32_t& value) {
     std::uint32_t address = 0;
-    if (!checked_add(base, static_cast<std::uint64_t>(index) * 4U, address)) {
+    if (!detail::checked_add_guest_address(base, static_cast<std::uint64_t>(index) * 4U, address)) {
         return false;
     }
     return read_u32(memory, address, value);
-}
-
-[[nodiscard]] std::uint16_t decode_u16_le(const std::uint8_t* bytes) noexcept {
-    return static_cast<std::uint16_t>(bytes[0]) |
-           (static_cast<std::uint16_t>(bytes[1]) << 8U);
-}
-
-[[nodiscard]] std::uint32_t decode_u32_le(const std::uint8_t* bytes) noexcept {
-    return static_cast<std::uint32_t>(bytes[0]) |
-           (static_cast<std::uint32_t>(bytes[1]) << 8U) |
-           (static_cast<std::uint32_t>(bytes[2]) << 16U) |
-           (static_cast<std::uint32_t>(bytes[3]) << 24U);
 }
 
 [[nodiscard]] std::uint32_t sysv_hash(std::string_view name) noexcept {
@@ -164,7 +137,7 @@ constexpr std::size_t kReadValidationChunkSize = 256;
                                std::uint32_t symbol_index,
                                Elf32Symbol& symbol) {
     std::uint32_t address = 0;
-    if (!checked_add(table.guest_address,
+    if (!detail::checked_add_guest_address(table.guest_address,
                      static_cast<std::uint64_t>(symbol_index) *
                          kElf32SymbolEntrySize,
                      address)) {
@@ -174,14 +147,14 @@ constexpr std::size_t kReadValidationChunkSize = 256;
     std::array<std::uint8_t, kElf32SymbolEntrySize> bytes{};
     if (!memory.read(address, bytes)) return false;
 
-    symbol.name_offset = decode_u32_le(bytes.data());
-    symbol.value = decode_u32_le(bytes.data() + 4);
-    symbol.size = decode_u32_le(bytes.data() + 8);
+    symbol.name_offset = detail::decode_u32_le(bytes.data());
+    symbol.value = detail::decode_u32_le(bytes.data() + 4);
+    symbol.size = detail::decode_u32_le(bytes.data() + 8);
     symbol.binding = static_cast<std::uint8_t>(bytes[12] >> 4U);
     symbol.type = static_cast<std::uint8_t>(bytes[12] & 0x0fU);
     symbol.raw_other = bytes[13];
     symbol.visibility = static_cast<std::uint8_t>(symbol.raw_other & 0x03U);
-    symbol.section_index = decode_u16_le(bytes.data() + 14);
+    symbol.section_index = detail::decode_u16_le(bytes.data() + 14);
     return true;
 }
 
@@ -220,7 +193,7 @@ Elf32SymbolIndexResult build_elf32_symbol_index(
             return failure(Elf32SymbolIndexError::HashHeaderReadFailed);
         }
         std::uint32_t second_word = 0;
-        if (!checked_add(hash_address, 4U, second_word) ||
+        if (!detail::checked_add_guest_address(hash_address, 4U, second_word) ||
             !read_u32(memory, second_word, chain_count)) {
             return failure(Elf32SymbolIndexError::HashHeaderReadFailed);
         }
@@ -246,8 +219,8 @@ Elf32SymbolIndexResult build_elf32_symbol_index(
 
         std::uint32_t buckets_address = 0;
         std::uint32_t chains_address = 0;
-        if (!checked_add(hash_address, 8U, buckets_address) ||
-            !checked_add(buckets_address, bucket_bytes, chains_address)) {
+        if (!detail::checked_add_guest_address(hash_address, 8U, buckets_address) ||
+            !detail::checked_add_guest_address(buckets_address, bucket_bytes, chains_address)) {
             return failure(Elf32SymbolIndexError::HashRangeOverflow);
         }
         if (!readable_range(memory, hash_address, total_bytes)) {
@@ -290,7 +263,7 @@ Elf32SymbolIndexResult build_elf32_symbol_index(
         std::array<std::uint32_t, 4> header{};
         for (std::uint32_t i = 0; i < header.size(); ++i) {
             std::uint32_t address = 0;
-            if (!checked_add(hash_address,
+            if (!detail::checked_add_guest_address(hash_address,
                              static_cast<std::uint64_t>(i) * 4U,
                              address) ||
                 !read_u32(memory, address, header[i])) {
@@ -328,9 +301,9 @@ Elf32SymbolIndexResult build_elf32_symbol_index(
         std::uint32_t bloom_address = 0;
         std::uint32_t buckets_address = 0;
         std::uint32_t chains_address = 0;
-        if (!checked_add(hash_address, 16U, bloom_address) ||
-            !checked_add(bloom_address, bloom_bytes, buckets_address) ||
-            !checked_add(buckets_address, bucket_bytes, chains_address)) {
+        if (!detail::checked_add_guest_address(hash_address, 16U, bloom_address) ||
+            !detail::checked_add_guest_address(bloom_address, bloom_bytes, buckets_address) ||
+            !detail::checked_add_guest_address(buckets_address, bucket_bytes, chains_address)) {
             return failure(Elf32SymbolIndexError::HashRangeOverflow);
         }
         if (!readable_range(memory, hash_address, prefix_bytes)) {
@@ -417,7 +390,7 @@ Elf32SymbolIndexResult build_elf32_symbol_index(
                 const std::uint64_t chain_index =
                     static_cast<std::uint64_t>(symbol_index) - symbol_offset;
                 std::uint32_t chain_address = 0;
-                if (!checked_add(chains_address, chain_index * 4U,
+                if (!detail::checked_add_guest_address(chains_address, chain_index * 4U,
                                  chain_address)) {
                     return failure(Elf32SymbolIndexError::HashRangeOverflow);
                 }
@@ -563,7 +536,7 @@ Elf32ObjectSymbolLookupResult lookup_elf32_symbol(
         // Only the low two visibility bits are defined for this feature.
         std::array<std::uint8_t, kElf32SymbolEntrySize> raw{};
         std::uint32_t raw_address = 0;
-        if (!checked_add(metadata.symbol_table->guest_address,
+        if (!detail::checked_add_guest_address(metadata.symbol_table->guest_address,
                          static_cast<std::uint64_t>(symbol_index) *
                              kElf32SymbolEntrySize,
                          raw_address) ||
@@ -596,7 +569,7 @@ Elf32ObjectSymbolLookupResult lookup_elf32_symbol(
 
         std::uint32_t guest_value = symbol.value;
         if (symbol.section_index != kShnAbs) {
-            if (!checked_add(load_bias, symbol.value, guest_value)) {
+            if (!detail::checked_add_guest_address(load_bias, symbol.value, guest_value)) {
                 return lookup_failure(Elf32SymbolLookupError::ValueOverflow);
             }
         }

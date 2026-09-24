@@ -29,7 +29,7 @@ ELF/ABI/runtime APIs operate on logical 32-bit guest VAs and must not expose hos
 
 ## Current phase
 
-The M2 guest-address-space scope is implemented. M3 ELF32 mapping plus structural dynamic-array metadata is implemented. M4 now includes validated linker metadata with separate main REL and AArch32 PLT REL descriptors, bounded linker-string materialization, bounded provider-backed dependency image acquisition, deterministic automatic `ET_DYN` guest placement, transactional recursive dependency graph loading, bounded SysV/GNU dynamic-symbol indexing, exact per-object lookup, deterministic graph-local breadth-first symbol resolution, bounded transactional main-`DT_REL` ARM relocation application, and bounded eager PLT `R_ARM_JUMP_SLOT` application. Version-aware/process-wide interposition policy, lazy binding/`DT_PLTGOT`, RELRO, and TLS remain unimplemented.
+The M2 guest-address-space scope is implemented. M3 ELF32 mapping plus structural dynamic-array metadata is implemented. M4 now includes validated linker metadata with separate main REL and AArch32 PLT REL descriptors, bounded linker-string materialization, bounded provider-backed dependency image acquisition, deterministic automatic `ET_DYN` guest placement, transactional recursive dependency graph loading, bounded SysV/GNU dynamic-symbol indexing, exact per-object lookup, deterministic graph-local breadth-first symbol resolution, bounded transactional main-`DT_REL` ARM relocation application, bounded eager PLT `R_ARM_JUMP_SLOT` application, and verified GNU RELRO metadata/sealing primitives. Real post-relocation RELRO fixture integration is implemented but not yet exact-head validated. Version-aware/process-wide interposition policy, lazy binding/`DT_PLTGOT`, and TLS remain unimplemented.
 
 ## Current stack
 
@@ -53,8 +53,10 @@ D-0003 and D-0004 remain central: guest VAs are independent from host pointer id
 - `tools/`: Android probes/runtime-smoke and fixture tooling.
 - `docs/architecture/`: subsystem boundaries and current design detail.
 - `docs/research/`: research/evidence records.
-- `specs/`: feature-scale requirements/design/tasks packages.
-- `.agent/`: durable continuation state and decisions.
+- `.agent/specs/`: accepted current project contracts.
+- `.agent/changes/`: durable substantial-work identities, tasks, and evidence.
+- `.agent/`: project identity, continuation state, decisions, specs, and changes.
+- `specs/`: retained historical numbered feature packages from the pre-v7 workflow.
 
 ## Build / test entry points
 
@@ -72,13 +74,14 @@ GitHub Actions also builds the reproducible ARM32 Android fixture, cross-builds 
 
 - Generic agent workflow/runtime/governance: external control plane `Millesant/.gpt`; intentionally not vendored here.
 - Project-specific agent overlay: `AGENTS.md`.
-- Converted implemented baseline: `specs/000-current-baseline/`.
+- Accepted current contracts: `.agent/specs/`.
+- Historical converted baseline and feature-era packages: `specs/` (non-canonical).
 - Current observed state: `.agent/STATE.md`.
 - Dependency-ordered next work: `.agent/NEXT.md`.
 - Durable architecture decisions: `.agent/DECISIONS.md`.
 - Detailed subsystem design/evidence: `docs/architecture/` and `docs/research/`.
 
-When the routed central workflow calls for feature-scale project specification, use a focused `specs/<id>-<feature>/requirements.md`, `design.md`, and `tasks.md` package. Tiny/routine changes do not need a package solely for ceremony.
+For substantial work, use a stable `.agent/changes/<change-id>/` identity and express any proposed contract delta relative to accepted current specs in `.agent/specs/`. The root `specs/` tree is historical only. Tiny/routine changes do not need process artifacts solely for ceremony.
 
 ## Evidence records
 

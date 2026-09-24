@@ -1,5 +1,7 @@
 #include "elf/elf32_load_plan.h"
 
+#include "elf/elf32_bytes.h"
+
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -25,20 +27,6 @@ constexpr std::uint32_t kProgramTypeGnuRelro = 0x6474e552U;
 constexpr std::uint32_t kFlagExecute = 1U << 0;
 constexpr std::uint32_t kFlagWrite = 1U << 1;
 constexpr std::uint32_t kFlagRead = 1U << 2;
-
-[[nodiscard]] std::uint16_t read_u16(std::span<const std::uint8_t> bytes,
-                                     std::size_t offset) noexcept {
-    return static_cast<std::uint16_t>(bytes[offset]) |
-           static_cast<std::uint16_t>(bytes[offset + 1]) << 8U;
-}
-
-[[nodiscard]] std::uint32_t read_u32(std::span<const std::uint8_t> bytes,
-                                     std::size_t offset) noexcept {
-    return static_cast<std::uint32_t>(bytes[offset]) |
-           static_cast<std::uint32_t>(bytes[offset + 1]) << 8U |
-           static_cast<std::uint32_t>(bytes[offset + 2]) << 16U |
-           static_cast<std::uint32_t>(bytes[offset + 3]) << 24U;
-}
 
 [[nodiscard]] std::uint64_t align_down(std::uint64_t value,
                                        std::uint64_t alignment) noexcept {
@@ -119,14 +107,14 @@ Elf32LoadPlanResult plan_elf32_load(
         return failure(Elf32LoadError::UnsupportedIdentVersion);
     }
 
-    const std::uint16_t type = read_u16(image, 16);
-    const std::uint16_t machine = read_u16(image, 18);
-    const std::uint32_t version = read_u32(image, 20);
-    const std::uint32_t entry = read_u32(image, 24);
-    const std::uint32_t program_header_offset = read_u32(image, 28);
-    const std::uint16_t header_size = read_u16(image, 40);
-    const std::uint16_t program_header_entry_size = read_u16(image, 42);
-    const std::uint16_t program_header_count = read_u16(image, 44);
+    const std::uint16_t type = detail::decode_u16_le(image, 16);
+    const std::uint16_t machine = detail::decode_u16_le(image, 18);
+    const std::uint32_t version = detail::decode_u32_le(image, 20);
+    const std::uint32_t entry = detail::decode_u32_le(image, 24);
+    const std::uint32_t program_header_offset = detail::decode_u32_le(image, 28);
+    const std::uint16_t header_size = detail::decode_u16_le(image, 40);
+    const std::uint16_t program_header_entry_size = detail::decode_u16_le(image, 42);
+    const std::uint16_t program_header_count = detail::decode_u16_le(image, 44);
 
     if (version != kElfVersionCurrent) {
         return failure(Elf32LoadError::UnsupportedElfVersion);
@@ -162,7 +150,7 @@ Elf32LoadPlanResult plan_elf32_load(
     for (std::uint16_t index = 0; index < program_header_count; ++index) {
         const std::size_t offset = static_cast<std::size_t>(program_header_offset) +
                                    static_cast<std::size_t>(index) * kElf32ProgramHeaderSize;
-        const std::uint32_t program_type = read_u32(image, offset);
+        const std::uint32_t program_type = detail::decode_u32_le(image, offset);
 
         if (program_type == kProgramTypeDynamic) {
             if (plan.dynamic_segment.has_value()) {
@@ -170,10 +158,10 @@ Elf32LoadPlanResult plan_elf32_load(
             }
 
             Elf32LoadPlanDynamicSegment dynamic;
-            dynamic.offset = read_u32(image, offset + 4);
-            dynamic.virtual_address = read_u32(image, offset + 8);
-            dynamic.file_size = read_u32(image, offset + 16);
-            dynamic.memory_size = read_u32(image, offset + 20);
+            dynamic.offset = detail::decode_u32_le(image, offset + 4);
+            dynamic.virtual_address = detail::decode_u32_le(image, offset + 8);
+            dynamic.file_size = detail::decode_u32_le(image, offset + 16);
+            dynamic.memory_size = detail::decode_u32_le(image, offset + 20);
 
             if (dynamic.memory_size == 0) {
                 return failure(Elf32LoadError::DynamicSegmentEmpty);
@@ -195,8 +183,8 @@ Elf32LoadPlanResult plan_elf32_load(
 
         if (program_type == kProgramTypeGnuRelro) {
             Elf32LoadPlanRelroSegment relro;
-            relro.virtual_address = read_u32(image, offset + 8);
-            relro.memory_size = read_u32(image, offset + 20);
+            relro.virtual_address = detail::decode_u32_le(image, offset + 8);
+            relro.memory_size = detail::decode_u32_le(image, offset + 20);
 
             if (relro.memory_size == 0) {
                 return failure(Elf32LoadError::RelroSegmentEmpty);
@@ -223,12 +211,12 @@ Elf32LoadPlanResult plan_elf32_load(
         }
 
         Elf32LoadPlanSegment segment;
-        segment.offset = read_u32(image, offset + 4);
-        segment.virtual_address = read_u32(image, offset + 8);
-        segment.file_size = read_u32(image, offset + 16);
-        segment.memory_size = read_u32(image, offset + 20);
-        const std::uint32_t flags = read_u32(image, offset + 24);
-        segment.alignment = read_u32(image, offset + 28);
+        segment.offset = detail::decode_u32_le(image, offset + 4);
+        segment.virtual_address = detail::decode_u32_le(image, offset + 8);
+        segment.file_size = detail::decode_u32_le(image, offset + 16);
+        segment.memory_size = detail::decode_u32_le(image, offset + 20);
+        const std::uint32_t flags = detail::decode_u32_le(image, offset + 24);
+        segment.alignment = detail::decode_u32_le(image, offset + 28);
 
         if (segment.file_size > segment.memory_size) {
             return failure(Elf32LoadError::SegmentFileszExceedsMemsz);
