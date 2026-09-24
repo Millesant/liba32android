@@ -231,6 +231,12 @@ if(LIBA32ANDROID_BUILD_TESTS)
                                PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(elf32_relocation_apply_real_fixture_test PRIVATE liba32android)
 
+    add_executable(elf32_relro_real_fixture_test
+                   tests/elf32_relro_real_fixture.cpp)
+    target_include_directories(elf32_relro_real_fixture_test
+                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(elf32_relro_real_fixture_test PRIVATE liba32android)
+
     add_executable(elf32_jump_slot_real_fixture_test
                    tests/elf32_jump_slot_real_fixture.cpp)
     target_include_directories(elf32_jump_slot_real_fixture_test
@@ -331,6 +337,9 @@ if(LIBA32ANDROID_BUILD_TESTS)
                          "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
         add_test(NAME elf32_real_relocation_apply
                  COMMAND elf32_relocation_apply_real_fixture_test
+                         "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
+        add_test(NAME elf32_real_relro_seal
+                 COMMAND elf32_relro_real_fixture_test
                          "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
     endif()
 endif()

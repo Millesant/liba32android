@@ -9,13 +9,13 @@ acceptance = "Validate and expose page-rounded PT_GNU_RELRO ranges through the l
 
 [[tasks]]
 id = "T002"
-status = "implemented"
+status = "verified"
 depends_on = ["T001"]
 acceptance = "Seal published GNU RELRO pages read-only through a bounded transactional API with complete preflight and idempotence."
 
 [[tasks]]
 id = "T003"
-status = "planned"
+status = "implemented"
 depends_on = ["T002"]
 acceptance = "Apply existing real ARMv7 relocations, seal its GNU RELRO range, and verify relocated bytes plus non-RELRO permissions remain correct."
 

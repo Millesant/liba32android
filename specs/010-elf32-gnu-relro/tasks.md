@@ -1,6 +1,6 @@
 # Tasks — ELF32 GNU RELRO protection
 
-Status: ACTIVE — T001 VERIFIED; T002 sealing implementation prepared, exact-head validation NOT RUN
+Status: ACTIVE — T001/T002 VERIFIED; T003 real post-relocation sealing implementation prepared, exact-head validation NOT RUN
 
 Base revision: `fd6670f3d40d51ad6fa5995b27ede87e4aa1b51c`
 Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
@@ -23,7 +23,7 @@ Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
 
 ## T002 — Bounded transactional RELRO sealing
 
-- Status: IMPLEMENTED — exact-head validation NOT RUN
+- Status: VERIFIED — exact-head CI #232 / run `35943552213` PASSed at `655f933f46c4bb28e5c36fe34b628b92af1f679b`; Linux passed 48/48 CTest including `elf32_relro_seal`, Android x86_64 and Android arm64-v8a also PASSed
 - Depends on: T001
 - Requirements: R5-R10, R13-R14; AC5-AC9
 - Scope:
@@ -40,7 +40,7 @@ Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
 
 ## T003 — Real post-relocation GNU RELRO sealing
 
-- Status: QUEUED
+- Status: IMPLEMENTED — exact-head validation NOT RUN
 - Depends on: T002
 - Requirements: R11-R14; AC9-AC11
 - Scope:
@@ -70,4 +70,4 @@ Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
 
 ## Readiness
 
-PASS. T001 is verified; T002 is the active bounded implementation objective and remains independently testable through the mapped-memory seam.
+PASS. T001/T002 are verified; T003 is the active bounded real-fixture objective.

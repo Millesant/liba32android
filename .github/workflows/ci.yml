@@ -98,6 +98,8 @@ jobs:
             tee build-fixtures/auto-placement-evidence.txt
           build/elf32_dependency_loader_real_fixture_test "$ARM32_FIXTURE" |
             tee build-fixtures/dependency-graph-evidence.txt
+          build/elf32_relro_real_fixture_test "$ARM32_FIXTURE" |
+            tee build-fixtures/relro-evidence.txt
           build/elf32_jump_slot_real_fixture_test "$ARM32_JUMP_SLOT_CONSUMER" "$ARM32_JUMP_SLOT_PROVIDER" |
             tee build-fixtures/jump-slot-apply-evidence.txt
           readelf -lW "$ARM32_FIXTURE" > build-fixtures/program-headers.txt
@@ -111,6 +113,12 @@ jobs:
           grep -F 'fixture.dependency_graph.needed_count=0' build-fixtures/dependency-graph-evidence.txt
           grep -F 'fixture.dependency_graph.provider_calls=0' build-fixtures/dependency-graph-evidence.txt
           grep -F 'fixture.dependency_graph.status=PASS' build-fixtures/dependency-graph-evidence.txt
+          grep -F 'fixture.relro.segment_count=1' build-fixtures/relro-evidence.txt
+          grep -F 'fixture.relro.writable_before_seal=true' build-fixtures/relro-evidence.txt
+          grep -F 'fixture.relro.write_rejected_after_seal=true' build-fixtures/relro-evidence.txt
+          grep -F 'fixture.relro.relocated_bytes_unchanged=true' build-fixtures/relro-evidence.txt
+          grep -F 'fixture.relro.non_relro_permissions_unchanged=true' build-fixtures/relro-evidence.txt
+          grep -F 'fixture.relro.status=PASS' build-fixtures/relro-evidence.txt
           grep -F 'fixture.jump_slot.object_count=2' build-fixtures/jump-slot-apply-evidence.txt
           grep -F 'fixture.jump_slot.relocation_count=1' build-fixtures/jump-slot-apply-evidence.txt
           grep -F 'fixture.jump_slot.provider_calls=1' build-fixtures/jump-slot-apply-evidence.txt
@@ -125,6 +133,7 @@ jobs:
             build-fixtures/loader-evidence.txt
             build-fixtures/auto-placement-evidence.txt
             build-fixtures/dependency-graph-evidence.txt
+            build-fixtures/relro-evidence.txt
             build-fixtures/program-headers.txt
             build-fixtures/jump-slot/liba32android_jump_slot_consumer.so
             build-fixtures/jump-slot/liba32android_jump_slot_provider.so
