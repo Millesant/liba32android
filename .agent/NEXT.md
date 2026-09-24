@@ -2,15 +2,11 @@
 
 Repository integration is on `bleeding`. The current control-plane round is pinned to `Millesant/.gpt@1df73390ad04c0909e3ca42daa690789f150f1ca` (v7.1.0).
 
-Feature `010-elf32-gnu-relro` and maintenance change `repository-organization-v7` are DONE. Their persistence-only closeout head `38304a2e4fcb3bdb96cd77785256afe135c8653a` passed GitHub Actions CI #236 / run `35979083056` in all three required lanes.
+Feature `010-elf32-gnu-relro`, `repository-organization-v7`, and `test-infrastructure-cleanup-v7` are DONE.
 
-Active maintenance change: `test-infrastructure-cleanup-v7`.
+The test-infrastructure cleanup implementation head `56df3ec5a97add0b96f25e02183bdcfbe2aac1c9` passed GitHub Actions CI #238 / run `35979816632`: Linux passed 49/49 CTest, Android x86_64 address-space probe passed, and Android arm64-v8a cross-build passed. The closeout revision still requires its persistence-only exact-head gate.
 
-1. T001 — shared real-fixture binary/guest-word helpers — ACTIVE.
-2. T002 — collapse repeated CMake test executable setup — PLANNED.
-3. T003 — persisted-tree inspection, exact-head CI, and convergence — PLANNED.
-
-This cleanup is behavior-preserving: runtime source/contracts, CTest names, fixture arguments, and Android artifact paths must not change.
+No new runtime feature-scale implementation is selected. Further repository cleanup should start from the verified closeout head with a new bounded change identity and preserve current runtime/linker contracts.
 
 ## Independent follow-ups
 

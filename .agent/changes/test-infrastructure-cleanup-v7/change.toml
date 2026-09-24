@@ -2,10 +2,11 @@ schema = 1
 id = "test-infrastructure-cleanup-v7"
 kind = "maintenance"
 size = "S1"
-status = "active"
+status = "done"
 workflow = "feature"
 control_revision = "1df73390ad04c0909e3ca42daa690789f150f1ca"
 base_revision = "38304a2e4fcb3bdb96cd77785256afe135c8653a"
+result_revision = "56df3ec5a97add0b96f25e02183bdcfbe2aac1c9"
 acceptance = [
   "real-fixture tests share one bounded binary-file loader instead of twelve local copies",
   "real-fixture tests that read guest 32-bit words share one byte-explicit GuestMemory helper instead of four local copies",
@@ -18,10 +19,10 @@ acceptance = [
 [convergence]
 requirements = "not_applicable"
 specs = "not_applicable"
-implementation = "pending"
-tests = "pending"
+implementation = "aligned"
+tests = "aligned"
 documentation = "not_applicable"
 decisions = "not_applicable"
 tasks = "aligned"
-evidence = "pending"
-repository = "pending"
+evidence = "aligned"
+repository = "aligned"
