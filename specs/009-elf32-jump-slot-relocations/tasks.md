@@ -1,6 +1,6 @@
 # Tasks — ELF32 ARM eager JUMP_SLOT relocations
 
-Status: ACTIVE — T001-T003 VERIFIED; T004 convergence/final gate active
+Status: DONE — T001-T004 complete; final exact-head CI #229 PASSed
 
 Base revision: `bbad7db39e430ba87a373841e3ede954696c85c5`
 Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
@@ -55,7 +55,7 @@ Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
 
 ## T004 — Convergence and final exact-head gate
 
-- Status: ACTIVE — docs/spec/change/state convergence prepared; final exact-head CI pending
+- Status: DONE — final exact-head CI #229 / run `35940125841` PASSed at `4b255695a9effbaab4028708cd5e7e5a5e23150e` across Linux A32 smoke, Android x86_64, and Android arm64-v8a
 - Depends on: T003
 - Requirements: R13-R14; AC8-AC12
 - Scope:
@@ -70,4 +70,4 @@ Control revision: `9240ab19507b86491398a5c9fdf0deb58e2fdc91`
 
 ## Readiness
 
-PASS. T001-T003 are verified; T004 is the active bounded convergence objective.
+PASS. T001-T004 are complete and R1-R14 / AC1-AC12 are reconciled. Feature 009 is converged; the next M4 slice must be selected separately.

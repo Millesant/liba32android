@@ -30,3 +30,12 @@ limitations = "This evidence proves eager graph-local JUMP_SLOT application for 
 artifact_id = "10783439676"
 artifact_name = "arm32-loader-fixture-815386149732201ce5b64e1b5ad207079491eb80"
 artifact_digest = "sha256:4a68646d281cb35ceb69586388acd5ce0bbb5e5f316ecd285b1b8c4574bffee7"
+
+[[evidence]]
+id = "t004-final-exact-head-ci"
+kind = "validation"
+status = "passed"
+claim = "Feature 009 documentation/spec/state convergence preserves the bounded eager JUMP_SLOT contract and passes the final required exact-head repository CI gate."
+source = "GitHub Actions CI #229 / run 35940125841"
+result = "At 4b255695a9effbaab4028708cd5e7e5a5e23150e, Linux A32 smoke passed 46/46 CTest including elf32_real_jump_slot_apply, Android x86_64 address-space probe passed, and Android arm64-v8a cross-build passed."
+limitations = "This closes only the bounded eager R_ARM_JUMP_SLOT feature. Lazy binding/DT_PLTGOT, version-aware or process-wide interposition, TLS, IFUNC, RELRO, broader relocation forms, combined main+PLT atomic application, and guest execution remain outside scope."

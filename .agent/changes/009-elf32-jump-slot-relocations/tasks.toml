@@ -21,6 +21,6 @@ acceptance = "Build a reproducible ARMv7 consumer/provider fixture pair with rea
 
 [[tasks]]
 id = "T004"
-status = "active"
+status = "verified"
 depends_on = ["T003"]
 acceptance = "Converge specs/docs/state/evidence and pass the final exact-head Linux and Android CI gate."

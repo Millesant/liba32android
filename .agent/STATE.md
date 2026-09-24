@@ -1,11 +1,11 @@
 # Current State
 
 Last updated: 2026-09-23
-Current phase: M4 continuation; feature 009 eager ELF32 ARM JUMP_SLOT T004 convergence/final gate
+Current phase: M4 continuation; feature 009 eager ELF32 ARM JUMP_SLOT DONE
 Integration branch: `bleeding`
 Last merged runtime PR: #32
 Runtime baseline commit: `9bb52b1e50bf818f6326424975582372db1353cd`
-Active runtime work: `009-elf32-jump-slot-relocations` T004. T001 PASSed CI #226 at `fe12b6de747884a18d1214f564559d94937d8974`; T002 PASSed CI #227 at `666a15ab2edaebdfa3c0f6817dca30e2e2e7a931`; T003 real provider/consumer fixture plus graph-backed application PASSed CI #228 / run `35939575947` at `815386149732201ce5b64e1b5ad207079491eb80`. Documentation/spec/change/state convergence is prepared; final exact-head feature-gate CI remains pending.
+Active runtime work: none selected. Feature `009-elf32-jump-slot-relocations` is DONE: T001 PASSed CI #226 at `fe12b6de747884a18d1214f564559d94937d8974`; T002 PASSed CI #227 at `666a15ab2edaebdfa3c0f6817dca30e2e2e7a931`; T003 real provider/consumer graph-backed application PASSed CI #228 at `815386149732201ce5b64e1b5ad207079491eb80`; and T004 final exact-head convergence gate PASSed CI #229 / run `35940125841` at `4b255695a9effbaab4028708cd5e7e5a5e23150e` across Linux, Android x86_64, and Android arm64-v8a.
 
 ## Working
 
@@ -53,7 +53,7 @@ Active runtime work: `009-elf32-jump-slot-relocations` T004. T001 PASSed CI #226
 
 ## Validation
 
-### M4 ELF32 eager JUMP_SLOT relocations (active)
+### M4 ELF32 eager JUMP_SLOT relocations (complete)
 
 T001 read-only PLT REL planning/reference resolution PASSed exact-head GitHub Actions CI #226 / run `35938429972` at `fe12b6de747884a18d1214f564559d94937d8974`. Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all PASSed. The PLT planner accepts only `R_ARM_JUMP_SLOT`, preserves the separate main-REL type policy, enforces count/place/alignment/read/duplicate bounds, and reuses the bounded graph-local reference policy including strong-failure and weak-zero behavior.
 
@@ -61,7 +61,7 @@ T002 transactional eager application PASSed exact-head GitHub Actions CI #227 / 
 
 T003 real ARMv7 provider/consumer fixture plus graph-backed application PASSed exact-head CI #228 / run `35939575947` at `815386149732201ce5b64e1b5ad207079491eb80`. The pinned NDK generated the provider/consumer pair twice byte-identically; `readelf` confirmed `DT_NEEDED liba32android_jump_slot_provider.so` plus `R_ARM_JUMP_SLOT fixture_import`; the dependency loader built the expected two-object graph; independent symbol lookup and PLT resolution agreed on the provider guest value; application rewrote the real slot while preserving mapping permissions and every non-target readable segment byte. Artifact ID `10783439676`, digest `sha256:4a68646d281cb35ceb69586388acd5ce0bbb5e5f316ecd285b1b8c4574bffee7`.
 
-T004 documentation/spec/change/state convergence is prepared; the final exact-head feature gate is NOT RUN until that convergence head is committed.
+T004 documentation/spec/change/state convergence and the final exact-head feature gate PASSed CI #229 / run `35940125841` at `4b255695a9effbaab4028708cd5e7e5a5e23150e`. Linux PASSed 46/46 CTest including `elf32_real_jump_slot_apply`; Android x86_64 address-space probe and Android arm64-v8a cross-build also PASSed. R1-R14 / AC1-AC12 are reconciled with no recorded semantic gap blocking the bounded eager JUMP_SLOT feature.
 
 ### M4 ELF32 PLT REL metadata (complete)
 

@@ -1,6 +1,6 @@
 # ELF32 ARM relocation application
 
-Status: current through feature 009; eager main-REL and PLT JUMP_SLOT application validated
+Status: current through feature 009; final exact-head gate CI #229 PASSed
 
 ## Boundary
 
@@ -129,6 +129,8 @@ T001 read-only PLT planning/reference resolution PASSed CI #226 / run `359384299
 T002 transactional eager application PASSed CI #227 / run `35938885569` at `666a15ab2edaebdfa3c0f6817dca30e2e2e7a931`. Synthetic coverage proves non-zero original slot words are ignored semantically, unresolved weak references write zero, strong misses fail before mutation, and late write/rollback failures retain the feature-007 transaction contract.
 
 T003 real ARMv7 integration PASSed CI #228 / run `35939575947` at `815386149732201ce5b64e1b5ad207079491eb80`. The pinned NDK r27d / API 26 build produces byte-identical freestanding provider/consumer DSOs. `readelf` confirms the consumer declares `DT_NEEDED liba32android_jump_slot_provider.so` plus `R_ARM_JUMP_SLOT fixture_import`. The dependency loader builds a two-object graph, graph-local lookup resolves `fixture_import` to the provider, and eager PLT application rewrites the real slot to that logical guest value without executing ARM code. Mapping permissions and every readable segment byte outside the slot remain unchanged.
+
+T004 documentation/spec/state convergence and the final exact-head feature gate PASSed CI #229 / run `35940125841` at `4b255695a9effbaab4028708cd5e7e5a5e23150e`; Linux PASSed 46/46 CTest including the real JUMP_SLOT test, and both Android CI jobs PASSed.
 
 The run uploaded artifact `arm32-loader-fixture-815386149732201ce5b64e1b5ad207079491eb80`, ID `10783439676`, digest `sha256:4a68646d281cb35ceb69586388acd5ce0bbb5e5f316ecd285b1b8c4574bffee7`, containing the provider/consumer pair and JUMP_SLOT evidence alongside the existing ARM32 fixture evidence.
 

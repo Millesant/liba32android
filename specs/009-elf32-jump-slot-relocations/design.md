@@ -1,6 +1,6 @@
 # Design — ELF32 ARM eager JUMP_SLOT relocations
 
-Status: IMPLEMENTED — T001-T003 verified through CI #228 / run `35939575947` at `815386149732201ce5b64e1b5ad207079491eb80`; T004 convergence/final gate pending
+Status: DONE — T004 final exact-head CI #229 / run `35940125841` PASSed at `4b255695a9effbaab4028708cd5e7e5a5e23150e`
 
 ## Context
 
