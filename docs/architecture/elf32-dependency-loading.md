@@ -111,8 +111,8 @@ order:
 - a caller-designated global root is eligible at its object index;
 - every newly loaded object whose validated `DT_FLAGS_1` carries
   `DF_1_GLOBAL` is eligible;
-- duplicates are suppressed, including later promotion/reuse of an existing
-  root;
+- duplicates are suppressed; promotion of an older existing root inserts it at
+  its original object-discovery position rather than at promotion time;
 - local roots do not enter the global list unless their own metadata carries
   `DF_1_GLOBAL`.
 
@@ -131,7 +131,7 @@ Nested stage-specific error enums remain attached to the result, along with fail
 
 ## Validation
 
-Focused synthetic coverage exercises dependency-free roots, direct dependencies, aliases/repeats, transitive traversal, cycles, shared dependencies, identity/image mismatch, non-dynamic dependency rejection, limits, late failures, rollback, source ownership, and preservation of unrelated mappings. Feature 016 extends that suite with multi-root identity reuse, local-to-global root promotion, DF_1_GLOBAL ordering, failed-append preservation of prior roots/global scope/mappings, accumulated max-object enforcement, full persistent-state preflight (identity uniqueness, dependency-edge targets, root records, and exact global-membership consistency), and direct feature-015 global-scope consumption.
+Focused synthetic coverage exercises dependency-free roots, direct dependencies, aliases/repeats, transitive traversal, cycles, shared dependencies, identity/image mismatch, non-dynamic dependency rejection, limits, late failures, rollback, source ownership, and preservation of unrelated mappings. Feature 016 extends that suite with multi-root identity reuse, local-to-global root promotion, DF_1_GLOBAL ordering, failed-append preservation of prior roots/global scope/mappings, accumulated max-object enforcement, full persistent-state preflight (identity uniqueness, dependency-edge targets, root records, exact global-membership consistency, and strictly increasing discovery order), and direct feature-015 global-scope consumption.
 
 The pinned NDK ARMv7 fixture is also loaded through the graph API. Its integration requires:
 

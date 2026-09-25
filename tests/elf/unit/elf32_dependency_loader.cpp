@@ -456,6 +456,56 @@ int test_persistent_link_map_global_membership_order() {
     return 0;
 }
 
+int test_persistent_link_map_promotion_preserves_discovery_order() {
+    MappedGuestMemory memory;
+    Elf32LinkMap link_map;
+    const auto root_image = make_needed_image(
+        3, 0, std::vector<std::string>{"global-dep.so"});
+    RecordingProvider provider;
+    provider.responses = {
+        success("global-dep", make_flags1_image(true)),
+    };
+
+    const auto first = append_elf32_link_map_root(
+        memory, link_map,
+        Elf32DependencyLoadSource{
+            .identity = "older-local-root",
+            .image = root_image,
+        },
+        provider, options(), Elf32LinkMapRootPolicy::Local);
+    if (!first || link_map.graph.objects.size() != 2 ||
+        link_map.global_scope_objects != std::vector<std::size_t>{1}) {
+        return fail("could not stage older local root with global dependency");
+    }
+
+    FailIfCalledProvider no_provider;
+    const auto promoted = append_elf32_link_map_root(
+        memory, link_map,
+        Elf32DependencyLoadSource{
+            .identity = "older-local-root",
+            .image = root_image,
+        },
+        no_provider, options(), Elf32LinkMapRootPolicy::Global);
+    if (!promoted || !promoted.reused_existing_root ||
+        link_map.global_scope_objects != std::vector<std::size_t>{0, 1}) {
+        return fail("root promotion did not restore accumulated discovery order");
+    }
+
+    link_map.global_scope_objects = {1, 0};
+    const auto malformed = append_elf32_link_map_root(
+        memory, link_map,
+        Elf32DependencyLoadSource{
+            .identity = "new-root",
+            .image = make_image(3, 0, true, true),
+        },
+        no_provider, options(), Elf32LinkMapRootPolicy::Local);
+    if (malformed.error != Elf32DependencyLoadError::InvalidLinkMap ||
+        link_map.graph.objects.size() != 2 || no_provider.calls != 0) {
+        return fail("out-of-order persistent global scope was not rejected");
+    }
+    return 0;
+}
+
 int test_persistent_link_map_append_failure_preserves_prior_state() {
     MappedGuestMemory memory;
     Elf32LinkMap link_map;
@@ -1315,6 +1365,7 @@ int main() {
     if (const int status = test_persistent_link_map_root_reuse(); status != 0) return status;
     if (const int status = test_persistent_link_map_dependency_reuse(); status != 0) return status;
     if (const int status = test_persistent_link_map_global_membership_order(); status != 0) return status;
+    if (const int status = test_persistent_link_map_promotion_preserves_discovery_order(); status != 0) return status;
     if (const int status = test_persistent_link_map_append_failure_preserves_prior_state(); status != 0) return status;
     if (const int status = test_persistent_link_map_limits_and_invalid_state(); status != 0) return status;
     if (const int status = test_exec_root_without_dynamic(); status != 0) return status;

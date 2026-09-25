@@ -1,5 +1,6 @@
 #include "elf/elf32_dependency_loader.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -457,13 +458,18 @@ Elf32DependencyLoadResult append_elf32_link_map_root(
     }
 
     std::vector<std::uint8_t> global_seen(link_map.graph.objects.size(), 0);
+    bool has_previous_global = false;
+    std::size_t previous_global = 0;
     for (const std::size_t object_index : link_map.global_scope_objects) {
         if (object_index >= link_map.graph.objects.size() ||
             global_seen[object_index] != 0 ||
-            required_global[object_index] == 0) {
+            required_global[object_index] == 0 ||
+            (has_previous_global && object_index <= previous_global)) {
             return failure(Elf32DependencyLoadError::InvalidLinkMap);
         }
         global_seen[object_index] = 1;
+        previous_global = object_index;
+        has_previous_global = true;
     }
     for (std::size_t index = 0; index < required_global.size(); ++index) {
         if (required_global[index] != global_seen[index]) {
@@ -495,7 +501,11 @@ Elf32DependencyLoadResult append_elf32_link_map_root(
             }
             if (global_seen[object_index] == 0) {
                 global_seen[object_index] = 1;
-                link_map.global_scope_objects.push_back(object_index);
+                const auto position = std::lower_bound(
+                    link_map.global_scope_objects.begin(),
+                    link_map.global_scope_objects.end(),
+                    object_index);
+                link_map.global_scope_objects.insert(position, object_index);
             }
         };
 
