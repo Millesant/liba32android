@@ -7,7 +7,7 @@ Cleanup implementation revision: `5b1cf991272632ed44d6276d6ec5e982ef732f28`
 
 ## Phase
 
-M4 runtime/linker scope is stable through bounded main REL including R_ARM_REL32, eager JUMP_SLOT relocation, one per-object combined main+PLT relocation transaction, GNU RELRO, host execution of the linked real ARM32 fixture, and bounded GNU/SysV symbol-version matching. Features `014-elf32-symbol-versioning`, `013-real-arm32-fixture-execution`, `012-elf32-rel32-relocation`, `011-elf32-combined-relocation-transaction`, and repository-wide maintenance change `project-cleanup-v8` are DONE. Feature `015-elf32-symbol-scope-policy` is ACTIVE: DT_SYMBOLIC/DF_SYMBOLIC metadata retention, bounded caller-provided global-scope ordering, requester-first symbolic lookup, and focused synthetic/relocation coverage are implemented in the current tree; exact-head CI verification is not yet recorded.
+M4 runtime/linker scope is stable through bounded main REL including R_ARM_REL32, eager JUMP_SLOT relocation, one per-object combined main+PLT relocation transaction, GNU RELRO, host execution of the linked real ARM32 fixture, bounded GNU/SysV symbol-version matching, and requester/global symbol-scope ordering. Features `015-elf32-symbol-scope-policy`, `014-elf32-symbol-versioning`, `013-real-arm32-fixture-execution`, `012-elf32-rel32-relocation`, `011-elf32-combined-relocation-transaction`, and repository-wide maintenance change `project-cleanup-v8` are DONE.
 
 ## Repository organization
 
@@ -98,7 +98,13 @@ Feature 014 exact-head implementation validation at `5ba659dbf3ad9328c8e46af4441
 - Android arm64-v8a cross-build: check `108040133332` — PASS.
 - Android x86_64 address-space probe: check `108040133467` — PASS.
 
-Feature 015 validation is currently NOT RECORDED: source-level coverage is present, but no exact-head GitHub Actions result has surfaced yet for the active implementation. In the current host, both commit-status and commit-workflow-run connector surfaces return no records even for the known-passing feature-014 head, so an empty poll is treated as an observability limitation rather than PASS/FAIL evidence and is not tight-looped.
+Feature 015 exact-head implementation validation at `2ed5157504dc9d7affac2290b1a19535b28913f9`:
+
+- GitHub Actions CI run `36193971238` — PASS.
+- The exact-head workflow contains the required Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build jobs; the successful run establishes all three required lanes completed successfully.
+- Focused coverage proves DT_SYMBOLIC/DF_SYMBOLIC metadata retention, complete explicit-global-index preflight, ordinary global-before-local ordering, requester-first symbolic binding, shared scope ceilings, and main-REL plus PLT JUMP_SLOT inheritance.
+
+The earlier empty connector polls were a wrapper limitation: the generic exact-head workflow-run surface exposes the successful push run and is the recorded verification source.
 
 Historical feature-level evidence remains available in Git history, completed `.agent/changes/` records, root historical `specs/`, and `docs/research/evidence/`.
 

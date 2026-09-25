@@ -201,5 +201,4 @@ all unique self/global/local candidates consume the same
 through the same reference-resolution helper; no relocation formula or write
 transaction changes.
 
-Feature 015 is implemented in the current tree but remains unverified until an
-exact-head Linux A32 smoke and both required Android checks are observable.
+Feature 015 is verified at result revision `2ed5157504dc9d7affac2290b1a19535b28913f9`: GitHub Actions CI run `36193971238` PASSed the exact-head Linux A32 smoke and both required Android lanes.

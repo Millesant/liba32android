@@ -2,10 +2,11 @@ schema = 1
 id = "015-elf32-symbol-scope-policy"
 kind = "feature"
 size = "S2"
-status = "implemented"
+status = "done"
 workflow = "feature"
 control_revision = "2b7c8b9245a64560cc9e986d554d99233e34b8c5"
 base_revision = "721cb66d6d58bf13632ba726655d915cfe217b79"
+result_revision = "2ed5157504dc9d7affac2290b1a19535b28913f9"
 acceptance = [
   "DT_SYMBOLIC and DF_SYMBOLIC are retained as validated linker metadata; both forms may coexist and duplicate singleton forms fail explicitly",
   "reference lookup accepts an explicit ordered global scope while preserving the existing graph-local breadth-first closure",
@@ -24,6 +25,6 @@ implementation = "aligned"
 tests = "aligned"
 documentation = "aligned"
 decisions = "not_applicable"
-tasks = "pending"
-evidence = "pending"
+tasks = "aligned"
+evidence = "aligned"
 repository = "aligned"

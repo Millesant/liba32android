@@ -2,9 +2,9 @@
 
 Repository integration is on `bleeding`. The current control-plane round is pinned to `millesant/.gpt@2b7c8b9245a64560cc9e986d554d99233e34b8c5`.
 
-`project-cleanup-v8` and its source/test, tooling, and documentation child changes are DONE. Features `011-elf32-combined-relocation-transaction`, `012-elf32-rel32-relocation`, `013-real-arm32-fixture-execution`, and `014-elf32-symbol-versioning` are DONE; feature 014 implementation revision `5ba659dbf3ad9328c8e46af4441db3a0c4bb4a26` passed Linux A32 smoke and both Android required checks.
+`project-cleanup-v8` and its source/test, tooling, and documentation child changes are DONE. Features `011-elf32-combined-relocation-transaction`, `012-elf32-rel32-relocation`, `013-real-arm32-fixture-execution`, `014-elf32-symbol-versioning`, and `015-elf32-symbol-scope-policy` are DONE. Feature 015 result revision `2ed5157504dc9d7affac2290b1a19535b28913f9` passed exact-head CI run `36193971238` across Linux A32 smoke and both required Android lanes.
 
-Feature `015-elf32-symbol-scope-policy` is ACTIVE. The bounded implementation is present: validated DT_SYMBOLIC/DF_SYMBOLIC metadata, caller-owned in-graph global-scope ordering for relocation/reference lookup, requester-first symbolic binding, complete explicit-global-index preflight, and focused metadata/symbol/relocation tests. This slice was selected from direct inspection of the supplied ARM32 `libfmod.so` and VLC `libvlc.so`, both of which advertise symbolic binding. Exact-head CI has not yet surfaced. The current host's commit-status/workflow-run surfaces also return no records for a known-passing historical head, so do not tight-loop polling or infer failure from emptiness; resume exact-head verification when an observable check surface is available.
+The next runtime feature should now address an accepted compatibility gap beyond requester-local scope ordering. The supplied ARM32 FMOD/VLC evidence continues to favor Android dependency/provider/search/global-group lifetime before speculative relocation expansion.
 
 ## Candidate runtime directions
 
@@ -12,7 +12,7 @@ Choose a bounded next feature from accepted gaps rather than continuing cosmetic
 
 Current candidates include:
 
-- after feature 015 verification, Android search-path/namespace/link-map/global-group lifetime policy across independent graph loads;
+- Android search-path/namespace/link-map/global-group lifetime policy across independent graph loads;
 - constructor/destructor lifecycle, beginning with bounded INIT_ARRAY semantics once the relevant graph/provider layer is available;
 - broader ARM relocation coverage beyond REL32, such as COPY/instruction families or RELA/RELR/Android packed encodings, when a concrete target requires them;
 - TLS/IFUNC groundwork when a concrete target requires it;

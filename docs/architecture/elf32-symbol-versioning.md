@@ -24,4 +24,4 @@ A VERNEED library name is accepted only when it corresponds to a direct dependen
 
 At `5ba659dbf3ad9328c8e46af4441db3a0c4bb4a26`, Linux A32 smoke check `108040133539`, Android arm64-v8a cross-build check `108040133332`, and Android x86_64 address-space probe check `108040133467` all PASSed. Linux validates the synthetic version edge cases and a reproducible generated ARM32 `LIBC`-versioned JUMP_SLOT consumer/provider pair.
 
-Process-wide/global-group construction, namespaces, compatibility shims, constructors, TLS/IFUNC, and Android-device execution remain separate work. DT_SYMBOLIC/DF_SYMBOLIC requester-first ordering itself is implemented by active feature 015 and reuses this version filter.
+Process-wide/global-group construction, namespaces, compatibility shims, constructors, TLS/IFUNC, and Android-device execution remain separate work. Completed feature 015 implements DT_SYMBOLIC/DF_SYMBOLIC requester-first ordering and reuses this version filter.
