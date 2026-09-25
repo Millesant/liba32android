@@ -7,7 +7,7 @@ Cleanup implementation revision: `5b1cf991272632ed44d6276d6ec5e982ef732f28`
 
 ## Phase
 
-M4 runtime/linker scope is stable through bounded main REL including R_ARM_REL32, eager JUMP_SLOT relocation, one per-object combined main+PLT relocation transaction, GNU RELRO, host execution of the linked real ARM32 fixture, bounded GNU/SysV symbol-version matching, and requester/global symbol-scope ordering. Features `015-elf32-symbol-scope-policy`, `014-elf32-symbol-versioning`, `013-real-arm32-fixture-execution`, `012-elf32-rel32-relocation`, `011-elf32-combined-relocation-transaction`, and repository-wide maintenance change `project-cleanup-v8` are DONE. Feature `016-elf32-link-map-global-group` is ACTIVE as the next bounded linker-lifetime slice: retain DF_1_GLOBAL metadata, introduce a caller-owned persistent link map across root loads, and construct a stable in-map global scope without absorbing filesystem or namespace search policy.
+M4 runtime/linker scope is stable through bounded main REL including R_ARM_REL32, eager JUMP_SLOT relocation, one per-object combined main+PLT relocation transaction, GNU RELRO, host execution of the linked real ARM32 fixture, bounded GNU/SysV symbol-version matching, requester/global symbol-scope ordering, and a persistent caller-owned ELF32 link map/global group. Features `016-elf32-link-map-global-group`, `015-elf32-symbol-scope-policy`, `014-elf32-symbol-versioning`, `013-real-arm32-fixture-execution`, `012-elf32-rel32-relocation`, `011-elf32-combined-relocation-transaction`, and repository-wide maintenance change `project-cleanup-v8` are DONE.
 
 ## Repository organization
 
@@ -33,7 +33,7 @@ Persisted inspection at `5b1cf991272632ed44d6276d6ec5e982ef732f28` confirmed 30 
 - Shared load planning and deterministic bounded ET_DYN automatic placement are implemented.
 - PT_DYNAMIC parsing is structural and guest-memory based.
 - Linker metadata/strings validate the implemented STRTAB/SYMTAB/main REL/PLT REL/SONAME/NEEDED scope, retain DT_SYMBOLIC plus DF_SYMBOLIC requester-binding metadata, and retain raw DT_FLAGS_1 with explicit DF_1_GLOBAL membership for feature 016 link-map policy.
-- Dependency acquisition is provider-backed and bounded; recursive one-shot dependency graph loading remains transactional. Feature 016 also has a caller-owned persistent link-map append path that preserves stable object indexes/mappings across root loads, reuses existing identities, and rolls back only append-owned state on failure. Its stable deduplicated global scope is populated from caller-designated global roots plus DF_1_GLOBAL objects and is directly consumable by feature-015 reference lookup. Focused persistent-map coverage now includes cross-root reuse, root promotion, failed-append state preservation, accumulated object limits, malformed-state rejection, and one-shot compatibility; exact-head verification is pending.
+- Dependency acquisition is provider-backed and bounded; recursive one-shot dependency graph loading remains transactional. The caller-owned persistent link map preserves stable object indexes/mappings across root loads, reuses equal identity/image pairs, rejects malformed persistent state before mutation, and rolls back only append-owned state on failure. Its deduplicated global scope is maintained in accumulated object-discovery order from caller-designated global roots plus DF_1_GLOBAL objects and feeds feature-015 reference lookup directly.
 - Plain symbol lookup supports bounded SysV/GNU hash indexing and deterministic graph-local breadth-first resolution. Relocation/reference lookup can additionally consume an ordered caller-owned global-scope list from the same graph; ordinary requesters search global then local scope, while DT_SYMBOLIC/DF_SYMBOLIC requesters search self then global then remaining local scope. Version matching applies across the selected ordering and all unique candidates share the existing scope ceiling.
 - Main DT_REL relocation supports R_ARM_NONE, R_ARM_RELATIVE, R_ARM_GLOB_DAT, R_ARM_ABS32, and AAELF32 R_ARM_REL32 transactionally, including defining-symbol Thumb T-bit handling.
 - PLT REL supports eager R_ARM_JUMP_SLOT transactionally.
@@ -46,8 +46,7 @@ Persisted inspection at `5b1cf991272632ed44d6276d6ec5e982ef732f28` confirmed 30 
 
 Still outside the accepted implementation:
 
-- Android search-path/namespace/pathname policy and process-wide link-map lifetime across independent graph loads;
-- process-wide/global-group construction and lifetime across independent graph loads, plus namespace/preload ordering beyond the caller-provided in-graph global list;
+- Android search-path/namespace/pathname/accessibility policy, LD_PRELOAD/RTLD policy, and platform-library provider composition above the persistent link map;
 - lazy binding and DT_PLTGOT resolver state;
 - broader ARM relocation families, packed/RELA/RELR forms;
 - TLS/IFUNC and constructors/destructors;
@@ -105,6 +104,12 @@ Feature 015 exact-head implementation validation at `2ed5157504dc9d7affac2290b1a
 - Focused coverage proves DT_SYMBOLIC/DF_SYMBOLIC metadata retention, complete explicit-global-index preflight, ordinary global-before-local ordering, requester-first symbolic binding, shared scope ceilings, and main-REL plus PLT JUMP_SLOT inheritance.
 
 The earlier empty connector polls were a wrapper limitation: the generic exact-head workflow-run surface exposes the successful push run and is the recorded verification source.
+
+Feature 016 exact-head implementation validation at `0c374ff84990ee3d64c06a1037f846d90054e5e4`:
+
+- GitHub Actions CI run `36201652255` (#299) — PASS.
+- The successful exact-head workflow covers Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build.
+- Focused persistent-map coverage proves multi-root identity reuse, append-only mapping lifetime, cross-load identity/image mismatch rejection, append rollback preserving prior state, accumulated object limits, full persistent-state preflight, DF_1_GLOBAL/global-root membership, discovery-ordered promotion, and direct feature-015 global-scope consumption.
 
 Historical feature-level evidence remains available in Git history, completed `.agent/changes/` records, root historical `specs/`, and `docs/research/evidence/`.
 
