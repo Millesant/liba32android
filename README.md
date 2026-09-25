@@ -13,7 +13,7 @@ The current C++20/CMake runtime provides:
 - logical 32-bit guest virtual addresses with optional high-base 4 GiB fastmem backing and callback fallback;
 - validated ARM ELF32 `ET_EXEC` / `ET_DYN` mapping, shared pre-mutation load planning, and bounded automatic `ET_DYN` placement;
 - structural `PT_DYNAMIC` parsing plus validated linker metadata and bounded string materialization;
-- bounded provider-backed dependency acquisition and transactional recursive dependency-graph loading;
+- bounded provider-backed dependency acquisition, transactional recursive dependency-graph loading, and a persistent cross-root link map with DF_1_GLOBAL/global-root scope ordering;
 - SysV/GNU dynamic-symbol indexing and deterministic graph-local symbol lookup;
 - transactional main `DT_REL` relocation application for the implemented AArch32 relocation set;
 - eager PLT `R_ARM_JUMP_SLOT` relocation application;
@@ -88,7 +88,7 @@ See [docs/diagnostics.md](docs/diagnostics.md) for crash-marker, fastmem-fallbac
 
 Start at [docs/README.md](docs/README.md). The ELF pipeline is documented as distinct layers: load planning/mapping, structural dynamic metadata, linker metadata/strings, dependency graph loading, symbol resolution, relocation, and RELRO hardening.
 
-The generic runtime deliberately does **not** yet claim implementation of Android namespace/search-path/link-map lifetime policy across independent loads, version-aware/process-wide interposition, lazy PLT binding, broad ARM relocation coverage, TLS, libc/JNI/graphics/audio compatibility layers, or general game compatibility.
+The generic runtime deliberately does **not** yet claim implementation of Android namespace/search-path/platform-provider policy, preload/RTLD semantics, full Android interposition behavior, lazy PLT binding, broad ARM relocation coverage, TLS, libc/JNI/graphics/audio compatibility layers, or general game compatibility.
 
 ## Project state and contribution workflow
 

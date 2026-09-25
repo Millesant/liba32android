@@ -158,7 +158,7 @@ T005 documentation/state/spec convergence and the final feature-head gate PASSed
 This feature does not implement:
 
 - relocation writes are outside this layer and live in `elf32_relocation`; PLT/GOT/JMPREL and lazy binding remain unimplemented;
-- Android namespace/preload/search-path policy and process-wide link-map/global-group construction across independent graph loads;
+- Android namespace/preload/search-path/RTLD selection policy; persistent cross-root link-map/global-group construction is provided by feature 016;
 - protected-reference self-binding beyond the current default-visibility relocation policy;
 - TLS address calculation or TLS relocations;
 - GNU IFUNC execution;
@@ -178,3 +178,18 @@ Exact-head implementation CI at `5ba659dbf3ad9328c8e46af4441db3a0c4bb4a26` passe
 ## Feature 015 — bounded requester/global scope ordering
 
 Feature 015 retains `DT_SYMBOLIC` and the `DF_SYMBOLIC` bit of `DT_FLAGS` as validated linker metadata, adds caller-owned ordered global-scope candidates to relocation/reference lookup, and preserves plain graph-local lookup as-is. Synthetic metadata, symbol-lookup, and relocation tests cover complete explicit-global-index preflight, global-before-local ordering, requester-first symbolic binding, shared scope ceilings, and main-REL plus PLT inheritance. Exact-head GitHub Actions CI run `36193971238` PASSed at result revision `2ed5157504dc9d7affac2290b1a19535b28913f9` across Linux A32 smoke and both required Android lanes. Feature 015 is complete.
+
+
+## Feature 016 — persistent link map/global group
+
+Feature 016 adds the producer side of the feature-015 global-scope contract.
+A caller-owned `Elf32LinkMap` preserves stable object indexes and mappings
+across root appends, derives global membership from caller-designated global
+roots plus validated `DF_1_GLOBAL`, and maintains the resulting indexes in
+accumulated object-discovery order. The span returned by
+`Elf32LinkMap::global_scope()` is consumed directly by reference lookup; no
+new symbol-matching rule is introduced.
+
+Exact-head GitHub Actions CI run `36201652255` (#299) PASSed at
+`0c374ff84990ee3d64c06a1037f846d90054e5e4` across Linux A32 smoke and both
+required Android lanes.
