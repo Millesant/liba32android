@@ -1,6 +1,6 @@
 # ELF32 linker metadata
 
-Status: current through feature 016 T001; prior exact-head gates PASSed
+Status: current through feature 016; exact-head implementation CI PASSed
 
 ## Boundary
 
@@ -97,6 +97,17 @@ This layer does not yet:
 - process RELRO, TLS, constructors/destructors, or Android packed relocations.
 
 Bounded SONAME/NEEDED string consumption lives in `elf32_linker_strings`; bounded hash/dynsym indexing, exact per-object lookup, and graph-local BFS scope live in `elf32_symbol_lookup`; bounded main-`DT_REL` ARM relocation planning/application lives downstream in `elf32_relocation`. PLT REL metadata is now validated here, while PLT entry decoding/application, `R_ARM_JUMP_SLOT`, lazy binding, version-aware/global-group policy, RELRO, TLS, and broader runtime behavior remain separate downstream contracts.
+
+## Feature 016 metadata extension
+
+`DT_FLAGS_1` is a validated singleton whose raw bitset is preserved.
+`DF_1_GLOBAL` is exposed as explicit boolean membership for the persistent
+link-map layer; unknown FLAGS_1 bits remain available for future policy instead
+of being silently discarded. Duplicate `DT_FLAGS_1` entries fail through the
+existing singleton rule.
+
+Feature 016 result revision `0c374ff84990ee3d64c06a1037f846d90054e5e4`
+PASSed exact-head GitHub Actions CI run `36201652255` (#299).
 
 ## Validation evidence
 

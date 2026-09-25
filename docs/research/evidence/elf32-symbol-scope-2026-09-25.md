@@ -65,6 +65,6 @@ missing lookup-order boundary:
 - apply the existing version filter and object-count ceiling across the same
   ordered candidate set.
 
-Process-wide link-map construction, Android namespace/search-path policy,
-preloads, independent graph merging, and global-group lifetime remain separate
-future work.
+Feature 016 now supplies persistent cross-root link-map lifetime and generic
+global-group membership/order. Android namespace/search-path policy, preloads,
+RTLD semantics, and platform-provider selection remain separate future work.
