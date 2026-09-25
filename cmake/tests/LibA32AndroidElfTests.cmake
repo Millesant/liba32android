@@ -22,6 +22,7 @@ liba32android_add_test_executable(elf32_symbol_lookup_real_fixture_test tests/el
 liba32android_add_test_executable(elf32_relocation_real_fixture_test tests/elf/integration/elf32_relocation_real_fixture.cpp)
 liba32android_add_test_executable(elf32_relocation_apply_real_fixture_test tests/elf/integration/elf32_relocation_apply_real_fixture.cpp)
 liba32android_add_test_executable(elf32_relro_real_fixture_test tests/elf/integration/elf32_relro_real_fixture.cpp)
+liba32android_add_test_executable(elf32_execution_real_fixture_test tests/elf/integration/elf32_execution_real_fixture.cpp)
 liba32android_add_test_executable(elf32_jump_slot_real_fixture_test tests/elf/integration/elf32_jump_slot_real_fixture.cpp)
 
 add_test(NAME elf32_valid_dynamic_load COMMAND elf32_loader_test valid_dynamic)
@@ -103,5 +104,8 @@ if(LIBA32ANDROID_ARM32_FIXTURE_PATH)
                      "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
     add_test(NAME elf32_real_relro_seal
              COMMAND elf32_relro_real_fixture_test
+                     "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
+    add_test(NAME elf32_real_execution
+             COMMAND elf32_execution_real_fixture_test
                      "${LIBA32ANDROID_ARM32_FIXTURE_PATH}")
 endif()
