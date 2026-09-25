@@ -98,7 +98,7 @@ Feature 014 exact-head implementation validation at `5ba659dbf3ad9328c8e46af4441
 - Android arm64-v8a cross-build: check `108040133332` — PASS.
 - Android x86_64 address-space probe: check `108040133467` — PASS.
 
-Feature 015 validation is currently NOT RECORDED: source-level coverage is present, but no exact-head GitHub Actions result has surfaced yet for the active implementation.
+Feature 015 validation is currently NOT RECORDED: source-level coverage is present, but no exact-head GitHub Actions result has surfaced yet for the active implementation. In the current host, both commit-status and commit-workflow-run connector surfaces return no records even for the known-passing feature-014 head, so an empty poll is treated as an observability limitation rather than PASS/FAIL evidence and is not tight-looped.
 
 Historical feature-level evidence remains available in Git history, completed `.agent/changes/` records, root historical `specs/`, and `docs/research/evidence/`.
 
