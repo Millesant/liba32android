@@ -754,6 +754,17 @@ static Elf32GraphSymbolLookupResult lookup_elf32_graph_symbol_impl(
             Elf32GraphSymbolLookupError::InvalidGraphStart, start_object);
     }
 
+    // The caller-provided scope is structural input. Validate the complete
+    // ordered list before any candidate can short-circuit lookup so a trailing
+    // invalid object index can never be hidden by an earlier definition.
+    for (const std::size_t object_index : global_scope_objects) {
+        if (object_index >= graph.objects.size()) {
+            return graph_failure(
+                Elf32GraphSymbolLookupError::InvalidGlobalScopeObject,
+                object_index);
+        }
+    }
+
     std::vector<std::uint8_t> searched(graph.objects.size(), 0);
     std::vector<std::uint8_t> expanded(graph.objects.size(), 0);
     std::uint32_t scope_objects = 0;
