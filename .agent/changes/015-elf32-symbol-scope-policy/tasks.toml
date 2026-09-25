@@ -3,24 +3,24 @@ change = "015-elf32-symbol-scope-policy"
 
 [[tasks]]
 id = "T001"
-status = "pending"
+status = "implemented"
 depends_on = []
 acceptance = "Retain DT_SYMBOLIC and DF_SYMBOLIC as validated linker metadata, including coexistence and duplicate-singleton rejection."
 
 [[tasks]]
 id = "T002"
-status = "pending"
+status = "implemented"
 depends_on = ["T001"]
 acceptance = "Add bounded explicit global-scope ordering for relocation/reference lookup with DT_SYMBOLIC requester-first semantics while plain graph lookup remains unchanged."
 
 [[tasks]]
 id = "T003"
-status = "pending"
+status = "implemented"
 depends_on = ["T002"]
 acceptance = "Cover symbolic metadata, global-before-local ordering, requester-first override, invalid global indices, and shared scope ceilings with synthetic tests."
 
 [[tasks]]
 id = "T004"
-status = "pending"
+status = "active"
 depends_on = ["T003"]
 acceptance = "Reconcile accepted specs/docs/state/evidence and pass exact-head Linux A32 smoke plus both required Android checks."
