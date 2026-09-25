@@ -1132,6 +1132,20 @@ int test_reference_global_scope_and_symbolic_ordering() {
         return fail("invalid explicit global-scope object was not rejected");
     }
 
+    // Preflight the complete explicit scope: a valid earlier definition must
+    // not hide a later malformed caller-provided object index.
+    const std::array<std::size_t, 2> trailing_invalid_global{1, 9};
+    auto trailing_invalid = options();
+    trailing_invalid.global_scope_objects = trailing_invalid_global;
+    const auto hidden_bad = lookup_elf32_graph_symbol_for_reference(
+        memory, graph, 0, 1, "target", trailing_invalid);
+    if (hidden_bad.error !=
+            Elf32GraphSymbolLookupError::InvalidGlobalScopeObject ||
+        !hidden_bad.failing_object.has_value() ||
+        *hidden_bad.failing_object != 9) {
+        return fail("trailing invalid global-scope object was hidden by an earlier match");
+    }
+
     auto limited = options();
     limited.max_scope_objects = 1;
     limited.global_scope_objects = global_scope;
