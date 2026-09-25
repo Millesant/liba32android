@@ -23,11 +23,14 @@ constexpr std::int32_t kDtSymtab = 6;
 constexpr std::int32_t kDtStrsz = 10;
 constexpr std::int32_t kDtSyment = 11;
 constexpr std::int32_t kDtSoname = 14;
+constexpr std::int32_t kDtSymbolic = 16;
 constexpr std::int32_t kDtRel = 17;
 constexpr std::int32_t kDtRelsz = 18;
 constexpr std::int32_t kDtRelent = 19;
 constexpr std::int32_t kDtPltrel = 20;
 constexpr std::int32_t kDtJmprel = 23;
+constexpr std::int32_t kDtFlags = 30;
+constexpr std::uint32_t kDfSymbolic = 0x2U;
 constexpr std::int32_t kDtGnuHash = 0x6ffffef5;
 constexpr std::int32_t kDtVersym = 0x6ffffff0;
 constexpr std::int32_t kDtVerdef = 0x6ffffffc;
@@ -210,6 +213,67 @@ int test_unknown_tags_and_null_boundary() {
         result.metadata.soname_offset.has_value() ||
         !result.metadata.needed_offsets.empty()) {
         return fail("semantic collection did not honor hash/DT_NULL boundary");
+    }
+    return 0;
+}
+
+int test_symbolic_binding_metadata() {
+    const std::array dt_symbolic{
+        Elf32DynamicEntry{kDtSymbolic, 0},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    const auto direct = collect_elf32_linker_metadata(dt_symbolic);
+    if (!direct || !direct.metadata.symbolic) {
+        return fail("DT_SYMBOLIC was not retained");
+    }
+
+    const std::array df_symbolic{
+        Elf32DynamicEntry{kDtFlags, kDfSymbolic | 0x8U},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    const auto flags = collect_elf32_linker_metadata(df_symbolic);
+    if (!flags || !flags.metadata.symbolic) {
+        return fail("DF_SYMBOLIC was not retained from DT_FLAGS");
+    }
+
+    const std::array both{
+        Elf32DynamicEntry{kDtSymbolic, 0},
+        Elf32DynamicEntry{kDtFlags, kDfSymbolic},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    LinearGuestMemory memory(0x100, 0);
+    const auto built = build_elf32_linker_metadata(memory, 0, both);
+    if (!built || !built.metadata.symbolic) {
+        return fail("coexisting DT_SYMBOLIC/DF_SYMBOLIC was rejected or lost");
+    }
+
+    const std::array ordinary_flags{
+        Elf32DynamicEntry{kDtFlags, 0x8U},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    const auto ordinary = collect_elf32_linker_metadata(ordinary_flags);
+    if (!ordinary || ordinary.metadata.symbolic) {
+        return fail("non-symbolic DT_FLAGS incorrectly enabled requester-first binding");
+    }
+
+    const std::array duplicate_tag{
+        Elf32DynamicEntry{kDtSymbolic, 0},
+        Elf32DynamicEntry{kDtSymbolic, 0},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (collect_elf32_linker_metadata(duplicate_tag).error !=
+        Elf32LinkerMetadataError::DuplicateSingleton) {
+        return fail("duplicate DT_SYMBOLIC was not rejected");
+    }
+
+    const std::array duplicate_flags{
+        Elf32DynamicEntry{kDtFlags, kDfSymbolic},
+        Elf32DynamicEntry{kDtFlags, kDfSymbolic},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (collect_elf32_linker_metadata(duplicate_flags).error !=
+        Elf32LinkerMetadataError::DuplicateSingleton) {
+        return fail("duplicate DT_FLAGS was not rejected");
     }
     return 0;
 }
@@ -580,6 +644,7 @@ int main() {
     if (const int status = test_incomplete_groups(); status != 0) return status;
     if (const int status = test_invalid_plt_rel_type(); status != 0) return status;
     if (const int status = test_unknown_tags_and_null_boundary(); status != 0) return status;
+    if (const int status = test_symbolic_binding_metadata(); status != 0) return status;
     if (const int status = test_symbol_versioning_metadata(); status != 0) return status;
     if (const int status = test_valid_rebasing_and_zero_bias(); status != 0) return status;
     if (const int status = test_address_and_range_overflow(); status != 0) return status;
