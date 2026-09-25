@@ -10,6 +10,8 @@ The supplied ARM32 `libfmod.so` advertises both `DT_SYMBOLIC` and `DF_SYMBOLIC` 
 
 Modern bionic represents the normal lookup list as global-group entries followed by local-group entries and reserves a requester-first slot when `DT_SYMBOLIC` applies. This change models only that ordering boundary.
 
+The reproducible inspection transcript and relocation inventory are recorded in `docs/research/evidence/elf32-symbol-scope-2026-09-25.md`; the third-party inputs remain outside the repository.
+
 ## Boundary
 
 - retain `DT_SYMBOLIC` / `DF_SYMBOLIC` as validated linker metadata;
