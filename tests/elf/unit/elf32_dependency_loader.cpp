@@ -17,6 +17,7 @@ using liba32android::elf::Elf32DependencyLoadSource;
 using liba32android::elf::Elf32DependencyProvider;
 using liba32android::elf::Elf32LinkMap;
 using liba32android::elf::Elf32LinkMapRootPolicy;
+using liba32android::elf::kElf32Df1Global;
 using liba32android::elf::Elf32DependencyProviderError;
 using liba32android::elf::Elf32DependencyProviderResult;
 using liba32android::elf::Elf32DependencyResolveError;
@@ -42,6 +43,7 @@ constexpr std::uint32_t kDtNull = 0;
 constexpr std::uint32_t kDtNeeded = 1;
 constexpr std::uint32_t kDtStrtab = 5;
 constexpr std::uint32_t kDtStrsz = 10;
+constexpr std::uint32_t kDtFlags1 = 0x6ffffffb;
 
 int fail(const char* message) {
     std::cerr << message << '\n';
@@ -129,6 +131,18 @@ std::vector<std::uint8_t> make_image(std::uint16_t type,
         }
     }
 
+    return image;
+}
+
+std::vector<std::uint8_t> make_flags1_image(bool global) {
+    auto image = make_image(3, 0, true, true);
+    constexpr std::size_t dynamic_offset = 0xc0;
+    write_dynamic_entry(
+        image, dynamic_offset, kDtFlags1,
+        global ? (kElf32Df1Global | 0x1U) : 0x1U);
+    write_dynamic_entry(image, dynamic_offset + 8U, kDtNull, 0);
+    write_u32(image, kThirdProgramHeader + 16, 16);
+    write_u32(image, kThirdProgramHeader + 20, 16);
     return image;
 }
 
@@ -372,6 +386,71 @@ int test_persistent_link_map_dependency_reuse() {
         provider.requests !=
             std::vector<std::string>{"shared-a.so", "shared-b.so"}) {
         return fail("persistent link map did not reuse dependency identity across roots");
+    }
+    return 0;
+}
+
+int test_persistent_link_map_global_membership_order() {
+    MappedGuestMemory memory;
+    Elf32LinkMap link_map;
+    RecordingProvider provider;
+    provider.responses = {
+        success("global-dep", make_flags1_image(true)),
+    };
+
+    const auto first = append_elf32_link_map_root(
+        memory, link_map,
+        Elf32DependencyLoadSource{
+            .identity = "global-root",
+            .image = make_needed_image(
+                3, 0, std::vector<std::string>{"global-dep.so"}),
+        },
+        provider, options(), Elf32LinkMapRootPolicy::Global);
+    if (!first || link_map.graph.objects.size() != 2 ||
+        link_map.global_scope_objects != std::vector<std::size_t>{0, 1} ||
+        link_map.roots.size() != 1 ||
+        link_map.roots[0].policy != Elf32LinkMapRootPolicy::Global) {
+        return fail("global root/DF_1_GLOBAL dependency ordering was incorrect");
+    }
+
+    FailIfCalledProvider no_provider;
+    const auto second = append_elf32_link_map_root(
+        memory, link_map,
+        Elf32DependencyLoadSource{
+            .identity = "local-root",
+            .image = make_image(3, 0, true, true),
+        },
+        no_provider, options(), Elf32LinkMapRootPolicy::Local);
+    if (!second || !second.root_object_index.has_value() ||
+        *second.root_object_index != 2 ||
+        link_map.global_scope_objects != std::vector<std::size_t>{0, 1}) {
+        return fail("local root unexpectedly changed persistent global scope");
+    }
+
+    const auto promote = append_elf32_link_map_root(
+        memory, link_map,
+        Elf32DependencyLoadSource{
+            .identity = "local-root",
+            .image = make_image(3, 0, true, true),
+        },
+        no_provider, options(), Elf32LinkMapRootPolicy::Global);
+    if (!promote || !promote.reused_existing_root ||
+        link_map.global_scope_objects !=
+            std::vector<std::size_t>{0, 1, 2}) {
+        return fail("reused root promotion did not append stable global membership");
+    }
+
+    const auto repeat = append_elf32_link_map_root(
+        memory, link_map,
+        Elf32DependencyLoadSource{
+            .identity = "global-root",
+            .image = make_needed_image(
+                3, 0, std::vector<std::string>{"global-dep.so"}),
+        },
+        no_provider, options(), Elf32LinkMapRootPolicy::Global);
+    if (!repeat || link_map.global_scope_objects !=
+                       std::vector<std::size_t>{0, 1, 2}) {
+        return fail("reused global root duplicated persistent global scope");
     }
     return 0;
 }
@@ -1084,6 +1163,7 @@ int test_recursive_occurrence_and_image_budgets() {
 int main() {
     if (const int status = test_persistent_link_map_root_reuse(); status != 0) return status;
     if (const int status = test_persistent_link_map_dependency_reuse(); status != 0) return status;
+    if (const int status = test_persistent_link_map_global_membership_order(); status != 0) return status;
     if (const int status = test_persistent_link_map_append_failure_preserves_prior_state(); status != 0) return status;
     if (const int status = test_exec_root_without_dynamic(); status != 0) return status;
     if (const int status = test_dynamic_root_automatic_placement(); status != 0) return status;

@@ -5,6 +5,7 @@
 #include <string_view>
 #include <vector>
 
+#include "elf/elf32_link_map.h"
 #include "elf/elf32_symbol_lookup.h"
 #include "memory/guest_memory.h"
 
@@ -16,6 +17,7 @@ using liba32android::elf::Elf32GraphSymbolLookupError;
 using liba32android::elf::Elf32HashTableMetadata;
 using liba32android::elf::Elf32LinkerMetadata;
 using liba32android::elf::Elf32LoadedDependencyObject;
+using liba32android::elf::Elf32LinkMap;
 using liba32android::elf::Elf32StringTableMetadata;
 using liba32android::elf::Elf32ObjectSymbolLookupResult;
 using liba32android::elf::Elf32SymbolIndexError;
@@ -1158,6 +1160,30 @@ int test_reference_global_scope_and_symbolic_ordering() {
     return 0;
 }
 
+int test_link_map_global_scope_feeds_reference_lookup() {
+    LinearGuestMemory memory(0x20000, kMemoryBase);
+    Elf32LinkMap link_map;
+    link_map.graph.objects.resize(2);
+
+    if (!stage_graph_symbol(memory, link_map.graph.objects[0], 0, "target",
+                            0x1000, 0x100) ||
+        !stage_graph_symbol(memory, link_map.graph.objects[1], 1, "target",
+                            0x2000, 0x200)) {
+        return fail("could not stage link-map global-scope lookup symbols");
+    }
+    link_map.global_scope_objects = {1};
+
+    auto scoped = options();
+    scoped.global_scope_objects = link_map.global_scope();
+    const auto result = lookup_elf32_graph_symbol_for_reference(
+        memory, link_map.graph, 0, 1, "target", scoped);
+    if (!result || result.symbol.object_index != 1 ||
+        result.symbol.symbol.guest_value != 0x2200) {
+        return fail("feature-015 lookup did not consume link-map global scope directly");
+    }
+    return 0;
+}
+
 int test_graph_invalid_inputs_and_not_found() {
     LinearGuestMemory memory(0x20000, kMemoryBase);
     Elf32DependencyGraph graph;
@@ -1213,6 +1239,7 @@ int main() {
     if (const int status = test_graph_cycles_shared_and_scope_limit(); status != 0) return status;
     if (const int status = test_graph_weak_first_and_malformed_earlier_object(); status != 0) return status;
     if (const int status = test_reference_global_scope_and_symbolic_ordering(); status != 0) return status;
+    if (const int status = test_link_map_global_scope_feeds_reference_lookup(); status != 0) return status;
     if (const int status = test_graph_invalid_inputs_and_not_found(); status != 0) return status;
     return 0;
 }

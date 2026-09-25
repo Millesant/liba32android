@@ -102,6 +102,25 @@ Preexisting guest mappings are never part of the rollback set. A failure returns
 
 For persistent-link-map append, objects/mappings that existed before the call are also outside the rollback set. A failed append unmaps successful mappings created by that append, truncates newly added object records, and leaves earlier root records/object indexes intact. Existing identities are reused without remapping; a same identity with different bytes fails explicitly.
 
+## Persistent roots and global scope
+
+Each persistent root records explicit caller policy as local or global. After a
+successful append, global membership is extended in stable accumulated object
+order:
+
+- a caller-designated global root is eligible at its object index;
+- every newly loaded object whose validated `DT_FLAGS_1` carries
+  `DF_1_GLOBAL` is eligible;
+- duplicates are suppressed, including later promotion/reuse of an existing
+  root;
+- local roots do not enter the global list unless their own metadata carries
+  `DF_1_GLOBAL`.
+
+The resulting `Elf32LinkMap::global_scope()` span contains ordinary object
+indexes from the accumulated graph and can be passed directly to feature-015
+relocation/reference lookup. This feature still does not infer Android
+namespace accessibility, LD_PRELOAD, or RTLD policy.
+
 The underlying single-image loader remains responsible for rolling back its own partially failed object load before the graph layer records that object as successful.
 
 ## Failure surface

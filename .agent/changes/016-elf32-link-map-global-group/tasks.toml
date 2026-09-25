@@ -21,7 +21,7 @@ acceptance = "Add transactional append loading that reuses existing identities, 
 
 [[tasks]]
 id = "T004"
-status = "pending"
+status = "implemented"
 depends_on = ["T003"]
 acceptance = "Populate stable deduplicated global membership from caller-designated global roots plus DF_1_GLOBAL objects and prove direct feature-015 lookup consumption."
 

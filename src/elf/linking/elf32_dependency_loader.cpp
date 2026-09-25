@@ -458,6 +458,17 @@ Elf32DependencyLoadResult append_elf32_link_map_root(
             });
         };
 
+    const auto record_global =
+        [&](std::size_t object_index) {
+            if (global_seen.size() < link_map.graph.objects.size()) {
+                global_seen.resize(link_map.graph.objects.size(), 0);
+            }
+            if (global_seen[object_index] == 0) {
+                global_seen[object_index] = 1;
+                link_map.global_scope_objects.push_back(object_index);
+            }
+        };
+
     const auto known = object_indices.find(root.identity);
     if (known != object_indices.end()) {
         const std::size_t root_index = known->second;
@@ -466,6 +477,10 @@ Elf32DependencyLoadResult append_elf32_link_map_root(
                            root.identity);
         }
         record_root(root_index);
+        if (root_policy == Elf32LinkMapRootPolicy::Global ||
+            link_map.graph.objects[root_index].linker_metadata.global) {
+            record_global(root_index);
+        }
         Elf32DependencyLoadResult result;
         result.root_object_index = root_index;
         result.reused_existing_root = true;
@@ -510,6 +525,16 @@ Elf32DependencyLoadResult append_elf32_link_map_root(
     }
 
     record_root(root_index);
+    for (std::size_t object_index = initial_object_count;
+         object_index < link_map.graph.objects.size(); ++object_index) {
+        const bool caller_global =
+            object_index == root_index &&
+            root_policy == Elf32LinkMapRootPolicy::Global;
+        if (caller_global ||
+            link_map.graph.objects[object_index].linker_metadata.global) {
+            record_global(object_index);
+        }
+    }
     result.root_object_index = root_index;
     result.reused_existing_root = false;
     return result;
