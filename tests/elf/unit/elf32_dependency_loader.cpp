@@ -11,6 +11,7 @@
 
 namespace {
 
+using liba32android::elf::Elf32DependencyEdge;
 using liba32android::elf::Elf32DependencyLoadError;
 using liba32android::elf::Elf32DependencyLoadOptions;
 using liba32android::elf::Elf32DependencyLoadSource;
