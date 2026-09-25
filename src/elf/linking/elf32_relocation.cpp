@@ -43,12 +43,14 @@ constexpr std::uint16_t kShnXindex = 0xffff;
 [[nodiscard]] bool supported_type(std::uint8_t type) noexcept {
     return type == kRArmNone ||
            type == kRArmAbs32 ||
+           type == kRArmRel32 ||
            type == kRArmGlobDat ||
            type == kRArmRelative;
 }
 
 [[nodiscard]] bool symbol_bearing_type(std::uint8_t type) noexcept {
     return type == kRArmAbs32 ||
+           type == kRArmRel32 ||
            type == kRArmGlobDat ||
            type == kRArmJumpSlot;
 }
@@ -77,6 +79,11 @@ constexpr std::uint16_t kShnXindex = 0xffff;
                                      std::uint32_t rhs) noexcept {
     return static_cast<std::uint32_t>(
         static_cast<std::uint64_t>(lhs) + rhs);
+}
+
+[[nodiscard]] std::uint32_t wrap_sub(std::uint32_t lhs,
+                                     std::uint32_t rhs) noexcept {
+    return static_cast<std::uint32_t>(lhs - rhs);
 }
 
 [[nodiscard]] bool write_word(memory::GuestMemory& memory,
@@ -385,6 +392,7 @@ resolve_relocation_references_for_table(
             lookup_elf32_graph_symbol(memory, graph, object_index,
                                       name.value, options.symbols);
         if (lookup) {
+            reference.defining_symbol = lookup.symbol.symbol.symbol;
             reference.symbol_value = lookup.symbol.symbol.guest_value;
             reference.defining_object_index = lookup.symbol.object_index;
             reference.defining_symbol_index =
@@ -525,6 +533,31 @@ namespace {
             }
             final_word = wrap_add(resolved.reference->symbol_value, *entry.original_word);
             break;
+        case kRArmRel32: {
+            if (!resolved.reference.has_value()) {
+                return apply_failure(
+                    Elf32RelocationApplyError::InvalidResolvedEntry,
+                    Elf32RelocationApplyError::InvalidResolvedEntry,
+                    object_index, entry.index, kind);
+            }
+            const Elf32RelocationReference& reference = *resolved.reference;
+            std::uint32_t relocation_symbol_value = reference.symbol_value;
+            std::uint32_t thumb_bit = 0;
+            if (!reference.unresolved_weak &&
+                reference.defining_symbol.has_value() &&
+                reference.defining_symbol->type == kSttFunc &&
+                (reference.defining_symbol->value & 1U) != 0) {
+                // AAELF32 defines S for relocation with the Thumb discriminator
+                // stripped, and reintroduces it separately as T after S + A.
+                relocation_symbol_value &= ~1U;
+                thumb_bit = 1;
+            }
+            final_word = wrap_sub(
+                wrap_add(relocation_symbol_value, *entry.original_word) |
+                    thumb_bit,
+                entry.place_guest_address);
+            break;
+        }
         default:
             return apply_failure(
                 Elf32RelocationApplyError::InvalidResolvedEntry,

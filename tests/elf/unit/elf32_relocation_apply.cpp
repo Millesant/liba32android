@@ -24,6 +24,7 @@ using liba32android::elf::apply_elf32_combined_relocations;
 using liba32android::elf::apply_elf32_plt_rel_relocations;
 using liba32android::elf::apply_elf32_rel_relocations;
 using liba32android::elf::kRArmAbs32;
+using liba32android::elf::kRArmRel32;
 using liba32android::elf::kRArmGlobDat;
 using liba32android::elf::kRArmJumpSlot;
 using liba32android::elf::kRArmNone;
@@ -312,6 +313,77 @@ int test_abs32_wraps_modulo_32() {
         !read_u32(memory, kTarget0, value) || value != 0x20U) {
         return fail("ABS32 did not apply S+A modulo 2^32");
     }
+    return 0;
+}
+
+
+int test_rel32_formula_thumb_and_weak() {
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_rel(0x1000, 1);
+        if (!stage_symbol(memory, graph.objects[0], "target",
+                          0x1000, 0x234, 1, 1, 1) ||
+            !write_rel(memory, 0, 0x11000, 1, kRArmRel32) ||
+            !write_u32(memory, kTarget0, 0x20U)) {
+            return fail("could not stage ARM REL32 case");
+        }
+        const auto result =
+            apply_elf32_rel_relocations(memory, graph, 0, options());
+        const std::uint32_t expected =
+            static_cast<std::uint32_t>((0x1234U + 0x20U) - kTarget0);
+        std::uint32_t value = 0;
+        if (!result || result.application.writes.size() != 1 ||
+            result.application.writes[0].type != kRArmRel32 ||
+            result.application.writes[0].final_word != expected ||
+            !read_u32(memory, kTarget0, value) || value != expected) {
+            return fail("ARM REL32 formula was incorrect");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_rel(0x1000, 1);
+        if (!stage_symbol(memory, graph.objects[0], "thumb_target",
+                          0x1000, 0x235, 1, 1, 2) ||
+            !write_rel(memory, 0, 0x11000, 1, kRArmRel32) ||
+            !write_u32(memory, kTarget0, 1U)) {
+            return fail("could not stage Thumb REL32 case");
+        }
+        const auto result =
+            apply_elf32_rel_relocations(memory, graph, 0, options());
+        // st_value 0x235 identifies a Thumb STT_FUNC. Relocation S is 0x1234,
+        // T is 1, so ((S + A) | T) - P must use 0x1235 rather than 0x1237.
+        const std::uint32_t expected =
+            static_cast<std::uint32_t>((0x1235U) - kTarget0);
+        std::uint32_t value = 0;
+        if (!result || result.application.writes.size() != 1 ||
+            result.application.writes[0].final_word != expected ||
+            !read_u32(memory, kTarget0, value) || value != expected) {
+            return fail("Thumb REL32 did not apply the AAELF32 T bit correctly");
+        }
+    }
+
+    {
+        LinearGuestMemory memory(0x20000, kMemoryBase);
+        auto graph = graph_with_rel(0x1000, 1);
+        if (!stage_symbol(memory, graph.objects[0], "missing",
+                          0x1000, 0, 2, 0, 2) ||
+            !write_rel(memory, 0, 0x11000, 1, kRArmRel32) ||
+            !write_u32(memory, kTarget0, 4U)) {
+            return fail("could not stage weak REL32 case");
+        }
+        const auto result =
+            apply_elf32_rel_relocations(memory, graph, 0, options());
+        const std::uint32_t expected =
+            static_cast<std::uint32_t>(4U - kTarget0);
+        std::uint32_t value = 0;
+        if (!result || result.application.writes.size() != 1 ||
+            result.application.writes[0].final_word != expected ||
+            !read_u32(memory, kTarget0, value) || value != expected) {
+            return fail("unresolved weak REL32 did not use S=0 and T=0");
+        }
+    }
+
     return 0;
 }
 
@@ -672,6 +744,7 @@ int main() {
     if (const int status = test_none_and_relative(); status != 0) return status;
     if (const int status = test_glob_dat_ignores_addend(); status != 0) return status;
     if (const int status = test_abs32_wraps_modulo_32(); status != 0) return status;
+    if (const int status = test_rel32_formula_thumb_and_weak(); status != 0) return status;
     if (const int status = test_invalid_relative_is_prewrite_failure(); status != 0) return status;
     if (const int status = test_resolve_failure_is_prewrite(); status != 0) return status;
     if (const int status = test_late_write_failure_rolls_back(); status != 0) return status;

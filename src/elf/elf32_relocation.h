@@ -14,6 +14,7 @@ namespace liba32android::elf {
 
 inline constexpr std::uint8_t kRArmNone = 0;
 inline constexpr std::uint8_t kRArmAbs32 = 2;
+inline constexpr std::uint8_t kRArmRel32 = 3;
 inline constexpr std::uint8_t kRArmGlobDat = 21;
 inline constexpr std::uint8_t kRArmJumpSlot = 22;
 inline constexpr std::uint8_t kRArmRelative = 23;
@@ -77,6 +78,9 @@ struct Elf32RelocationReference {
     std::uint32_t symbol_index{};
     std::string name;
     Elf32Symbol symbol;
+    // Defining symbol metadata when graph lookup succeeds. This is distinct
+    // from symbol, which is the relocating object's reference symbol.
+    std::optional<Elf32Symbol> defining_symbol;
     std::uint32_t symbol_value{};
     bool unresolved_weak{};
     std::optional<std::size_t> defining_object_index;
@@ -176,8 +180,8 @@ struct Elf32RelocationApplyResult {
 // Elf32LinkerMetadata (DT_RELENT == 8 and DT_RELSZ divisible by 8), but all
 // guest bytes are still decoded explicitly through GuestMemory.
 //
-// Supported plan types are R_ARM_NONE, R_ARM_ABS32, R_ARM_GLOB_DAT and
-// R_ARM_RELATIVE. Write-producing entries require a word-aligned, readable
+// Supported plan types are R_ARM_NONE, R_ARM_ABS32, R_ARM_REL32,
+// R_ARM_GLOB_DAT and R_ARM_RELATIVE. Write-producing entries require a word-aligned, readable
 // 32-bit place and capture its original word. R_ARM_NONE never reads its
 // target. Duplicate write-producing places are rejected so future
 // plan-before-mutate application never depends on an earlier relocation's
@@ -203,7 +207,7 @@ struct Elf32RelocationApplyResult {
     std::size_t object_index,
     const Elf32RelocationOptions& options);
 
-// Resolve symbol-bearing ABS32/GLOB_DAT references without writing guest
+// Resolve symbol-bearing ABS32/REL32/GLOB_DAT references without writing guest
 // memory. Only GLOBAL/WEAK DEFAULT NOTYPE/OBJECT/FUNC references are accepted.
 // Protected/versioned/TLS/IFUNC/common/XINDEX semantics fail explicitly.
 // A graph miss becomes S=0 only for a WEAK reference.
@@ -233,6 +237,7 @@ resolve_elf32_plt_rel_relocation_references(
 //   RELATIVE = B + A
 //   GLOB_DAT = S        (Android/bionic ARM behavior: REL addend ignored)
 //   ABS32    = S + A
+//   REL32    = ((S + A) | T) - P
 // R_ARM_NONE produces no write.
 //
 // Writes use GuestMemory only and occur in REL table order. On a later write

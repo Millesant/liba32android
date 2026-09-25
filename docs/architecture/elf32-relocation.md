@@ -44,7 +44,7 @@ Missing main or PLT descriptors independently succeed as empty work. The existin
 
 ## Reference resolution
 
-Main `R_ARM_ABS32` / `R_ARM_GLOB_DAT` and PLT `R_ARM_JUMP_SLOT` all use the relocating object's dynamic-symbol index and exact string-table name, then feature-006 graph-local breadth-first lookup beginning at that object.
+Main `R_ARM_ABS32` / `R_ARM_REL32` / `R_ARM_GLOB_DAT` and PLT `R_ARM_JUMP_SLOT` all use the relocating object's dynamic-symbol index and exact string-table name, then feature-006 graph-local breadth-first lookup beginning at that object.
 
 The accepted reference contract is shared:
 
@@ -63,6 +63,7 @@ The bounded main table supports:
 
 - `R_ARM_NONE` (0): no write;
 - `R_ARM_ABS32` (2): `S + A` modulo 2^32;
+- `R_ARM_REL32` (3): `((S + A) | T) - P` modulo 2^32, where `T=1` only for a defining Thumb `STT_FUNC` and `S` uses that defining symbol with its Thumb discriminator stripped;
 - `R_ARM_GLOB_DAT` (21): `S`;
 - `R_ARM_RELATIVE` (23): `B + A` modulo 2^32, with symbol index zero required.
 
@@ -151,6 +152,10 @@ T004 documentation/spec/state convergence and the final exact-head feature gate 
 
 The run uploaded artifact `arm32-loader-fixture-815386149732201ce5b64e1b5ad207079491eb80`, ID `10783439676`, digest `sha256:4a68646d281cb35ceb69586388acd5ce0bbb5e5f316ecd285b1b8c4574bffee7`, containing the provider/consumer pair and JUMP_SLOT evidence alongside the existing ARM32 fixture evidence.
 
+### Main REL32 — feature 012
+
+Feature 012 adds data relocation type `R_ARM_REL32` to the main `DT_REL` table only. The implementation uses the defining symbol's raw `STT_FUNC`/Thumb discriminator to implement the AAELF32 `T` term rather than treating the already-rebased guest value as relocation `S`. Unresolved weak references use `S=0,T=0`. PLT policy remains JUMP_SLOT-only.
+
 ### Combined main + PLT transaction — feature 011
 
 Feature 011 exact-head implementation validation PASSed at `600fad8edc3ac2a8f64fc2607e088b263adca902`: Linux A32 smoke check `107911342972`, Android arm64-v8a cross-build check `107911343141`, and Android x86_64 address-space probe check `107911343155` all completed successfully. Focused unit coverage proves that PLT preparation failure leaves a prepared main table untouched, cross-table duplicate targets fail before mutation, a PLT write failure restores an earlier main write, and rollback failure identifies the main table explicitly.
@@ -160,7 +165,7 @@ Feature 011 exact-head implementation validation PASSed at `600fad8edc3ac2a8f64f
 The current relocation layer still does not implement:
 
 - lazy PLT binding, resolver trampolines, or `DT_PLTGOT` runtime protocol;
-- REL32, COPY, instruction relocations, RELA, RELR, Android packed relocations, or APS2;
+- COPY, instruction relocations, RELA, RELR, Android packed relocations, or APS2;
 - symbol-version matching or requester-specific protected/`DT_SYMBOLIC` self-binding;
 - Android namespaces, preloads, global groups, or process-wide interposition policy;
 - TLS relocations/addressing or GNU IFUNC execution;
