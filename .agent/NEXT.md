@@ -8,11 +8,14 @@ Feature `015-elf32-symbol-scope-policy` is ACTIVE. The bounded implementation is
 
 ## Candidate runtime directions
 
-Choose a bounded next feature from accepted gaps rather than continuing cosmetic repository churn. Current candidates include:
+Choose a bounded next feature from accepted gaps rather than continuing cosmetic repository churn. The supplied VLC ARMv7 four-DSO scan is recorded in `docs/research/evidence/vlc-armv7-gap-scan-2026-09-25.md`: every observed relocation is already inside the implemented REL/JUMP_SLOT set, while APK-external Android providers and INIT_ARRAY/FINI_ARRAY lifecycle metadata are concrete remaining requirements.
+
+Current candidates include:
 
 - after feature 015 verification, Android search-path/namespace/link-map/global-group lifetime policy across independent graph loads;
-- broader ARM relocation coverage beyond REL32, such as COPY/instruction families or RELA/RELR/Android packed encodings;
-- TLS/IFUNC groundwork;
+- constructor/destructor lifecycle, beginning with bounded INIT_ARRAY semantics once the relevant graph/provider layer is available;
+- broader ARM relocation coverage beyond REL32, such as COPY/instruction families or RELA/RELR/Android packed encodings, when a concrete target requires them;
+- TLS/IFUNC groundwork when a concrete target requires it;
 - end-to-end real ARM32 fixture execution on Android once the required runtime environment is available.
 
 ## Independent follow-ups
