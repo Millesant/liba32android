@@ -69,6 +69,8 @@ struct Elf32CollectedLinkerMetadata {
     std::optional<Elf32CollectedVersionTableMetadata> version_requirement_table;
     std::optional<std::uint32_t> soname_offset;
     std::vector<std::uint32_t> needed_offsets;
+    // DT_SYMBOLIC or DF_SYMBOLIC requester-first binding policy marker.
+    bool symbolic{};
     bool has_symbol_versioning{};
 };
 
@@ -130,6 +132,8 @@ struct Elf32LinkerMetadata {
     std::optional<Elf32VersionTableMetadata> version_requirement_table;
     std::optional<std::uint32_t> soname_offset;
     std::vector<std::uint32_t> needed_offsets;
+    // True when DT_SYMBOLIC is present or DT_FLAGS carries DF_SYMBOLIC.
+    bool symbolic{};
     bool has_symbol_versioning{};
 };
 
