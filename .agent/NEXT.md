@@ -4,7 +4,7 @@ Repository integration is on `bleeding`. The current control-plane round is pinn
 
 `project-cleanup-v8` and its source/test, tooling, and documentation child changes are DONE. Features `011-elf32-combined-relocation-transaction`, `012-elf32-rel32-relocation`, `013-real-arm32-fixture-execution`, `014-elf32-symbol-versioning`, `015-elf32-symbol-scope-policy`, and `016-elf32-link-map-global-group` are DONE. Feature 016 result revision `0c374ff84990ee3d64c06a1037f846d90054e5e4` passed exact-head CI run `36201652255` (#299) across Linux A32 smoke and both required Android lanes.
 
-Feature 016 is complete. The next bounded runtime slice should build on its persistent link-map boundary rather than reopening global-scope ownership. Android provider/search/namespace policy and constructor lifecycle are the two concrete VLC-driven gaps still nearest the current implementation.
+Feature `017-elf32-lifecycle-array-metadata` is ACTIVE. It starts the VLC-driven constructor lifecycle gap at the non-executing boundary: validate INIT_ARRAY/FINI_ARRAY metadata and decode raw guest function-pointer entries under caller bounds. Dependency-order lifecycle planning and CPU execution remain a later slice.
 
 ## Candidate runtime directions
 
