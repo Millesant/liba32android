@@ -164,8 +164,8 @@ struct GraphLoadContext {
     memory::MappedGuestMemory& memory;
     Elf32DependencyProvider& provider;
     const Elf32DependencyLoadOptions& options;
+    Elf32DependencyGraph& graph;
 
-    Elf32DependencyGraph graph;
     std::unordered_map<std::string, std::size_t> object_indices;
     std::vector<ObjectState> states;
     std::vector<Elf32LoadResult> successful_loads;
@@ -356,10 +356,12 @@ Elf32DependencyLoadResult load_elf32_dependency_graph(
                        root.identity);
     }
 
+    Elf32DependencyGraph graph;
     GraphLoadContext context{
         .memory = memory,
         .provider = provider,
         .options = options,
+        .graph = graph,
         .total_image_bytes = root_image_bytes,
     };
 
@@ -376,7 +378,140 @@ Elf32DependencyLoadResult load_elf32_dependency_graph(
                                 std::move(result));
     }
 
-    result.graph = std::move(context.graph);
+    result.graph = std::move(graph);
+    result.root_object_index = 0U;
+    return result;
+}
+
+Elf32DependencyLoadResult append_elf32_link_map_root(
+    memory::MappedGuestMemory& memory,
+    Elf32LinkMap& link_map,
+    Elf32DependencyLoadSource root,
+    Elf32DependencyProvider& provider,
+    const Elf32DependencyLoadOptions& options,
+    Elf32LinkMapRootPolicy root_policy) {
+    if (options.max_objects == 0) {
+        return failure(Elf32DependencyLoadError::InvalidOptions, root.identity);
+    }
+    if (root.identity.empty()) {
+        return failure(Elf32DependencyLoadError::EmptyRootIdentity);
+    }
+    if (root.image.empty()) {
+        return failure(Elf32DependencyLoadError::EmptyRootImage, root.identity);
+    }
+
+    const std::uint64_t root_image_bytes =
+        static_cast<std::uint64_t>(root.image.size());
+    if (root_image_bytes > options.max_image_bytes) {
+        return failure(Elf32DependencyLoadError::ImageTooLarge, root.identity);
+    }
+    if (root_image_bytes > options.max_total_image_bytes) {
+        return failure(Elf32DependencyLoadError::TotalImageBytesExceeded,
+                       root.identity);
+    }
+    if (link_map.graph.objects.size() >
+        static_cast<std::size_t>(options.max_objects)) {
+        return failure(Elf32DependencyLoadError::TooManyObjects, root.identity);
+    }
+
+    std::unordered_map<std::string, std::size_t> object_indices;
+    object_indices.reserve(link_map.graph.objects.size() + 1U);
+    for (std::size_t index = 0; index < link_map.graph.objects.size(); ++index) {
+        const auto& object = link_map.graph.objects[index];
+        if (object.identity.empty() ||
+            !object_indices.emplace(object.identity, index).second) {
+            return failure(Elf32DependencyLoadError::InvalidLinkMap,
+                           object.identity);
+        }
+    }
+
+    std::vector<std::uint8_t> root_seen(link_map.graph.objects.size(), 0);
+    for (const auto& record : link_map.roots) {
+        if (record.object_index >= link_map.graph.objects.size() ||
+            root_seen[record.object_index] != 0) {
+            return failure(Elf32DependencyLoadError::InvalidLinkMap);
+        }
+        root_seen[record.object_index] = 1;
+    }
+    std::vector<std::uint8_t> global_seen(link_map.graph.objects.size(), 0);
+    for (const std::size_t object_index : link_map.global_scope_objects) {
+        if (object_index >= link_map.graph.objects.size() ||
+            global_seen[object_index] != 0) {
+            return failure(Elf32DependencyLoadError::InvalidLinkMap);
+        }
+        global_seen[object_index] = 1;
+    }
+
+    const auto record_root =
+        [&](std::size_t object_index) {
+            for (auto& record : link_map.roots) {
+                if (record.object_index == object_index) {
+                    if (root_policy == Elf32LinkMapRootPolicy::Global) {
+                        record.policy = Elf32LinkMapRootPolicy::Global;
+                    }
+                    return;
+                }
+            }
+            link_map.roots.push_back(Elf32LinkMapRoot{
+                .object_index = object_index,
+                .policy = root_policy,
+            });
+        };
+
+    const auto known = object_indices.find(root.identity);
+    if (known != object_indices.end()) {
+        const std::size_t root_index = known->second;
+        if (link_map.graph.objects[root_index].image != root.image) {
+            return failure(Elf32DependencyLoadError::IdentityImageMismatch,
+                           root.identity);
+        }
+        record_root(root_index);
+        Elf32DependencyLoadResult result;
+        result.root_object_index = root_index;
+        result.reused_existing_root = true;
+        return result;
+    }
+
+    if (link_map.graph.objects.size() >=
+        static_cast<std::size_t>(options.max_objects)) {
+        return failure(Elf32DependencyLoadError::TooManyObjects, root.identity);
+    }
+
+    const std::size_t initial_object_count = link_map.graph.objects.size();
+    const std::size_t root_index = initial_object_count;
+
+    Elf32LoadedDependencyObject root_object;
+    root_object.identity = std::move(root.identity);
+    root_object.image = std::move(root.image);
+    link_map.graph.objects.push_back(std::move(root_object));
+    object_indices.emplace(link_map.graph.objects[root_index].identity,
+                           root_index);
+
+    std::vector<ObjectState> states(
+        initial_object_count, ObjectState::Loaded);
+    states.push_back(ObjectState::Discovered);
+
+    GraphLoadContext context{
+        .memory = memory,
+        .provider = provider,
+        .options = options,
+        .graph = link_map.graph,
+        .object_indices = std::move(object_indices),
+        .states = std::move(states),
+        .total_image_bytes = root_image_bytes,
+    };
+
+    auto result = context.process_object(root_index, 0, false);
+    if (!result) {
+        result = rollback_failure(
+            memory, context.successful_loads, std::move(result));
+        link_map.graph.objects.resize(initial_object_count);
+        return result;
+    }
+
+    record_root(root_index);
+    result.root_object_index = root_index;
+    result.reused_existing_root = false;
     return result;
 }
 
@@ -386,6 +521,8 @@ const char* to_string(Elf32DependencyLoadError error) noexcept {
         return "none";
     case Elf32DependencyLoadError::InvalidOptions:
         return "invalid_options";
+    case Elf32DependencyLoadError::InvalidLinkMap:
+        return "invalid_link_map";
     case Elf32DependencyLoadError::EmptyRootIdentity:
         return "empty_root_identity";
     case Elf32DependencyLoadError::EmptyRootImage:

@@ -9,13 +9,13 @@ acceptance = "Retain DT_FLAGS_1 as validated singleton linker metadata and expos
 
 [[tasks]]
 id = "T002"
-status = "pending"
+status = "implemented"
 depends_on = ["T001"]
 acceptance = "Define a caller-owned persistent link-map contract with stable accumulated graph indexes, root records, ordered global-scope indexes, and explicit local/global root policy."
 
 [[tasks]]
 id = "T003"
-status = "pending"
+status = "implemented"
 depends_on = ["T002"]
 acceptance = "Add transactional append loading that reuses existing identities, rejects cross-load identity/image mismatches, and preserves pre-existing link-map state on failure."
 

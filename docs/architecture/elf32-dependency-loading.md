@@ -1,6 +1,6 @@
 # ELF32 dependency loading
 
-Status: complete; merged through PR #32
+Status: one-shot graph loading complete; feature 016 persistent link-map append implemented through T003
 
 ## Boundary
 
@@ -41,7 +41,7 @@ load plan
                     +--> new identity: register/recurse
 ```
 
-The graph layer owns per-call object identity/lifetime, placement/loading, recursion, aggregate limits, and rollback. It does not absorb Android pathname/namespace policy from the provider and does not perform symbol lookup, relocations, constructors, TLS/RELRO, unload, or execution.
+The original graph API owns per-call object identity/lifetime, placement/loading, recursion, aggregate limits, and rollback. Feature 016 adds an additive caller-owned `Elf32LinkMap`: successive roots share one accumulated graph, stable object indexes, and persistent mappings while provider pathname/namespace policy remains external. It does not perform symbol lookup, relocations, constructors, TLS/RELRO, unload, or execution.
 
 ## Object and edge model
 
@@ -99,6 +99,8 @@ The graph keeps wide checked accounting and never turns an occurrence duplicate 
 Successful mappings are recorded in load order. If any later acquisition, identity check, placement, load, parse, metadata, string, or resource step fails, the graph loader unmaps successful graph-owned mappings in reverse order.
 
 Preexisting guest mappings are never part of the rollback set. A failure returns no partial successful graph. If an expected graph-owned unmap fails, the public error becomes `RollbackFailed` while `primary_error` preserves the original cause.
+
+For persistent-link-map append, objects/mappings that existed before the call are also outside the rollback set. A failed append unmaps successful mappings created by that append, truncates newly added object records, and leaves earlier root records/object indexes intact. Existing identities are reused without remapping; a same identity with different bytes fails explicitly.
 
 The underlying single-image loader remains responsible for rolling back its own partially failed object load before the graph layer records that object as successful.
 

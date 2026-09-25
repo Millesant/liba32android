@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -11,6 +12,7 @@
 #include "elf/elf32_dynamic_placement.h"
 #include "elf/elf32_linker_metadata.h"
 #include "elf/elf32_linker_strings.h"
+#include "elf/elf32_link_map.h"
 #include "elf/elf32_load_types.h"
 #include "memory/guest_memory.h"
 
@@ -34,6 +36,7 @@ struct Elf32DependencyLoadOptions {
 enum class Elf32DependencyLoadError : std::uint8_t {
     None = 0,
     InvalidOptions,
+    InvalidLinkMap,
     EmptyRootIdentity,
     EmptyRootImage,
     ImageTooLarge,
@@ -66,7 +69,11 @@ struct Elf32DependencyLoadResult {
 
     std::string failing_identity;
     std::string requested_name;
+    // One-shot loads populate graph. Persistent link-map appends mutate the
+    // supplied link map in place and leave graph empty.
     Elf32DependencyGraph graph;
+    std::optional<std::size_t> root_object_index;
+    bool reused_existing_root{};
 
     [[nodiscard]] explicit operator bool() const noexcept {
         return error == Elf32DependencyLoadError::None;
@@ -82,6 +89,19 @@ struct Elf32DependencyLoadResult {
     Elf32DependencyLoadSource root,
     Elf32DependencyProvider& provider,
     const Elf32DependencyLoadOptions& options);
+
+// Append one root transactionally into a caller-owned persistent link map.
+// Existing identities are reused without remapping; equal identities with
+// different bytes fail. max_objects bounds the accumulated object count.
+// Failure removes only objects/mappings introduced by this append and preserves
+// all pre-existing link-map state. T004 populates global_scope_objects.
+[[nodiscard]] Elf32DependencyLoadResult append_elf32_link_map_root(
+    memory::MappedGuestMemory& memory,
+    Elf32LinkMap& link_map,
+    Elf32DependencyLoadSource root,
+    Elf32DependencyProvider& provider,
+    const Elf32DependencyLoadOptions& options,
+    Elf32LinkMapRootPolicy root_policy);
 
 [[nodiscard]] const char* to_string(Elf32DependencyLoadError error) noexcept;
 

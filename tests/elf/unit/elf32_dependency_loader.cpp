@@ -15,11 +15,14 @@ using liba32android::elf::Elf32DependencyLoadError;
 using liba32android::elf::Elf32DependencyLoadOptions;
 using liba32android::elf::Elf32DependencyLoadSource;
 using liba32android::elf::Elf32DependencyProvider;
+using liba32android::elf::Elf32LinkMap;
+using liba32android::elf::Elf32LinkMapRootPolicy;
 using liba32android::elf::Elf32DependencyProviderError;
 using liba32android::elf::Elf32DependencyProviderResult;
 using liba32android::elf::Elf32DependencyResolveError;
 using liba32android::elf::Elf32DependencySource;
 using liba32android::elf::Elf32DynamicError;
+using liba32android::elf::append_elf32_link_map_root;
 using liba32android::elf::load_elf32_dependency_graph;
 using liba32android::memory::MappedGuestMemory;
 using liba32android::memory::MemoryPermission;
@@ -272,6 +275,151 @@ Elf32DependencyLoadOptions options() {
     result.placement.search_begin = 0x10000;
     result.placement.search_end_exclusive = 0x80000;
     return result;
+}
+
+int test_persistent_link_map_root_reuse() {
+    MappedGuestMemory memory;
+    FailIfCalledProvider provider;
+    Elf32LinkMap link_map;
+    const auto root_image = make_image(3, 0, true, true);
+
+    const auto first = append_elf32_link_map_root(
+        memory, link_map,
+        Elf32DependencyLoadSource{
+            .identity = "persistent-root",
+            .image = root_image,
+        },
+        provider, options(), Elf32LinkMapRootPolicy::Local);
+    if (!first || !first.root_object_index.has_value() ||
+        *first.root_object_index != 0 || first.reused_existing_root ||
+        link_map.graph.objects.size() != 1 ||
+        link_map.roots.size() != 1 ||
+        link_map.roots[0].object_index != 0 ||
+        link_map.roots[0].policy != Elf32LinkMapRootPolicy::Local) {
+        return fail("first persistent root load produced wrong link-map state");
+    }
+    const std::uint32_t load_bias = link_map.graph.objects[0].load.load_bias;
+
+    const auto second = append_elf32_link_map_root(
+        memory, link_map,
+        Elf32DependencyLoadSource{
+            .identity = "persistent-root",
+            .image = root_image,
+        },
+        provider, options(), Elf32LinkMapRootPolicy::Global);
+    if (!second || !second.root_object_index.has_value() ||
+        *second.root_object_index != 0 || !second.reused_existing_root ||
+        link_map.graph.objects.size() != 1 ||
+        link_map.roots.size() != 1 ||
+        link_map.roots[0].policy != Elf32LinkMapRootPolicy::Global ||
+        link_map.graph.objects[0].load.load_bias != load_bias ||
+        provider.calls != 0) {
+        return fail("persistent root identity was not reused/promoted exactly");
+    }
+
+    auto mismatched = root_image;
+    mismatched[0x1000] ^= 0xffU;
+    const auto mismatch = append_elf32_link_map_root(
+        memory, link_map,
+        Elf32DependencyLoadSource{
+            .identity = "persistent-root",
+            .image = std::move(mismatched),
+        },
+        provider, options(), Elf32LinkMapRootPolicy::Global);
+    if (mismatch.error != Elf32DependencyLoadError::IdentityImageMismatch ||
+        link_map.graph.objects.size() != 1 ||
+        link_map.roots.size() != 1 ||
+        link_map.graph.objects[0].load.load_bias != load_bias) {
+        return fail("cross-load root identity/image mismatch mutated link-map state");
+    }
+    return 0;
+}
+
+int test_persistent_link_map_dependency_reuse() {
+    MappedGuestMemory memory;
+    Elf32LinkMap link_map;
+    const auto shared = make_image(3, 0, false, true);
+    RecordingProvider provider;
+    provider.responses = {
+        success("shared-id", shared),
+        success("shared-id", shared),
+    };
+
+    const auto first = append_elf32_link_map_root(
+        memory, link_map,
+        Elf32DependencyLoadSource{
+            .identity = "root-a",
+            .image = make_needed_image(
+                3, 0, std::vector<std::string>{"shared-a.so"}),
+        },
+        provider, options(), Elf32LinkMapRootPolicy::Local);
+    const auto second = append_elf32_link_map_root(
+        memory, link_map,
+        Elf32DependencyLoadSource{
+            .identity = "root-b",
+            .image = make_needed_image(
+                3, 0, std::vector<std::string>{"shared-b.so"}),
+        },
+        provider, options(), Elf32LinkMapRootPolicy::Local);
+
+    if (!first || !second || link_map.graph.objects.size() != 3 ||
+        link_map.roots.size() != 2 ||
+        link_map.roots[0].object_index != 0 ||
+        link_map.roots[1].object_index != 2 ||
+        link_map.graph.objects[1].identity != "shared-id" ||
+        link_map.graph.objects[2].dependencies.size() != 1 ||
+        link_map.graph.objects[2].dependencies[0].target_object != 1 ||
+        provider.requests !=
+            std::vector<std::string>{"shared-a.so", "shared-b.so"}) {
+        return fail("persistent link map did not reuse dependency identity across roots");
+    }
+    return 0;
+}
+
+int test_persistent_link_map_append_failure_preserves_prior_state() {
+    MappedGuestMemory memory;
+    Elf32LinkMap link_map;
+    FailIfCalledProvider initial_provider;
+
+    const auto first = append_elf32_link_map_root(
+        memory, link_map,
+        Elf32DependencyLoadSource{
+            .identity = "stable-root",
+            .image = make_image(3, 0, true, true),
+        },
+        initial_provider, options(), Elf32LinkMapRootPolicy::Local);
+    if (!first) return fail("could not stage pre-existing persistent root");
+
+    const auto stable_load = link_map.graph.objects[0].load;
+    RecordingProvider provider;
+    provider.responses = {
+        success("bad-exec", make_image(2, 0x50000, false, true)),
+    };
+
+    const auto failed = append_elf32_link_map_root(
+        memory, link_map,
+        Elf32DependencyLoadSource{
+            .identity = "failing-root",
+            .image = make_needed_image(
+                3, 0, std::vector<std::string>{"bad.so"}),
+        },
+        provider, options(), Elf32LinkMapRootPolicy::Local);
+
+    if (failed.error != Elf32DependencyLoadError::DependencyNotDynamic ||
+        link_map.graph.objects.size() != 1 ||
+        link_map.roots.size() != 1 ||
+        link_map.graph.objects[0].identity != "stable-root") {
+        return fail("failed append published partial persistent link-map state");
+    }
+    for (const auto& segment : stable_load.segments) {
+        if (!memory.is_mapped(segment.mapping_start)) {
+            return fail("failed append unmapped pre-existing persistent object");
+        }
+    }
+    if (memory.is_mapped(0x18000) || memory.is_mapped(0x1c000)) {
+        return fail("failed append did not roll back newly mapped root");
+    }
+    return 0;
 }
 
 int test_exec_root_without_dynamic() {
@@ -934,6 +1082,9 @@ int test_recursive_occurrence_and_image_budgets() {
 }  // namespace
 
 int main() {
+    if (const int status = test_persistent_link_map_root_reuse(); status != 0) return status;
+    if (const int status = test_persistent_link_map_dependency_reuse(); status != 0) return status;
+    if (const int status = test_persistent_link_map_append_failure_preserves_prior_state(); status != 0) return status;
     if (const int status = test_exec_root_without_dynamic(); status != 0) return status;
     if (const int status = test_dynamic_root_automatic_placement(); status != 0) return status;
     if (const int status = test_preflight_failures_do_not_mutate_memory(); status != 0) return status;

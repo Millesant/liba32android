@@ -21,7 +21,7 @@ Validated linker metadata covers STRTAB/STRSZ, SYMTAB/SYMENT, main REL/RELSZ/REL
 
 ## L32-E005 — Dependency acquisition and graph loading
 
-Dependency acquisition is provider-backed and bounded; filesystem/search-path/namespace policy stays outside the generic core. Recursive graph loading is transactional, uses provider identity as the per-call object key, preserves ordered/repeated edges, reuses cycles/aliases, automatically places dependency `ET_DYN` images, and rolls back graph-owned mappings on aggregate failure.
+Dependency acquisition is provider-backed and bounded; filesystem/search-path/namespace policy stays outside the generic core. Recursive one-shot graph loading is transactional, uses provider identity as the object key, preserves ordered/repeated edges, reuses cycles/aliases, automatically places dependency `ET_DYN` images, and rolls back graph-owned mappings on aggregate failure. Feature 016 additionally provides a caller-owned persistent link map: root appends preserve stable accumulated object indexes/mappings across calls, reuse existing equal identity/image pairs, reject cross-load identity/image mismatches, and roll back only state introduced by a failed append. Root local/global policy is recorded; global-scope population follows in T004.
 
 ## L32-E006 — Symbol resolution
 
