@@ -544,6 +544,52 @@ int test_reference_scope_policy_flows_through_relocation() {
         defined_symbolic_reference.symbol_value != 0x1090) {
         return fail("symbolic defined reference did not bind requester first");
     }
+
+    // The PLT resolver shares the same reference policy. Prove both ordinary
+    // global-first and symbolic requester-first ordering through JUMP_SLOT.
+    graph.objects[0].linker_metadata.plt_rel_table =
+        Elf32RelTableMetadata{
+            .guest_address = kPltRelTable,
+            .size = 8,
+            .entry_size = 8,
+        };
+    if (!write_rel_at(memory, kPltRelTable, 0, 0x11004, 1,
+                      kRArmJumpSlot) ||
+        !write_u32(memory, 0x12004, 0)) {
+        return fail("could not stage PLT scope-policy relocation");
+    }
+
+    graph.objects[0].linker_metadata.symbolic = false;
+    const auto plt_ordinary = resolve_elf32_plt_rel_relocation_references(
+        memory, graph, 0, scoped);
+    if (!plt_ordinary ||
+        plt_ordinary.resolution.entries.size() != 1 ||
+        !plt_ordinary.resolution.entries[0].reference.has_value()) {
+        return fail("ordinary PLT scope-policy reference did not resolve exactly once");
+    }
+    const auto& plt_ordinary_reference =
+        *plt_ordinary.resolution.entries[0].reference;
+    if (!plt_ordinary_reference.defining_object_index.has_value() ||
+        *plt_ordinary_reference.defining_object_index != 1 ||
+        plt_ordinary_reference.symbol_value != 0x5120) {
+        return fail("ordinary PLT reference did not preserve global-first ordering");
+    }
+
+    graph.objects[0].linker_metadata.symbolic = true;
+    const auto plt_symbolic = resolve_elf32_plt_rel_relocation_references(
+        memory, graph, 0, scoped);
+    if (!plt_symbolic ||
+        plt_symbolic.resolution.entries.size() != 1 ||
+        !plt_symbolic.resolution.entries[0].reference.has_value()) {
+        return fail("symbolic PLT scope-policy reference did not resolve exactly once");
+    }
+    const auto& plt_symbolic_reference =
+        *plt_symbolic.resolution.entries[0].reference;
+    if (!plt_symbolic_reference.defining_object_index.has_value() ||
+        *plt_symbolic_reference.defining_object_index != 0 ||
+        plt_symbolic_reference.symbol_value != 0x1090) {
+        return fail("symbolic PLT reference did not bind requester first");
+    }
     return 0;
 }
 
