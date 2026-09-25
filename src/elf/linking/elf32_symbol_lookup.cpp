@@ -743,7 +743,9 @@ static Elf32GraphSymbolLookupResult lookup_elf32_graph_symbol_impl(
     std::size_t start_object,
     std::string_view name,
     const Elf32SymbolLookupOptions& options,
-    const std::optional<Elf32SymbolVersionRequirement>& requirement) {
+    const std::optional<Elf32SymbolVersionRequirement>& requirement,
+    std::span<const std::size_t> global_scope_objects,
+    bool requester_symbolic) {
     if (options.max_scope_objects == 0) {
         return graph_failure(Elf32GraphSymbolLookupError::InvalidOptions);
     }
@@ -752,70 +754,108 @@ static Elf32GraphSymbolLookupResult lookup_elf32_graph_symbol_impl(
             Elf32GraphSymbolLookupError::InvalidGraphStart, start_object);
     }
 
-    std::vector<std::uint8_t> visited(graph.objects.size(), 0);
-    std::deque<std::size_t> pending;
-    pending.push_back(start_object);
+    std::vector<std::uint8_t> searched(graph.objects.size(), 0);
+    std::vector<std::uint8_t> expanded(graph.objects.size(), 0);
     std::uint32_t scope_objects = 0;
 
-    while (!pending.empty()) {
-        const std::size_t object_index = pending.front();
-        pending.pop_front();
-
+    const auto search_object =
+        [&](std::size_t object_index,
+            Elf32GraphSymbolLookupError invalid_error)
+            -> std::optional<Elf32GraphSymbolLookupResult> {
         if (object_index >= graph.objects.size()) {
-            return graph_failure(
-                Elf32GraphSymbolLookupError::InvalidGraphEdge, object_index);
+            return graph_failure(invalid_error, object_index);
         }
-        if (visited[object_index] != 0) continue;
+        if (searched[object_index] != 0) return std::nullopt;
         if (scope_objects >= options.max_scope_objects) {
             return graph_failure(
                 Elf32GraphSymbolLookupError::ScopeLimitExceeded,
                 object_index);
         }
 
-        visited[object_index] = 1;
+        searched[object_index] = 1;
         ++scope_objects;
         const Elf32LoadedDependencyObject& object =
             graph.objects[object_index];
 
-        if (object.linker_metadata.symbol_table.has_value()) {
-            const Elf32SymbolIndexResult index = build_elf32_symbol_index(
-                memory, object.linker_metadata, options);
-            if (!index) {
-                auto result = graph_failure(
-                    Elf32GraphSymbolLookupError::IndexBuildFailed,
-                    object_index);
-                result.index_error = index.error;
-                return result;
-            }
-
-            const Elf32ObjectSymbolLookupResult lookup =
-                lookup_elf32_symbol_impl(
-                    memory, object.load.load_bias,
-                    object.linker_metadata, index.index, name, options,
-                    requirement);
-            if (lookup) {
-                Elf32GraphSymbolLookupResult result;
-                result.symbol.object_index = object_index;
-                result.symbol.symbol = lookup.symbol;
-                return result;
-            }
-            if (lookup.error != Elf32SymbolLookupError::SymbolNotFound) {
-                auto result = graph_failure(
-                    Elf32GraphSymbolLookupError::ObjectLookupFailed,
-                    object_index);
-                result.lookup_error = lookup.error;
-                result.string_error = lookup.string_error;
-                return result;
-            }
+        if (!object.linker_metadata.symbol_table.has_value()) {
+            return std::nullopt;
         }
 
+        const Elf32SymbolIndexResult index = build_elf32_symbol_index(
+            memory, object.linker_metadata, options);
+        if (!index) {
+            auto result = graph_failure(
+                Elf32GraphSymbolLookupError::IndexBuildFailed,
+                object_index);
+            result.index_error = index.error;
+            return result;
+        }
+
+        const Elf32ObjectSymbolLookupResult lookup =
+            lookup_elf32_symbol_impl(
+                memory, object.load.load_bias,
+                object.linker_metadata, index.index, name, options,
+                requirement);
+        if (lookup) {
+            Elf32GraphSymbolLookupResult result;
+            result.symbol.object_index = object_index;
+            result.symbol.symbol = lookup.symbol;
+            return result;
+        }
+        if (lookup.error != Elf32SymbolLookupError::SymbolNotFound) {
+            auto result = graph_failure(
+                Elf32GraphSymbolLookupError::ObjectLookupFailed,
+                object_index);
+            result.lookup_error = lookup.error;
+            result.string_error = lookup.string_error;
+            return result;
+        }
+        return std::nullopt;
+    };
+
+    if (requester_symbolic) {
+        if (auto result = search_object(
+                start_object, Elf32GraphSymbolLookupError::InvalidGraphStart)) {
+            return *result;
+        }
+    }
+
+    for (const std::size_t object_index : global_scope_objects) {
+        if (auto result = search_object(
+                object_index,
+                Elf32GraphSymbolLookupError::InvalidGlobalScopeObject)) {
+            return *result;
+        }
+    }
+
+    std::deque<std::size_t> pending;
+    pending.push_back(start_object);
+    while (!pending.empty()) {
+        const std::size_t object_index = pending.front();
+        pending.pop_front();
+
+        if (object_index >= graph.objects.size()) {
+            return graph_failure(
+                Elf32GraphSymbolLookupError::InvalidGraphEdge,
+                object_index);
+        }
+
+        if (auto result = search_object(
+                object_index, Elf32GraphSymbolLookupError::InvalidGraphEdge)) {
+            return *result;
+        }
+
+        if (expanded[object_index] != 0) continue;
+        expanded[object_index] = 1;
+        const Elf32LoadedDependencyObject& object =
+            graph.objects[object_index];
         for (const Elf32DependencyEdge& edge : object.dependencies) {
             if (edge.target_object >= graph.objects.size()) {
                 return graph_failure(
                     Elf32GraphSymbolLookupError::InvalidGraphEdge,
                     object_index);
             }
-            if (visited[edge.target_object] == 0) {
+            if (expanded[edge.target_object] == 0) {
                 pending.push_back(edge.target_object);
             }
         }
@@ -831,7 +871,8 @@ Elf32GraphSymbolLookupResult lookup_elf32_graph_symbol(
     std::string_view name,
     const Elf32SymbolLookupOptions& options) {
     return lookup_elf32_graph_symbol_impl(
-        memory, graph, start_object, name, options, std::nullopt);
+        memory, graph, start_object, name, options, std::nullopt,
+        std::span<const std::size_t>{}, false);
 }
 
 Elf32GraphSymbolLookupResult lookup_elf32_graph_symbol_for_reference(
@@ -861,7 +902,9 @@ Elf32GraphSymbolLookupResult lookup_elf32_graph_symbol_for_reference(
     }
 
     return lookup_elf32_graph_symbol_impl(
-        memory, graph, start_object, name, options, version.requirement);
+        memory, graph, start_object, name, options, version.requirement,
+        options.global_scope_objects,
+        graph.objects[start_object].linker_metadata.symbolic);
 }
 
 const char* to_string(Elf32SymbolIndexError error) noexcept {
@@ -929,6 +972,7 @@ const char* to_string(Elf32GraphSymbolLookupError error) noexcept {
     case Elf32GraphSymbolLookupError::InvalidOptions: return "invalid_options";
     case Elf32GraphSymbolLookupError::InvalidGraphStart: return "invalid_graph_start";
     case Elf32GraphSymbolLookupError::InvalidGraphEdge: return "invalid_graph_edge";
+    case Elf32GraphSymbolLookupError::InvalidGlobalScopeObject: return "invalid_global_scope_object";
     case Elf32GraphSymbolLookupError::ScopeLimitExceeded: return "scope_limit_exceeded";
     case Elf32GraphSymbolLookupError::IndexBuildFailed: return "index_build_failed";
     case Elf32GraphSymbolLookupError::ObjectLookupFailed: return "object_lookup_failed";
