@@ -24,6 +24,7 @@ using liba32android::elf::Elf32SymbolLookupOptions;
 using liba32android::elf::Elf32SymbolTableMetadata;
 using liba32android::elf::build_elf32_symbol_index;
 using liba32android::elf::lookup_elf32_graph_symbol;
+using liba32android::elf::lookup_elf32_graph_symbol_for_reference;
 using liba32android::elf::lookup_elf32_symbol;
 using liba32android::memory::LinearGuestMemory;
 
@@ -1074,6 +1075,75 @@ int test_graph_weak_first_and_malformed_earlier_object() {
     return 0;
 }
 
+int test_reference_global_scope_and_symbolic_ordering() {
+    LinearGuestMemory memory(0x20000, kMemoryBase);
+    Elf32DependencyGraph graph;
+    graph.objects.resize(3);
+
+    if (!stage_graph_symbol(memory, graph.objects[0], 0, "target",
+                            0x1000, 0x100) ||
+        !stage_graph_symbol(memory, graph.objects[1], 1, "target",
+                            0x2000, 0x200) ||
+        !stage_graph_symbol(memory, graph.objects[2], 2, "target",
+                            0x3000, 0x300)) {
+        return fail("could not stage requester/global/local scope symbols");
+    }
+    graph.objects[0].identity = "requester";
+    graph.objects[1].identity = "global";
+    graph.objects[2].identity = "local-dependency";
+    graph.objects[0].dependencies = {
+        Elf32DependencyEdge{.requested_name = "local", .target_object = 2},
+    };
+
+    const std::array<std::size_t, 1> global_scope{1};
+    auto scoped = options();
+    scoped.global_scope_objects = global_scope;
+
+    const auto ordinary = lookup_elf32_graph_symbol_for_reference(
+        memory, graph, 0, 1, "target", scoped);
+    if (!ordinary || ordinary.symbol.object_index != 1 ||
+        ordinary.symbol.symbol.guest_value != 0x2200) {
+        return fail("ordinary reference did not prefer explicit global scope");
+    }
+
+    const auto plain_graph = lookup_elf32_graph_symbol(
+        memory, graph, 0, "target", scoped);
+    if (!plain_graph || plain_graph.symbol.object_index != 0 ||
+        plain_graph.symbol.symbol.guest_value != 0x1100) {
+        return fail("plain graph lookup was incorrectly widened by reference global scope");
+    }
+
+    graph.objects[0].linker_metadata.symbolic = true;
+    const auto symbolic = lookup_elf32_graph_symbol_for_reference(
+        memory, graph, 0, 1, "target", scoped);
+    if (!symbolic || symbolic.symbol.object_index != 0 ||
+        symbolic.symbol.symbol.guest_value != 0x1100) {
+        return fail("DT_SYMBOLIC requester did not bind itself before global scope");
+    }
+
+    graph.objects[0].linker_metadata.symbolic = false;
+    const std::array<std::size_t, 1> invalid_global{9};
+    auto invalid = options();
+    invalid.global_scope_objects = invalid_global;
+    const auto bad = lookup_elf32_graph_symbol_for_reference(
+        memory, graph, 0, 1, "target", invalid);
+    if (bad.error != Elf32GraphSymbolLookupError::InvalidGlobalScopeObject ||
+        !bad.failing_object.has_value() || *bad.failing_object != 9) {
+        return fail("invalid explicit global-scope object was not rejected");
+    }
+
+    auto limited = options();
+    limited.max_scope_objects = 1;
+    limited.global_scope_objects = global_scope;
+    const auto capped = lookup_elf32_graph_symbol_for_reference(
+        memory, graph, 0, 1, "missing", limited);
+    if (capped.error != Elf32GraphSymbolLookupError::ScopeLimitExceeded ||
+        !capped.failing_object.has_value() || *capped.failing_object != 0) {
+        return fail("global plus local reference scope did not share one object ceiling");
+    }
+    return 0;
+}
+
 int test_graph_invalid_inputs_and_not_found() {
     LinearGuestMemory memory(0x20000, kMemoryBase);
     Elf32DependencyGraph graph;
@@ -1128,6 +1198,7 @@ int main() {
     if (const int status = test_graph_bfs_ignores_object_vector_order(); status != 0) return status;
     if (const int status = test_graph_cycles_shared_and_scope_limit(); status != 0) return status;
     if (const int status = test_graph_weak_first_and_malformed_earlier_object(); status != 0) return status;
+    if (const int status = test_reference_global_scope_and_symbolic_ordering(); status != 0) return status;
     if (const int status = test_graph_invalid_inputs_and_not_found(); status != 0) return status;
     return 0;
 }
