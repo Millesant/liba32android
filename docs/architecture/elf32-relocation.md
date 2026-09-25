@@ -44,7 +44,7 @@ Missing main or PLT descriptors independently succeed as empty work. The existin
 
 ## Reference resolution
 
-Main `R_ARM_ABS32` / `R_ARM_REL32` / `R_ARM_GLOB_DAT` and PLT `R_ARM_JUMP_SLOT` all use the relocating object's dynamic-symbol index and exact string-table name, then feature-006 graph-local breadth-first lookup beginning at that object.
+Main `R_ARM_ABS32` / `R_ARM_REL32` / `R_ARM_GLOB_DAT` and PLT `R_ARM_JUMP_SLOT` all use the relocating object's dynamic-symbol index and exact string-table name, then the shared relocation/reference lookup policy. Plain lookup remains graph-local; feature 015 lets relocation callers prepend an ordered in-graph global scope, with DT_SYMBOLIC/DF_SYMBOLIC requesters searched first.
 
 The accepted reference contract is shared:
 
@@ -53,7 +53,7 @@ The accepted reference contract is shared:
 - NOTYPE, OBJECT, or FUNC;
 - ordinary section indexes plus `SHN_ABS`.
 
-Protected requester semantics, hidden/internal/local references, TLS, IFUNC, COMMON, XINDEX, and versioned objects fail explicitly rather than being approximated.
+Protected requester semantics, hidden/internal/local references, TLS, IFUNC, COMMON, and XINDEX still fail explicitly rather than being approximated. Versioned references are filtered by feature 014, and DT_SYMBOLIC/DF_SYMBOLIC requester ordering is handled by feature 015.
 
 A graph miss is an error for a strong reference. An unresolved weak reference becomes `S = 0` at relocation policy.
 
@@ -168,7 +168,7 @@ The current relocation layer still does not implement:
 
 - lazy PLT binding, resolver trampolines, or `DT_PLTGOT` runtime protocol;
 - COPY, instruction relocations, RELA, RELR, Android packed relocations, or APS2;
-- requester-specific protected/`DT_SYMBOLIC` self-binding and process/global-group interposition beyond the existing graph-local scope;
+- protected-reference self-binding and process/global-group construction beyond feature 015's caller-provided in-graph scope;
 - Android namespaces, preloads, global groups, or process-wide interposition policy;
 - TLS relocations/addressing or GNU IFUNC execution;
 - Android RELRO serialization/sharing and lazy-binding interactions beyond the implemented eager sealing contract;
@@ -180,6 +180,26 @@ Those remain separate contracts rather than implicit compatibility behavior.
 
 ## Feature 014 version-aware references
 
-Relocation resolution now passes each symbol-bearing relocation's requester dynamic-symbol index into version-aware graph lookup. VERSYM indices 0/1 keep the prior unversioned behavior; higher indices are resolved through bounded VERNEED/VERDEF metadata before the existing graph-local search runs. This changes reference selection only: relocation planning, preflight, transaction ordering, final-word formulas, rollback, and permission behavior are unchanged.
+Relocation resolution now passes each symbol-bearing relocation's requester dynamic-symbol index into version-aware graph lookup. VERSYM indices 0/1 keep the prior unversioned behavior; higher indices are resolved through bounded VERNEED/VERDEF metadata before candidate lookup runs. Feature 015 may change candidate-object ordering, but it reuses the same version filter. Relocation planning, preflight, transaction ordering, final-word formulas, rollback, and permission behavior remain unchanged.
 
 The generated real ARM32 feature-014 consumer carries a `LIBC`-versioned JUMP_SLOT reference and resolves/applies it successfully in Linux exact-head check `108040133539` at `5ba659dbf3ad9328c8e46af4441db3a0c4bb4a26`.
+
+
+## Feature 015 requester/global scope ordering
+
+The relocation options reuse `Elf32SymbolLookupOptions::global_scope_objects`
+as a caller-owned ordered span of object indices from the already-loaded graph.
+Ordinary requesters search that global span before their graph-local breadth-
+first closure. Objects carrying validated `DT_SYMBOLIC` or `DF_SYMBOLIC`
+metadata search themselves first, then the global span, then the remaining
+local closure.
+
+The complete explicit global span is range-checked before lookup can
+short-circuit on an earlier definition. Candidate objects are deduplicated and
+all unique self/global/local candidates consume the same
+`max_scope_objects` budget. Main and PLT relocation paths inherit this policy
+through the same reference-resolution helper; no relocation formula or write
+transaction changes.
+
+Feature 015 is implemented in the current tree but remains unverified until an
+exact-head Linux A32 smoke and both required Android checks are observable.
