@@ -517,11 +517,15 @@ int test_reference_scope_policy_flows_through_relocation() {
     const auto defined_ordinary = resolve_elf32_rel_relocation_references(
         memory, graph, 0, scoped);
     if (!defined_ordinary ||
-        !defined_ordinary.resolution.entries[0].reference.has_value() ||
-        *defined_ordinary.resolution.entries[0].reference
-             ->defining_object_index != 1 ||
-        defined_ordinary.resolution.entries[0].reference->symbol_value !=
-            0x5120) {
+        defined_ordinary.resolution.entries.size() != 1 ||
+        !defined_ordinary.resolution.entries[0].reference.has_value()) {
+        return fail("ordinary defined reference did not resolve exactly once");
+    }
+    const auto& defined_ordinary_reference =
+        *defined_ordinary.resolution.entries[0].reference;
+    if (!defined_ordinary_reference.defining_object_index.has_value() ||
+        *defined_ordinary_reference.defining_object_index != 1 ||
+        defined_ordinary_reference.symbol_value != 0x5120) {
         return fail("ordinary defined reference did not preserve global-first ordering");
     }
 
@@ -529,11 +533,15 @@ int test_reference_scope_policy_flows_through_relocation() {
     const auto defined_symbolic = resolve_elf32_rel_relocation_references(
         memory, graph, 0, scoped);
     if (!defined_symbolic ||
-        !defined_symbolic.resolution.entries[0].reference.has_value() ||
-        *defined_symbolic.resolution.entries[0].reference
-             ->defining_object_index != 0 ||
-        defined_symbolic.resolution.entries[0].reference->symbol_value !=
-            0x1090) {
+        defined_symbolic.resolution.entries.size() != 1 ||
+        !defined_symbolic.resolution.entries[0].reference.has_value()) {
+        return fail("symbolic defined reference did not resolve exactly once");
+    }
+    const auto& defined_symbolic_reference =
+        *defined_symbolic.resolution.entries[0].reference;
+    if (!defined_symbolic_reference.defining_object_index.has_value() ||
+        *defined_symbolic_reference.defining_object_index != 0 ||
+        defined_symbolic_reference.symbol_value != 0x1090) {
         return fail("symbolic defined reference did not bind requester first");
     }
     return 0;
