@@ -30,6 +30,10 @@ constexpr std::int32_t kDtRelsz = 18;
 constexpr std::int32_t kDtRelent = 19;
 constexpr std::int32_t kDtPltrel = 20;
 constexpr std::int32_t kDtJmprel = 23;
+constexpr std::int32_t kDtInitArray = 25;
+constexpr std::int32_t kDtFiniArray = 26;
+constexpr std::int32_t kDtInitArraySz = 27;
+constexpr std::int32_t kDtFiniArraySz = 28;
 constexpr std::int32_t kDtFlags = 30;
 constexpr std::uint32_t kDfSymbolic = 0x2U;
 constexpr std::int32_t kDtGnuHash = 0x6ffffef5;
@@ -304,6 +308,135 @@ int test_flags1_global_metadata() {
         *built.metadata.flags_1 != 0x1U ||
         built.metadata.global) {
         return fail("validated non-global DT_FLAGS_1 metadata changed semantics");
+    }
+    return 0;
+}
+
+int test_lifecycle_array_metadata() {
+    const std::array entries{
+        Elf32DynamicEntry{kDtInitArray, 0x100},
+        Elf32DynamicEntry{kDtInitArraySz, 8},
+        Elf32DynamicEntry{kDtFiniArray, 0x200},
+        Elf32DynamicEntry{kDtFiniArraySz, 12},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+
+    const auto collected = collect_elf32_linker_metadata(entries);
+    if (!collected ||
+        !collected.metadata.init_array.has_value() ||
+        collected.metadata.init_array->address_value != 0x100 ||
+        collected.metadata.init_array->size != 8 ||
+        !collected.metadata.fini_array.has_value() ||
+        collected.metadata.fini_array->address_value != 0x200 ||
+        collected.metadata.fini_array->size != 12) {
+        return fail("lifecycle arrays were not collected exactly");
+    }
+
+    LinearGuestMemory memory(0x1000, 0x1000);
+    const auto built = build_elf32_linker_metadata(memory, 0x1000, entries);
+    if (!built ||
+        !built.metadata.init_array.has_value() ||
+        built.metadata.init_array->guest_address != 0x1100 ||
+        built.metadata.init_array->size != 8 ||
+        !built.metadata.fini_array.has_value() ||
+        built.metadata.fini_array->guest_address != 0x1200 ||
+        built.metadata.fini_array->size != 12) {
+        return fail("lifecycle arrays were not rebased/validated exactly");
+    }
+
+    for (const std::int32_t tag :
+         {kDtInitArray, kDtInitArraySz, kDtFiniArray, kDtFiniArraySz}) {
+        std::vector<Elf32DynamicEntry> duplicate(entries.begin(), entries.end());
+        duplicate.insert(duplicate.end() - 1,
+                         Elf32DynamicEntry{tag, 0xabcdef00U});
+        if (collect_elf32_linker_metadata(duplicate).error !=
+            Elf32LinkerMetadataError::DuplicateSingleton) {
+            return fail("lifecycle array singleton duplicate was not rejected");
+        }
+    }
+
+    const std::array incomplete_init{
+        Elf32DynamicEntry{kDtInitArray, 0x100},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (collect_elf32_linker_metadata(incomplete_init).error !=
+        Elf32LinkerMetadataError::IncompleteInitArray) {
+        return fail("incomplete INIT_ARRAY pair was not rejected");
+    }
+
+    const std::array incomplete_fini{
+        Elf32DynamicEntry{kDtFiniArraySz, 8},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (collect_elf32_linker_metadata(incomplete_fini).error !=
+        Elf32LinkerMetadataError::IncompleteFiniArray) {
+        return fail("incomplete FINI_ARRAY pair was not rejected");
+    }
+
+    const std::array bad_size{
+        Elf32DynamicEntry{kDtInitArray, 0x100},
+        Elf32DynamicEntry{kDtInitArraySz, 6},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (collect_elf32_linker_metadata(bad_size).error !=
+        Elf32LinkerMetadataError::InvalidFunctionArraySize) {
+        return fail("non-integral lifecycle function array size was not rejected");
+    }
+
+    const std::array address_overflow{
+        Elf32DynamicEntry{kDtInitArray, 0xfffffff0U},
+        Elf32DynamicEntry{kDtInitArraySz, 4},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (build_elf32_linker_metadata(memory, 0x20, address_overflow).error !=
+        Elf32LinkerMetadataError::AddressOverflow) {
+        return fail("lifecycle array rebasing overflow was not rejected");
+    }
+
+    const std::array range_overflow{
+        Elf32DynamicEntry{kDtFiniArray, 0xfffffffcU},
+        Elf32DynamicEntry{kDtFiniArraySz, 8},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (build_elf32_linker_metadata(memory, 0, range_overflow).error !=
+        Elf32LinkerMetadataError::RangeOverflow) {
+        return fail("lifecycle array range overflow was not rejected");
+    }
+
+    const std::array unreadable{
+        Elf32DynamicEntry{kDtInitArray, 0x9000},
+        Elf32DynamicEntry{kDtInitArraySz, 4},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (build_elf32_linker_metadata(memory, 0, unreadable).error !=
+        Elf32LinkerMetadataError::ReadFailed) {
+        return fail("unreadable lifecycle array was not rejected");
+    }
+
+    const std::array zero_size{
+        Elf32DynamicEntry{kDtFiniArray, 0x9000},
+        Elf32DynamicEntry{kDtFiniArraySz, 0},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    const auto empty = build_elf32_linker_metadata(memory, 0, zero_size);
+    if (!empty || !empty.metadata.fini_array.has_value() ||
+        empty.metadata.fini_array->guest_address != 0x9000 ||
+        empty.metadata.fini_array->size != 0) {
+        return fail("zero-length lifecycle array was not retained");
+    }
+
+    LinearGuestMemory guarded(0x100, 0x1000);
+    const std::array<std::uint8_t, 4> sentinel{0xde, 0xad, 0xbe, 0xef};
+    if (!guarded.write(0x1000, sentinel)) {
+        return fail("could not stage lifecycle mutation guard");
+    }
+    if (build_elf32_linker_metadata(guarded, 0, unreadable).error !=
+        Elf32LinkerMetadataError::ReadFailed) {
+        return fail("lifecycle mutation guard setup did not fail");
+    }
+    std::array<std::uint8_t, 4> after{};
+    if (!guarded.read(0x1000, after) || after != sentinel) {
+        return fail("failed lifecycle metadata validation mutated guest memory");
     }
     return 0;
 }
@@ -676,6 +809,7 @@ int main() {
     if (const int status = test_unknown_tags_and_null_boundary(); status != 0) return status;
     if (const int status = test_symbolic_binding_metadata(); status != 0) return status;
     if (const int status = test_flags1_global_metadata(); status != 0) return status;
+    if (const int status = test_lifecycle_array_metadata(); status != 0) return status;
     if (const int status = test_symbol_versioning_metadata(); status != 0) return status;
     if (const int status = test_valid_rebasing_and_zero_bias(); status != 0) return status;
     if (const int status = test_address_and_range_overflow(); status != 0) return status;
