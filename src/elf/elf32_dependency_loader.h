@@ -36,7 +36,6 @@ struct Elf32DependencyLoadOptions {
 enum class Elf32DependencyLoadError : std::uint8_t {
     None = 0,
     InvalidOptions,
-    InvalidLinkMap,
     EmptyRootIdentity,
     EmptyRootImage,
     ImageTooLarge,
@@ -54,6 +53,8 @@ enum class Elf32DependencyLoadError : std::uint8_t {
     LinkerMetadataFailed,
     LinkerStringFailed,
     RollbackFailed,
+    // Kept at the end so feature-016 does not renumber existing public errors.
+    InvalidLinkMap,
 };
 
 struct Elf32DependencyLoadResult {
