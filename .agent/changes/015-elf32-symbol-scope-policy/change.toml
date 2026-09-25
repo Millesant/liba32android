@@ -2,7 +2,7 @@ schema = 1
 id = "015-elf32-symbol-scope-policy"
 kind = "feature"
 size = "S2"
-status = "active"
+status = "implemented"
 workflow = "feature"
 control_revision = "2b7c8b9245a64560cc9e986d554d99233e34b8c5"
 base_revision = "721cb66d6d58bf13632ba726655d915cfe217b79"
@@ -18,12 +18,12 @@ acceptance = [
 ]
 
 [convergence]
-requirements = "pending"
-specs = "pending"
-implementation = "pending"
-tests = "pending"
-documentation = "pending"
+requirements = "aligned"
+specs = "aligned"
+implementation = "aligned"
+tests = "aligned"
+documentation = "aligned"
 decisions = "not_applicable"
 tasks = "pending"
 evidence = "pending"
-repository = "pending"
+repository = "aligned"
