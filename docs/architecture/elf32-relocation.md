@@ -168,8 +168,8 @@ The current relocation layer still does not implement:
 
 - lazy PLT binding, resolver trampolines, or `DT_PLTGOT` runtime protocol;
 - COPY, instruction relocations, RELA, RELR, Android packed relocations, or APS2;
-- protected-reference self-binding and process/global-group construction beyond feature 015's caller-provided in-graph scope;
-- Android namespaces, preloads, global groups, or process-wide interposition policy;
+- protected-reference self-binding;
+- Android namespaces, search paths, preloads/RTLD policy, platform-provider selection, or broader interposition policy beyond feature 016's persistent global group;
 - TLS relocations/addressing or GNU IFUNC execution;
 - Android RELRO serialization/sharing and lazy-binding interactions beyond the implemented eager sealing contract;
 - text-relocation permission broadening;
@@ -202,3 +202,13 @@ through the same reference-resolution helper; no relocation formula or write
 transaction changes.
 
 Feature 015 is verified at result revision `2ed5157504dc9d7affac2290b1a19535b28913f9`: GitHub Actions CI run `36193971238` PASSed the exact-head Linux A32 smoke and both required Android lanes.
+
+
+## Feature 016 persistent global-scope producer
+
+Relocation APIs remain unchanged. Callers using the persistent link map can set
+`Elf32RelocationOptions::symbols.global_scope_objects` from
+`Elf32LinkMap::global_scope()`, so main REL and eager PLT resolution inherit
+stable cross-root global membership without copying or reindexing the graph.
+Feature 016 changes ownership/lifetime only; relocation formulas,
+preflight/rollback, and write ordering are unchanged.
