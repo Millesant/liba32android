@@ -466,8 +466,11 @@ int test_persistent_link_map_append_failure_preserves_prior_state() {
             .identity = "stable-root",
             .image = make_image(3, 0, true, true),
         },
-        initial_provider, options(), Elf32LinkMapRootPolicy::Local);
-    if (!first) return fail("could not stage pre-existing persistent root");
+        initial_provider, options(), Elf32LinkMapRootPolicy::Global);
+    if (!first || link_map.global_scope_objects !=
+                      std::vector<std::size_t>{0}) {
+        return fail("could not stage pre-existing persistent global root");
+    }
 
     const auto stable_load = link_map.graph.objects[0].load;
     RecordingProvider provider;
@@ -482,11 +485,13 @@ int test_persistent_link_map_append_failure_preserves_prior_state() {
             .image = make_needed_image(
                 3, 0, std::vector<std::string>{"bad.so"}),
         },
-        provider, options(), Elf32LinkMapRootPolicy::Local);
+        provider, options(), Elf32LinkMapRootPolicy::Global);
 
     if (failed.error != Elf32DependencyLoadError::DependencyNotDynamic ||
         link_map.graph.objects.size() != 1 ||
         link_map.roots.size() != 1 ||
+        link_map.roots[0].policy != Elf32LinkMapRootPolicy::Global ||
+        link_map.global_scope_objects != std::vector<std::size_t>{0} ||
         link_map.graph.objects[0].identity != "stable-root") {
         return fail("failed append published partial persistent link-map state");
     }
@@ -497,6 +502,99 @@ int test_persistent_link_map_append_failure_preserves_prior_state() {
     }
     if (memory.is_mapped(0x18000) || memory.is_mapped(0x1c000)) {
         return fail("failed append did not roll back newly mapped root");
+    }
+    return 0;
+}
+
+int test_persistent_link_map_limits_and_invalid_state() {
+    {
+        MappedGuestMemory memory;
+        Elf32LinkMap link_map;
+        FailIfCalledProvider provider;
+        auto limited = options();
+        limited.max_objects = 1;
+
+        const auto first = append_elf32_link_map_root(
+            memory, link_map,
+            Elf32DependencyLoadSource{
+                .identity = "only-root",
+                .image = make_image(3, 0, true, true),
+            },
+            provider, limited, Elf32LinkMapRootPolicy::Global);
+        if (!first || link_map.graph.objects.size() != 1 ||
+            link_map.global_scope_objects != std::vector<std::size_t>{0}) {
+            return fail("could not stage accumulated-object limit fixture");
+        }
+        const auto stable_load = link_map.graph.objects[0].load;
+
+        const auto blocked = append_elf32_link_map_root(
+            memory, link_map,
+            Elf32DependencyLoadSource{
+                .identity = "second-root",
+                .image = make_image(3, 0, true, true),
+            },
+            provider, limited, Elf32LinkMapRootPolicy::Local);
+        if (blocked.error != Elf32DependencyLoadError::TooManyObjects ||
+            link_map.graph.objects.size() != 1 ||
+            link_map.roots.size() != 1 ||
+            link_map.global_scope_objects != std::vector<std::size_t>{0}) {
+            return fail("accumulated max_objects did not reject a new root transactionally");
+        }
+        for (const auto& segment : stable_load.segments) {
+            if (!memory.is_mapped(segment.mapping_start)) {
+                return fail("accumulated-object limit disturbed existing mappings");
+            }
+        }
+        if (provider.calls != 0) {
+            return fail("accumulated-object limit unexpectedly called provider");
+        }
+    }
+
+    {
+        MappedGuestMemory memory;
+        Elf32LinkMap link_map;
+        FailIfCalledProvider provider;
+        const auto first = append_elf32_link_map_root(
+            memory, link_map,
+            Elf32DependencyLoadSource{
+                .identity = "stable-root",
+                .image = make_image(3, 0, true, true),
+            },
+            provider, options(), Elf32LinkMapRootPolicy::Local);
+        if (!first) return fail("could not stage invalid-link-map fixture");
+
+        const auto stable_load = link_map.graph.objects[0].load;
+        link_map.roots.push_back(link_map.roots.front());
+        const auto duplicate_root = append_elf32_link_map_root(
+            memory, link_map,
+            Elf32DependencyLoadSource{
+                .identity = "new-root",
+                .image = make_image(3, 0, true, true),
+            },
+            provider, options(), Elf32LinkMapRootPolicy::Local);
+        if (duplicate_root.error != Elf32DependencyLoadError::InvalidLinkMap ||
+            link_map.graph.objects.size() != 1 || provider.calls != 0) {
+            return fail("duplicate persistent root record was not rejected before mutation");
+        }
+
+        link_map.roots.resize(1);
+        link_map.global_scope_objects = {9};
+        const auto bad_global = append_elf32_link_map_root(
+            memory, link_map,
+            Elf32DependencyLoadSource{
+                .identity = "new-root",
+                .image = make_image(3, 0, true, true),
+            },
+            provider, options(), Elf32LinkMapRootPolicy::Local);
+        if (bad_global.error != Elf32DependencyLoadError::InvalidLinkMap ||
+            link_map.graph.objects.size() != 1 || provider.calls != 0) {
+            return fail("out-of-range persistent global index was not rejected before mutation");
+        }
+        for (const auto& segment : stable_load.segments) {
+            if (!memory.is_mapped(segment.mapping_start)) {
+                return fail("invalid link-map preflight disturbed existing mappings");
+            }
+        }
     }
     return 0;
 }
@@ -515,8 +613,10 @@ int test_exec_root_without_dynamic() {
         provider,
         options());
 
-    if (!result || result.graph.objects.size() != 1) {
-        return fail("dependency-free ET_EXEC root did not load");
+    if (!result || result.graph.objects.size() != 1 ||
+        !result.root_object_index.has_value() ||
+        *result.root_object_index != 0 || result.reused_existing_root) {
+        return fail("dependency-free ET_EXEC root did not load with stable root metadata");
     }
     const auto& root = result.graph.objects[0];
     if (root.identity != "root-exec" || root.load.load_bias != 0 ||
@@ -1165,6 +1265,7 @@ int main() {
     if (const int status = test_persistent_link_map_dependency_reuse(); status != 0) return status;
     if (const int status = test_persistent_link_map_global_membership_order(); status != 0) return status;
     if (const int status = test_persistent_link_map_append_failure_preserves_prior_state(); status != 0) return status;
+    if (const int status = test_persistent_link_map_limits_and_invalid_state(); status != 0) return status;
     if (const int status = test_exec_root_without_dynamic(); status != 0) return status;
     if (const int status = test_dynamic_root_automatic_placement(); status != 0) return status;
     if (const int status = test_preflight_failures_do_not_mutate_memory(); status != 0) return status;

@@ -27,7 +27,7 @@ acceptance = "Populate stable deduplicated global membership from caller-designa
 
 [[tasks]]
 id = "T005"
-status = "pending"
+status = "implemented"
 depends_on = ["T004"]
 acceptance = "Preserve the existing one-shot dependency-graph loader behavior and add focused multi-root, reuse, rollback, limits, and ordering tests."
 
