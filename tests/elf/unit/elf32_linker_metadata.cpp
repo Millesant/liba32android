@@ -105,11 +105,10 @@ int test_valid_collection() {
 }
 
 int test_duplicate_singletons() {
-    constexpr std::array<std::int32_t, 18> singleton_tags{
+    constexpr std::array<std::int32_t, 13> singleton_tags{
         kDtPltrelsz, kDtHash, kDtStrtab, kDtStrsz, kDtSymtab, kDtSyment,
         kDtRel, kDtRelsz, kDtRelent, kDtPltrel, kDtJmprel, kDtSoname,
-        kDtGnuHash, kDtVersym, kDtVerdef, kDtVerdefnum, kDtVerneed,
-        kDtVerneednum,
+        kDtGnuHash,
     };
 
     for (const std::int32_t tag : singleton_tags) {
@@ -240,6 +239,17 @@ int test_symbol_versioning_metadata() {
         collected.metadata.version_requirement_table->address_value != 0x600 ||
         collected.metadata.version_requirement_table->count != 3) {
         return fail("symbol-version metadata was not collected exactly");
+    }
+
+    for (const std::int32_t tag :
+         {kDtVersym, kDtVerdef, kDtVerdefnum, kDtVerneed, kDtVerneednum}) {
+        std::vector<Elf32DynamicEntry> duplicate(entries.begin(), entries.end());
+        duplicate.insert(duplicate.end() - 1,
+                         Elf32DynamicEntry{tag, 0xabcdef01U});
+        if (collect_elf32_linker_metadata(duplicate).error !=
+            Elf32LinkerMetadataError::DuplicateSingleton) {
+            return fail("symbol-version singleton duplicate was not rejected");
+        }
     }
 
     LinearGuestMemory memory(0x2000, 0x1000);

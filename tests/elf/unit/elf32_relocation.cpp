@@ -900,10 +900,12 @@ int test_plt_reference_resolution() {
             return fail("could not stage versioned PLT reference");
         }
         graph.objects[0].linker_metadata.has_symbol_versioning = true;
-        if (resolve_elf32_plt_rel_relocation_references(
-                memory, graph, 0, options()).error !=
-            Elf32RelocationResolveError::UnsupportedVersioning) {
-            return fail("versioned PLT requester was not rejected");
+        const auto result = resolve_elf32_plt_rel_relocation_references(
+            memory, graph, 0, options());
+        if (result.error != Elf32RelocationResolveError::SymbolLookupFailed ||
+            result.lookup_error !=
+                liba32android::elf::Elf32SymbolLookupError::InvalidVersionMetadata) {
+            return fail("inconsistent PLT version marker was not rejected");
         }
     }
     return 0;
