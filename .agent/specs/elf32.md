@@ -1,7 +1,7 @@
 # ELF32 and dynamic-linking contract
 
 Status: Accepted current project contract
-Last reconciled: 2026-09-24
+Last reconciled: 2026-09-25
 
 ## L32-E001 — ELF32 mapping
 
@@ -29,7 +29,7 @@ Dynamic-symbol indexing supports bounded SysV/GNU hash processing and exact byte
 
 ## L32-E007 — Main REL relocations
 
-Main `DT_REL` supports bounded planning/resolution/application for `R_ARM_NONE`, `R_ARM_RELATIVE`, `R_ARM_GLOB_DAT`, and `R_ARM_ABS32`. All semantic checks complete before writes; later write failures trigger reverse rollback. `GLOB_DAT` writes `S` and does not use the in-place word as an addend.
+Main `DT_REL` supports bounded planning/resolution/application for `R_ARM_NONE`, `R_ARM_RELATIVE`, `R_ARM_GLOB_DAT`, `R_ARM_ABS32`, and `R_ARM_REL32`. All semantic checks complete before writes; later write failures trigger reverse rollback. `GLOB_DAT` writes `S` and does not use the in-place word as an addend. `REL32` applies `((S + A) | T) - P` modulo 2^32, deriving `T` from the defining Thumb `STT_FUNC` rather than the requester.
 
 ## L32-E008 — Eager PLT relocation
 

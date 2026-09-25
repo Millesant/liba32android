@@ -1,13 +1,13 @@
 # Current State
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 Integration branch: `bleeding`
-Control-plane round: `millesant/.gpt@0c8f0e26c9227599eb8bfae48106b53074a24188`
+Control-plane round: `millesant/.gpt@2b7c8b9245a64560cc9e986d554d99233e34b8c5`
 Cleanup implementation revision: `5b1cf991272632ed44d6276d6ec5e982ef732f28`
 
 ## Phase
 
-M4 runtime/linker scope is stable through bounded eager JUMP_SLOT relocation, one per-object combined main+PLT relocation transaction, and GNU RELRO. Feature `011-elf32-combined-relocation-transaction` and repository-wide maintenance change `project-cleanup-v8` are DONE.
+M4 runtime/linker scope is stable through bounded main REL including R_ARM_REL32, eager JUMP_SLOT relocation, one per-object combined main+PLT relocation transaction, and GNU RELRO. Features `012-elf32-rel32-relocation`, `011-elf32-combined-relocation-transaction`, and repository-wide maintenance change `project-cleanup-v8` are DONE.
 
 ## Repository organization
 
@@ -35,7 +35,7 @@ Persisted inspection at `5b1cf991272632ed44d6276d6ec5e982ef732f28` confirmed 30 
 - Linker metadata/strings validate the implemented STRTAB/SYMTAB/main REL/PLT REL/SONAME/NEEDED scope.
 - Dependency acquisition is provider-backed and bounded; recursive dependency graph loading is transactional.
 - Symbol lookup supports bounded SysV/GNU hash indexing and graph-local exact-name resolution.
-- Main DT_REL relocation supports R_ARM_NONE, R_ARM_RELATIVE, R_ARM_GLOB_DAT, and R_ARM_ABS32 transactionally.
+- Main DT_REL relocation supports R_ARM_NONE, R_ARM_RELATIVE, R_ARM_GLOB_DAT, R_ARM_ABS32, and AAELF32 R_ARM_REL32 transactionally, including defining-symbol Thumb T-bit handling.
 - PLT REL supports eager R_ARM_JUMP_SLOT transactionally.
 - One additive per-object API prepares main and PLT relocation tables before mutation, rejects cross-table duplicate targets, applies main then PLT writes, and rolls back across the combined sequence.
 - GNU RELRO metadata and explicit post-relocation sealing are implemented with preflight, deduplication, rollback, and no permission broadening.
@@ -74,6 +74,14 @@ Feature 011 exact-head implementation validation at `600fad8edc3ac2a8f64fc2607e0
 - Android x86_64 address-space probe: check `107911343155` — PASS.
 
 The combined-transaction coverage proves both-table preflight, deterministic main-then-PLT application, cross-table duplicate rejection, rollback of an earlier main write after a PLT failure, and explicit cross-table rollback failure while preserving the existing single-table APIs.
+
+Feature 012 exact-head implementation validation at `ee4d2b364244fd842b059dd5c254de01709c65f9`:
+
+- Linux A32 smoke: check `108000309377` — PASS.
+- Android arm64-v8a cross-build: check `108000309663` — PASS.
+- Android x86_64 address-space probe: check `108000309608` — PASS.
+
+The REL32 coverage proves ordinary ARM data relocation, defining Thumb-function T-bit handling with a discriminating addend, and unresolved-weak `S=0,T=0` behavior through the existing transactional write path.
 
 Historical feature-level evidence remains available in Git history, completed `.agent/changes/` records, root historical `specs/`, and `docs/research/evidence/`.
 

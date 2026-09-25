@@ -1,6 +1,6 @@
 # ELF32 ARM relocation application
 
-Status: relocation semantics current through feature 011; feature 010 remains the separate verified post-relocation GNU RELRO hardening stage
+Status: relocation semantics current through feature 012; feature 010 remains the separate verified post-relocation GNU RELRO hardening stage
 
 ## Boundary
 
@@ -155,6 +155,8 @@ The run uploaded artifact `arm32-loader-fixture-815386149732201ce5b64e1b5ad20707
 ### Main REL32 — feature 012
 
 Feature 012 adds data relocation type `R_ARM_REL32` to the main `DT_REL` table only. The implementation uses the defining symbol's raw `STT_FUNC`/Thumb discriminator to implement the AAELF32 `T` term rather than treating the already-rebased guest value as relocation `S`. Unresolved weak references use `S=0,T=0`. PLT policy remains JUMP_SLOT-only.
+
+Exact-head implementation validation PASSed at `ee4d2b364244fd842b059dd5c254de01709c65f9`: Linux A32 smoke check `108000309377`, Android arm64-v8a cross-build check `108000309663`, and Android x86_64 address-space probe check `108000309608` all completed successfully.
 
 ### Combined main + PLT transaction — feature 011
 
