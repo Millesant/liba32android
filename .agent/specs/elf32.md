@@ -25,7 +25,7 @@ Dependency acquisition is provider-backed and bounded; filesystem/search-path/na
 
 ## L32-E006 — Symbol resolution
 
-Dynamic-symbol indexing supports bounded SysV/GNU hash processing and exact byte-name lookup. Graph-local resolution uses deterministic breadth-first dependency scope. DT_VERSYM plus bounded VERNEED/VERDEF matching is supported for relocation/reference lookups: indices 0/1 are unversioned, unversioned lookup skips hidden definitions, explicit versions match provider VERDEF hash/name and otherwise global version index 1. VERNEED target SONAMEs must map to direct dependencies. Process-wide/global-group/DT_SYMBOLIC interposition, TLS, IFUNC, and unsupported special-section semantics remain outside this contract.
+Dynamic-symbol indexing supports bounded SysV/GNU hash processing and exact byte-name lookup. Plain graph resolution remains a deterministic breadth-first dependency scope. Relocation/reference lookup may additionally consume a caller-provided ordered global-scope object list from the same loaded graph: ordinary requesters search that list before their local breadth-first closure, while requesters carrying DT_SYMBOLIC or DF_SYMBOLIC search themselves first, then the explicit global list, then the remaining local closure. Candidate objects are deduplicated and share one caller-selected scope ceiling. DT_VERSYM plus bounded VERNEED/VERDEF matching applies across that ordered candidate scope: indices 0/1 are unversioned, unversioned lookup skips hidden definitions, explicit versions match provider VERDEF hash/name and otherwise global version index 1. VERNEED target SONAMEs must map to direct dependencies. Android namespace/preload policy, construction/lifetime of process-wide global groups across independent graph loads, TLS, IFUNC, and unsupported special-section semantics remain outside this contract.
 
 ## L32-E007 — Main REL relocations
 
@@ -33,7 +33,7 @@ Main `DT_REL` supports bounded planning/resolution/application for `R_ARM_NONE`,
 
 ## L32-E008 — Eager PLT relocation
 
-The separate PLT REL path accepts eager `R_ARM_JUMP_SLOT`, resolves through the same bounded graph-local symbol policy, writes `S` directly, and uses the original slot word only for rollback. Lazy binding and `DT_PLTGOT` resolver state remain outside the accepted contract.
+The separate PLT REL path accepts eager `R_ARM_JUMP_SLOT`, resolves through the same bounded relocation/reference symbol policy (including caller-provided global scope and DT_SYMBOLIC/DF_SYMBOLIC requester-first ordering), writes `S` directly, and uses the original slot word only for rollback. Lazy binding and `DT_PLTGOT` resolver state remain outside the accepted contract.
 
 ## L32-E009 — GNU RELRO
 
@@ -51,10 +51,10 @@ The pinned freestanding NDK ARM32 fixture is loadable through the dependency gra
 
 ## L32-E012 — Symbol versioning
 
-Validated guest-only DT_VERSYM, DT_VERDEF/DT_VERDEFNUM, and DT_VERNEED/DT_VERNEEDNUM descriptors feed a bounded version layer. Relocation references derive their request version from the requester symbol index; provider candidates are filtered with Android/bionic-compatible hidden/default and explicit-version matching while the existing graph-local breadth-first scope remains unchanged. Malformed or oversized version metadata fails explicitly before any relocation write.
+Validated guest-only DT_VERSYM, DT_VERDEF/DT_VERDEFNUM, and DT_VERNEED/DT_VERNEEDNUM descriptors feed a bounded version layer. Relocation references derive their request version from the requester symbol index; provider candidates are filtered with Android/bionic-compatible hidden/default and explicit-version matching without changing the caller-selected candidate ordering. Malformed or oversized version metadata fails explicitly before any relocation write.
 
 The generated feature-014 two-DSO ARM32 fixture records a `LIBC` version requirement and a JUMP_SLOT import; exact-head Linux CI resolves and applies it successfully.
 
 ## L32-E013 — Deferred linker scope
 
-Still outside the accepted implementation: Android namespace/search-path/link-map lifetime policy across independent graph loads; process-wide/global-group interposition and DT_SYMBOLIC/DF_SYMBOLIC requester-first behavior; lazy binding; broader ARM relocation families; RELA/RELR/Android packed relocations; TLS/IFUNC; constructors/destructors; `dlopen`/`dlsym`/unload; and guest execution of the real ARM32 fixture on Android.
+Still outside the accepted implementation: Android namespace/search-path/link-map lifetime policy across independent graph loads; construction, mutation, and lifetime of process-wide/global groups and preload ordering beyond the caller-provided in-graph scope list; protected-reference self-binding; lazy binding; broader ARM relocation families; RELA/RELR/Android packed relocations; TLS/IFUNC; constructors/destructors; `dlopen`/`dlsym`/unload; and guest execution of the real ARM32 fixture on Android.
