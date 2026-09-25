@@ -28,6 +28,7 @@ constexpr std::int32_t kDtJmprel = 23;
 constexpr std::int32_t kDtFlags = 30;
 constexpr std::uint32_t kDfSymbolic = 0x2U;
 constexpr std::int32_t kDtGnuHash = 0x6ffffef5;
+constexpr std::int32_t kDtFlags1 = 0x6ffffffb;
 constexpr std::int32_t kDtVersym = 0x6ffffff0;
 constexpr std::int32_t kDtVerdef = 0x6ffffffc;
 constexpr std::int32_t kDtVerdefnum = 0x6ffffffd;
@@ -125,6 +126,7 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
     std::optional<std::uint32_t> verneednum;
     std::optional<std::uint32_t> soname;
     std::optional<std::uint32_t> flags;
+    std::optional<std::uint32_t> flags_1;
     bool has_dt_symbolic = false;
 
     Elf32CollectedLinkerMetadataResult result;
@@ -185,6 +187,9 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
             break;
         case kDtGnuHash:
             accepted = assign_singleton(gnu_hash, entry.value);
+            break;
+        case kDtFlags1:
+            accepted = assign_singleton(flags_1, entry.value);
             break;
         case kDtVersym:
             accepted = assign_singleton(versym, entry.value);
@@ -304,6 +309,9 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
                 .count = *verneednum,
             };
     }
+    result.metadata.flags_1 = flags_1;
+    result.metadata.global =
+        flags_1.has_value() && ((*flags_1 & kElf32Df1Global) != 0);
     result.metadata.symbolic =
         has_dt_symbolic ||
         (flags.has_value() && ((*flags & kDfSymbolic) != 0));
@@ -324,6 +332,8 @@ Elf32LinkerMetadataResult build_elf32_linker_metadata(
     Elf32LinkerMetadataResult result;
     result.metadata.soname_offset = collected.metadata.soname_offset;
     result.metadata.needed_offsets = collected.metadata.needed_offsets;
+    result.metadata.flags_1 = collected.metadata.flags_1;
+    result.metadata.global = collected.metadata.global;
     result.metadata.symbolic = collected.metadata.symbolic;
     result.metadata.has_symbol_versioning =
         collected.metadata.has_symbol_versioning;

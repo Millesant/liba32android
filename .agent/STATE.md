@@ -32,7 +32,7 @@ Persisted inspection at `5b1cf991272632ed44d6276d6ec5e982ef732f28` confirmed 30 
 - ELF32 supports validated ARM little-endian ET_EXEC and explicit-base ET_DYN mapping with rollback.
 - Shared load planning and deterministic bounded ET_DYN automatic placement are implemented.
 - PT_DYNAMIC parsing is structural and guest-memory based.
-- Linker metadata/strings validate the implemented STRTAB/SYMTAB/main REL/PLT REL/SONAME/NEEDED scope and retain DT_SYMBOLIC plus DF_SYMBOLIC requester-binding metadata.
+- Linker metadata/strings validate the implemented STRTAB/SYMTAB/main REL/PLT REL/SONAME/NEEDED scope, retain DT_SYMBOLIC plus DF_SYMBOLIC requester-binding metadata, and retain raw DT_FLAGS_1 with explicit DF_1_GLOBAL membership for feature 016 link-map policy.
 - Dependency acquisition is provider-backed and bounded; recursive dependency graph loading is transactional.
 - Plain symbol lookup supports bounded SysV/GNU hash indexing and deterministic graph-local breadth-first resolution. Relocation/reference lookup can additionally consume an ordered caller-owned global-scope list from the same graph; ordinary requesters search global then local scope, while DT_SYMBOLIC/DF_SYMBOLIC requesters search self then global then remaining local scope. Version matching applies across the selected ordering and all unique candidates share the existing scope ceiling.
 - Main DT_REL relocation supports R_ARM_NONE, R_ARM_RELATIVE, R_ARM_GLOB_DAT, R_ARM_ABS32, and AAELF32 R_ARM_REL32 transactionally, including defining-symbol Thumb T-bit handling.

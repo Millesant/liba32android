@@ -17,7 +17,7 @@ Pre-mutation ELF validation/layout is shared through `elf32_load_plan`. Automati
 
 ## L32-E004 — Linker metadata and strings
 
-Validated linker metadata covers STRTAB/STRSZ, SYMTAB/SYMENT, main REL/RELSZ/RELENT, separate AArch32 PLT REL metadata, SONAME, and ordered `DT_NEEDED` offsets. String materialization is explicitly bounded and preserves ordered/repeated dependency names.
+Validated linker metadata covers STRTAB/STRSZ, SYMTAB/SYMENT, main REL/RELSZ/RELENT, separate AArch32 PLT REL metadata, SONAME, ordered `DT_NEEDED` offsets, DT_SYMBOLIC/DF_SYMBOLIC requester binding, and raw `DT_FLAGS_1` with explicit `DF_1_GLOBAL` membership. Unknown FLAGS_1 bits are preserved. String materialization is explicitly bounded and preserves ordered/repeated dependency names.
 
 ## L32-E005 — Dependency acquisition and graph loading
 

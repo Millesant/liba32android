@@ -10,6 +10,8 @@
 
 namespace liba32android::elf {
 
+inline constexpr std::uint32_t kElf32Df1Global = 0x2U;
+
 enum class Elf32LinkerMetadataError : std::uint8_t {
     None = 0,
     DuplicateSingleton,
@@ -69,6 +71,9 @@ struct Elf32CollectedLinkerMetadata {
     std::optional<Elf32CollectedVersionTableMetadata> version_requirement_table;
     std::optional<std::uint32_t> soname_offset;
     std::vector<std::uint32_t> needed_offsets;
+    // Raw DT_FLAGS_1 bitset when present. Unknown bits remain preserved.
+    std::optional<std::uint32_t> flags_1;
+    bool global{};
     // DT_SYMBOLIC or DF_SYMBOLIC requester-first binding policy marker.
     bool symbolic{};
     bool has_symbol_versioning{};
@@ -132,6 +137,9 @@ struct Elf32LinkerMetadata {
     std::optional<Elf32VersionTableMetadata> version_requirement_table;
     std::optional<std::uint32_t> soname_offset;
     std::vector<std::uint32_t> needed_offsets;
+    // Raw DT_FLAGS_1 bitset when present. global reflects DF_1_GLOBAL only.
+    std::optional<std::uint32_t> flags_1;
+    bool global{};
     // True when DT_SYMBOLIC is present or DT_FLAGS carries DF_SYMBOLIC.
     bool symbolic{};
     bool has_symbol_versioning{};

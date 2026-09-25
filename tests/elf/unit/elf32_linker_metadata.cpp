@@ -12,6 +12,7 @@ using liba32android::elf::Elf32DynamicEntry;
 using liba32android::elf::Elf32LinkerMetadataError;
 using liba32android::elf::build_elf32_linker_metadata;
 using liba32android::elf::collect_elf32_linker_metadata;
+using liba32android::elf::kElf32Df1Global;
 using liba32android::memory::LinearGuestMemory;
 
 constexpr std::int32_t kDtNull = 0;
@@ -32,6 +33,7 @@ constexpr std::int32_t kDtJmprel = 23;
 constexpr std::int32_t kDtFlags = 30;
 constexpr std::uint32_t kDfSymbolic = 0x2U;
 constexpr std::int32_t kDtGnuHash = 0x6ffffef5;
+constexpr std::int32_t kDtFlags1 = 0x6ffffffb;
 constexpr std::int32_t kDtVersym = 0x6ffffff0;
 constexpr std::int32_t kDtVerdef = 0x6ffffffc;
 constexpr std::int32_t kDtVerdefnum = 0x6ffffffd;
@@ -60,6 +62,7 @@ std::vector<Elf32DynamicEntry> full_entries() {
         {kDtNeeded, 21},
         {kDtHash, 0x480},
         {kDtGnuHash, 0x400},
+        {kDtFlags1, kElf32Df1Global | 0x1U},
         {kDtNull, 0},
     };
 }
@@ -104,14 +107,19 @@ int test_valid_collection() {
     if (result.metadata.needed_offsets != std::vector<std::uint32_t>{9, 21}) {
         return fail("DT_NEEDED offsets did not preserve dynamic-array order");
     }
+    if (!result.metadata.flags_1.has_value() ||
+        *result.metadata.flags_1 != (kElf32Df1Global | 0x1U) ||
+        !result.metadata.global) {
+        return fail("DT_FLAGS_1/DF_1_GLOBAL metadata was not collected exactly");
+    }
     return 0;
 }
 
 int test_duplicate_singletons() {
-    constexpr std::array<std::int32_t, 13> singleton_tags{
+    constexpr std::array<std::int32_t, 14> singleton_tags{
         kDtPltrelsz, kDtHash, kDtStrtab, kDtStrsz, kDtSymtab, kDtSyment,
         kDtRel, kDtRelsz, kDtRelent, kDtPltrel, kDtJmprel, kDtSoname,
-        kDtGnuHash,
+        kDtGnuHash, kDtFlags1,
     };
 
     for (const std::int32_t tag : singleton_tags) {
@@ -274,6 +282,28 @@ int test_symbolic_binding_metadata() {
     if (collect_elf32_linker_metadata(duplicate_flags).error !=
         Elf32LinkerMetadataError::DuplicateSingleton) {
         return fail("duplicate DT_FLAGS was not rejected");
+    }
+    return 0;
+}
+
+int test_flags1_global_metadata() {
+    const std::array non_global{
+        Elf32DynamicEntry{kDtFlags1, 0x1U},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    const auto collected = collect_elf32_linker_metadata(non_global);
+    if (!collected || !collected.metadata.flags_1.has_value() ||
+        *collected.metadata.flags_1 != 0x1U ||
+        collected.metadata.global) {
+        return fail("non-global DT_FLAGS_1 bits were not preserved exactly");
+    }
+
+    LinearGuestMemory memory(0x100, 0);
+    const auto built = build_elf32_linker_metadata(memory, 0, non_global);
+    if (!built || !built.metadata.flags_1.has_value() ||
+        *built.metadata.flags_1 != 0x1U ||
+        built.metadata.global) {
+        return fail("validated non-global DT_FLAGS_1 metadata changed semantics");
     }
     return 0;
 }
@@ -645,6 +675,7 @@ int main() {
     if (const int status = test_invalid_plt_rel_type(); status != 0) return status;
     if (const int status = test_unknown_tags_and_null_boundary(); status != 0) return status;
     if (const int status = test_symbolic_binding_metadata(); status != 0) return status;
+    if (const int status = test_flags1_global_metadata(); status != 0) return status;
     if (const int status = test_symbol_versioning_metadata(); status != 0) return status;
     if (const int status = test_valid_rebasing_and_zero_bias(); status != 0) return status;
     if (const int status = test_address_and_range_overflow(); status != 0) return status;

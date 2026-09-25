@@ -3,7 +3,7 @@ change = "016-elf32-link-map-global-group"
 
 [[tasks]]
 id = "T001"
-status = "active"
+status = "implemented"
 depends_on = []
 acceptance = "Retain DT_FLAGS_1 as validated singleton linker metadata and expose DF_1_GLOBAL with duplicate/non-global regression coverage."
 

@@ -1,6 +1,6 @@
 # ELF32 linker metadata
 
-Status: complete through feature 008; final exact-head gate PASSed
+Status: current through feature 016 T001; prior exact-head gates PASSed
 
 ## Boundary
 
@@ -54,11 +54,13 @@ The current semantic set recognizes:
 - `DT_JMPREL` + `DT_PLTRELSZ` + `DT_PLTREL`, with `DT_PLTREL == DT_REL` required for the AArch32 PLT table;
 - `DT_SONAME`;
 - repeated `DT_NEEDED` offsets;
+- `DT_SYMBOLIC` plus `DF_SYMBOLIC` from `DT_FLAGS` as the requester-first binding marker;
+- raw `DT_FLAGS_1` bits plus explicit `DF_1_GLOBAL` membership for persistent-link-map policy;
 - validated guest descriptors for GNU/SysV symbol-version metadata (`DT_VERSYM`, `DT_VERDEF`/`DT_VERDEFNUM`, and `DT_VERNEED`/`DT_VERNEEDNUM`), consumed downstream by bounded version-aware symbol lookup.
 
 Recognized singleton tags are unique. A duplicate is rejected even if the value matches. `DT_NEEDED` is intentionally repeatable and preserves dynamic-array order.
 
-Unknown and deferred tags remain tolerated. Their presence does not imply semantic support. Version-table contents remain deferred; only their declaration is recorded for the symbol layer's safety boundary.
+Unknown and deferred tags remain tolerated. Their presence does not imply semantic support. Unknown `DT_FLAGS_1` bits are preserved rather than rejected. Version-table contents remain deferred; only their declaration is recorded for the symbol layer's safety boundary.
 
 ## Validation policy
 
