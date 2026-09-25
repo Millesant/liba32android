@@ -8,6 +8,7 @@ add_library(liba32android SHARED
     src/elf/metadata/elf32_linker_strings.cpp
     src/elf/linking/elf32_dependency_loader.cpp
     src/elf/linking/elf32_dependency_resolver.cpp
+    src/elf/linking/elf32_lifecycle.cpp
     src/elf/linking/elf32_relocation.cpp
     src/elf/linking/elf32_symbol_lookup.cpp
     src/elf/linking/elf32_symbol_versioning.cpp
