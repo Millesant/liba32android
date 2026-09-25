@@ -2,10 +2,11 @@ schema = 1
 id = "016-elf32-link-map-global-group"
 kind = "feature"
 size = "S2"
-status = "active"
+status = "done"
 workflow = "feature"
 control_revision = "2b7c8b9245a64560cc9e986d554d99233e34b8c5"
 base_revision = "d995ee5b1ae591f448546a7588078ab0d4433e9e"
+result_revision = "0c374ff84990ee3d64c06a1037f846d90054e5e4"
 acceptance = [
   "DT_FLAGS_1 is retained as validated linker metadata and DF_1_GLOBAL membership is explicit without changing existing DT_FLAGS/DF_SYMBOLIC behavior",
   "a caller-owned ELF32 link map preserves loaded-object and mapping lifetime across multiple bounded root-load operations",
@@ -19,12 +20,12 @@ acceptance = [
 ]
 
 [convergence]
-requirements = "pending"
-specs = "pending"
-implementation = "pending"
-tests = "pending"
-documentation = "pending"
+requirements = "aligned"
+specs = "aligned"
+implementation = "aligned"
+tests = "aligned"
+documentation = "aligned"
 decisions = "not_applicable"
-tasks = "pending"
-evidence = "pending"
-repository = "pending"
+tasks = "aligned"
+evidence = "aligned"
+repository = "aligned"
