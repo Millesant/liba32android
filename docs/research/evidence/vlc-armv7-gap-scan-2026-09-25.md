@@ -70,10 +70,11 @@ platform-library providers.
 After feature 015 is verified, the supplied VLC sample currently points to two
 nearer compatibility gaps than adding more relocation encodings:
 
-1. Android-oriented dependency/provider/search/global-group lifetime across
-   application and platform objects.
+1. Android-oriented dependency/provider/search/namespace policy across
+   application and platform objects. Feature 016 now supplies generic
+   persistent link-map/global-group lifetime beneath that policy.
 2. Constructor/destructor lifecycle, beginning with bounded `DT_INIT_ARRAY`
-   semantics once the relevant dependency graph can be loaded.
+   semantics once the relevant dependency/provider graph can be assembled.
 
 Both remain separate features and require their own accepted contract before
 implementation.
