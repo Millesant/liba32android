@@ -446,6 +446,62 @@ int test_reference_resolution_and_weak_behavior() {
     return 0;
 }
 
+int test_reference_scope_policy_flows_through_relocation() {
+    LinearGuestMemory memory(0x20000, kMemoryBase);
+    auto graph = graph_with_rel(0x1000, kRelTable, 8);
+    graph.objects.resize(3);
+
+    if (!stage_symbol_object(memory, graph.objects[0], 0, "target",
+                             0x1000, 1, 1, 0, 0) ||
+        !stage_symbol_object(memory, graph.objects[1], 1, "target",
+                             0x5000, 1, 1, 0, 1, 0x120) ||
+        !stage_symbol_object(memory, graph.objects[2], 2, "target",
+                             0x7000, 1, 1, 0, 1, 0x140) ||
+        !write_rel(memory, 0, 0x11000, 1, kRArmGlobDat) ||
+        !write_u32(memory, 0x12000, 0)) {
+        return fail("could not stage relocation scope-policy fixture");
+    }
+
+    graph.objects[0].dependencies = {
+        Elf32DependencyEdge{.requested_name = "local", .target_object = 2},
+    };
+    const std::array<std::size_t, 1> global_scope{1};
+    auto scoped = options();
+    scoped.symbols.global_scope_objects = global_scope;
+
+    const auto ordinary = resolve_elf32_rel_relocation_references(
+        memory, graph, 0, scoped);
+    if (!ordinary || ordinary.resolution.entries.size() != 1 ||
+        !ordinary.resolution.entries[0].reference.has_value()) {
+        return fail("global-scope relocation reference did not resolve");
+    }
+    const auto& ordinary_reference =
+        *ordinary.resolution.entries[0].reference;
+    if (!ordinary_reference.defining_object_index.has_value() ||
+        *ordinary_reference.defining_object_index != 1 ||
+        ordinary_reference.symbol_value != 0x5120) {
+        return fail("relocation reference did not prefer explicit global scope");
+    }
+
+    // A symbolic requester with no local definition still falls through to
+    // the same explicit global scope before its graph-local dependencies.
+    graph.objects[0].linker_metadata.symbolic = true;
+    const auto symbolic = resolve_elf32_rel_relocation_references(
+        memory, graph, 0, scoped);
+    if (!symbolic || symbolic.resolution.entries.size() != 1 ||
+        !symbolic.resolution.entries[0].reference.has_value()) {
+        return fail("symbolic requester did not fall through to global scope");
+    }
+    const auto& symbolic_reference =
+        *symbolic.resolution.entries[0].reference;
+    if (!symbolic_reference.defining_object_index.has_value() ||
+        *symbolic_reference.defining_object_index != 1 ||
+        symbolic_reference.symbol_value != 0x5120) {
+        return fail("symbolic relocation fallback changed global ordering");
+    }
+    return 0;
+}
+
 int expect_reference_form_error(std::uint8_t binding,
                                 std::uint8_t type,
                                 std::uint8_t other,
@@ -918,6 +974,7 @@ int main() {
     if (const int status = test_limits_and_graph_inputs(); status != 0) return status;
     if (const int status = test_read_place_and_type_failures(); status != 0) return status;
     if (const int status = test_reference_resolution_and_weak_behavior(); status != 0) return status;
+    if (const int status = test_reference_scope_policy_flows_through_relocation(); status != 0) return status;
     if (const int status = test_reference_validation_failures(); status != 0) return status;
     if (const int status = test_reference_nested_failures(); status != 0) return status;
     if (const int status = test_duplicate_target_rejected_without_mutation(); status != 0) return status;
