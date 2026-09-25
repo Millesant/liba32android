@@ -414,6 +414,9 @@ Elf32DependencyLoadResult append_elf32_link_map_root(
         return failure(Elf32DependencyLoadError::TooManyObjects, root.identity);
     }
 
+    // The link map is caller-owned, so validate every structural invariant
+    // consumed by append before any mutation. This keeps malformed existing
+    // state from being hidden merely because the new root never traverses it.
     std::unordered_map<std::string, std::size_t> object_indices;
     object_indices.reserve(link_map.graph.objects.size() + 1U);
     for (std::size_t index = 0; index < link_map.graph.objects.size(); ++index) {
@@ -423,23 +426,50 @@ Elf32DependencyLoadResult append_elf32_link_map_root(
             return failure(Elf32DependencyLoadError::InvalidLinkMap,
                            object.identity);
         }
+        for (const auto& edge : object.dependencies) {
+            if (edge.requested_name.empty() ||
+                edge.target_object >= link_map.graph.objects.size()) {
+                return failure(Elf32DependencyLoadError::InvalidLinkMap,
+                               object.identity);
+            }
+        }
     }
 
     std::vector<std::uint8_t> root_seen(link_map.graph.objects.size(), 0);
+    std::vector<std::uint8_t> required_global(
+        link_map.graph.objects.size(), 0);
+    for (std::size_t index = 0; index < link_map.graph.objects.size(); ++index) {
+        if (link_map.graph.objects[index].linker_metadata.global) {
+            required_global[index] = 1;
+        }
+    }
     for (const auto& record : link_map.roots) {
         if (record.object_index >= link_map.graph.objects.size() ||
-            root_seen[record.object_index] != 0) {
+            root_seen[record.object_index] != 0 ||
+            (record.policy != Elf32LinkMapRootPolicy::Local &&
+             record.policy != Elf32LinkMapRootPolicy::Global)) {
             return failure(Elf32DependencyLoadError::InvalidLinkMap);
         }
         root_seen[record.object_index] = 1;
+        if (record.policy == Elf32LinkMapRootPolicy::Global) {
+            required_global[record.object_index] = 1;
+        }
     }
+
     std::vector<std::uint8_t> global_seen(link_map.graph.objects.size(), 0);
     for (const std::size_t object_index : link_map.global_scope_objects) {
         if (object_index >= link_map.graph.objects.size() ||
-            global_seen[object_index] != 0) {
+            global_seen[object_index] != 0 ||
+            required_global[object_index] == 0) {
             return failure(Elf32DependencyLoadError::InvalidLinkMap);
         }
         global_seen[object_index] = 1;
+    }
+    for (std::size_t index = 0; index < required_global.size(); ++index) {
+        if (required_global[index] != global_seen[index]) {
+            return failure(Elf32DependencyLoadError::InvalidLinkMap,
+                           link_map.graph.objects[index].identity);
+        }
     }
 
     const auto record_root =

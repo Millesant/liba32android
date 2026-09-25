@@ -95,7 +95,9 @@ struct Elf32DependencyLoadResult {
 // Existing identities are reused without remapping; equal identities with
 // different bytes fail. max_objects bounds the accumulated object count.
 // Failure removes only objects/mappings introduced by this append and preserves
-// all pre-existing link-map state. T004 populates global_scope_objects.
+// all pre-existing link-map state. Preflight validates existing identities,
+// dependency edges, root records, and exact global-membership consistency before
+// mutation. global_scope_objects is maintained in stable insertion order.
 [[nodiscard]] Elf32DependencyLoadResult append_elf32_link_map_root(
     memory::MappedGuestMemory& memory,
     Elf32LinkMap& link_map,

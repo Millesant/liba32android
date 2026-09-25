@@ -590,6 +590,56 @@ int test_persistent_link_map_limits_and_invalid_state() {
             link_map.graph.objects.size() != 1 || provider.calls != 0) {
             return fail("out-of-range persistent global index was not rejected before mutation");
         }
+
+        link_map.global_scope_objects.clear();
+        link_map.graph.objects[0].dependencies.push_back(
+            Elf32DependencyEdge{
+                .requested_name = "broken.so",
+                .target_object = 9,
+            });
+        const auto bad_edge = append_elf32_link_map_root(
+            memory, link_map,
+            Elf32DependencyLoadSource{
+                .identity = "new-root",
+                .image = make_image(3, 0, true, true),
+            },
+            provider, options(), Elf32LinkMapRootPolicy::Local);
+        if (bad_edge.error != Elf32DependencyLoadError::InvalidLinkMap ||
+            bad_edge.failing_identity != "stable-root" ||
+            link_map.graph.objects.size() != 1 || provider.calls != 0) {
+            return fail("out-of-range persistent dependency edge was not rejected before mutation");
+        }
+
+        link_map.graph.objects[0].dependencies.clear();
+        link_map.roots[0].policy = Elf32LinkMapRootPolicy::Global;
+        const auto missing_global = append_elf32_link_map_root(
+            memory, link_map,
+            Elf32DependencyLoadSource{
+                .identity = "new-root",
+                .image = make_image(3, 0, true, true),
+            },
+            provider, options(), Elf32LinkMapRootPolicy::Local);
+        if (missing_global.error != Elf32DependencyLoadError::InvalidLinkMap ||
+            missing_global.failing_identity != "stable-root" ||
+            link_map.graph.objects.size() != 1 || provider.calls != 0) {
+            return fail("missing required persistent global membership was not rejected");
+        }
+
+        link_map.roots[0].policy = Elf32LinkMapRootPolicy::Local;
+        link_map.global_scope_objects = {0};
+        const auto extra_global = append_elf32_link_map_root(
+            memory, link_map,
+            Elf32DependencyLoadSource{
+                .identity = "new-root",
+                .image = make_image(3, 0, true, true),
+            },
+            provider, options(), Elf32LinkMapRootPolicy::Local);
+        if (extra_global.error != Elf32DependencyLoadError::InvalidLinkMap ||
+            link_map.graph.objects.size() != 1 || provider.calls != 0) {
+            return fail("spurious persistent global membership was not rejected");
+        }
+
+        link_map.global_scope_objects.clear();
         for (const auto& segment : stable_load.segments) {
             if (!memory.is_mapped(segment.mapping_start)) {
                 return fail("invalid link-map preflight disturbed existing mappings");
