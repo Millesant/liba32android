@@ -499,6 +499,43 @@ int test_reference_scope_policy_flows_through_relocation() {
         symbolic_reference.symbol_value != 0x5120) {
         return fail("symbolic relocation fallback changed global ordering");
     }
+
+    // When the requester also defines the relocation symbol, ordinary lookup
+    // still honors the explicit global group, while DT_SYMBOLIC must bind the
+    // requester's own definition first.
+    if (!stage_symbol_object(memory, graph.objects[0], 0, "target",
+                             0x1000, 1, 1, 0, 1, 0x90)) {
+        return fail("could not stage requester-local relocation definition");
+    }
+    graph.objects[0].linker_metadata.rel_table =
+        Elf32RelTableMetadata{
+            .guest_address = kRelTable,
+            .size = 8,
+            .entry_size = 8,
+        };
+    graph.objects[0].linker_metadata.symbolic = false;
+    const auto defined_ordinary = resolve_elf32_rel_relocation_references(
+        memory, graph, 0, scoped);
+    if (!defined_ordinary ||
+        !defined_ordinary.resolution.entries[0].reference.has_value() ||
+        *defined_ordinary.resolution.entries[0].reference
+             ->defining_object_index != 1 ||
+        defined_ordinary.resolution.entries[0].reference->symbol_value !=
+            0x5120) {
+        return fail("ordinary defined reference did not preserve global-first ordering");
+    }
+
+    graph.objects[0].linker_metadata.symbolic = true;
+    const auto defined_symbolic = resolve_elf32_rel_relocation_references(
+        memory, graph, 0, scoped);
+    if (!defined_symbolic ||
+        !defined_symbolic.resolution.entries[0].reference.has_value() ||
+        *defined_symbolic.resolution.entries[0].reference
+             ->defining_object_index != 0 ||
+        defined_symbolic.resolution.entries[0].reference->symbol_value !=
+            0x1090) {
+        return fail("symbolic defined reference did not bind requester first");
+    }
     return 0;
 }
 
