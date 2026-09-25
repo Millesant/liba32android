@@ -1,6 +1,6 @@
 # ELF32 ARM relocation application
 
-Status: relocation semantics current through feature 009; feature 010 adds a separate verified post-relocation GNU RELRO hardening stage
+Status: relocation semantics current through feature 011; feature 010 remains the separate verified post-relocation GNU RELRO hardening stage
 
 ## Boundary
 
@@ -150,6 +150,10 @@ T003 real ARMv7 integration PASSed CI #228 / run `35939575947` at `8153861497322
 T004 documentation/spec/state convergence and the final exact-head feature gate PASSed CI #229 / run `35940125841` at `4b255695a9effbaab4028708cd5e7e5a5e23150e`; Linux PASSed 46/46 CTest including the real JUMP_SLOT test, and both Android CI jobs PASSed.
 
 The run uploaded artifact `arm32-loader-fixture-815386149732201ce5b64e1b5ad207079491eb80`, ID `10783439676`, digest `sha256:4a68646d281cb35ceb69586388acd5ce0bbb5e5f316ecd285b1b8c4574bffee7`, containing the provider/consumer pair and JUMP_SLOT evidence alongside the existing ARM32 fixture evidence.
+
+### Combined main + PLT transaction — feature 011
+
+Feature 011 exact-head implementation validation PASSed at `600fad8edc3ac2a8f64fc2607e088b263adca902`: Linux A32 smoke check `107911342972`, Android arm64-v8a cross-build check `107911343141`, and Android x86_64 address-space probe check `107911343155` all completed successfully. Focused unit coverage proves that PLT preparation failure leaves a prepared main table untouched, cross-table duplicate targets fail before mutation, a PLT write failure restores an earlier main write, and rollback failure identifies the main table explicitly.
 
 ## Deliberate limits
 

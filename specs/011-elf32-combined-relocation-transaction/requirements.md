@@ -1,11 +1,11 @@
 # Requirements — ELF32 combined main+PLT relocation transaction
 
-Status: ACTIVE — implementation prepared; exact-head validation NOT RUN
+Status: DONE — exact-head implementation CI PASSed at `600fad8edc3ac2a8f64fc2607e088b263adca902`
 
 ## Goal
 Provide an explicit per-object transaction spanning the supported main DT_REL and eager PLT REL tables without changing either table's formulas.
 
-## Requirements
+## Accepted requirements
 - Both tables plan/resolve/validate and compute final words before any write.
 - max_relocations remains an independent per-table bound.
 - Cross-table duplicate write targets are rejected before mutation.
@@ -14,5 +14,5 @@ Provide an explicit per-object transaction spanning the supported main DT_REL an
 - Existing single-table APIs remain source-compatible and semantically unchanged.
 - No lazy binding, new relocation families, permission changes, or process-wide linker policy.
 
-## Acceptance
-Unit coverage proves success order, PLT prewrite failure, duplicate rejection, cross-table rollback, and explicit rollback failure. Required exact-head CI must pass before closure.
+## Validation
+Linux check `107911342972`, Android arm64 check `107911343141`, and Android x86_64 check `107911343155` PASSed on the implementation revision.

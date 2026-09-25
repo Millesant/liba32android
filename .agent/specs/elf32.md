@@ -1,7 +1,7 @@
 # ELF32 and dynamic-linking contract
 
 Status: Accepted current project contract
-Last reconciled: 2026-09-23
+Last reconciled: 2026-09-24
 
 ## L32-E001 — ELF32 mapping
 
@@ -41,6 +41,10 @@ Validated `PT_GNU_RELRO` ranges are exposed as guest-only loader metadata withou
 
 Real post-relocation fixture integration is verified by CI #234 / run `35946857448` at `ff1792457f05bd9dd58740e1b768576b9ad4f1c3`: the real GLOB_DAT targets survive sealing, RELRO becomes read-only, direct writes fail, and non-RELRO permissions remain unchanged.
 
-## L32-E010 — Deferred linker scope
+## L32-E010 — Combined main + eager PLT relocation transaction
 
-Still outside the accepted implementation: Android namespace/search-path/link-map lifetime policy across independent graph loads; version-aware/process-wide/global-group interposition; lazy binding; combined main+PLT atomic application; broader ARM relocation families; RELA/RELR/Android packed relocations; TLS/IFUNC; constructors/destructors; `dlopen`/`dlsym`/unload; and guest execution of the real ARM32 fixture.
+The additive combined relocation API fully prepares the supported main `DT_REL` and eager PLT REL tables before mutation, rejects cross-table duplicate write targets, applies main writes before PLT writes, and rolls back failures in reverse across the combined sequence. Direct and rollback failures identify the source table as well as relocation index. The existing main-only and PLT-only APIs retain their independent transaction semantics.
+
+## L32-E011 — Deferred linker scope
+
+Still outside the accepted implementation: Android namespace/search-path/link-map lifetime policy across independent graph loads; version-aware/process-wide/global-group interposition; lazy binding; broader ARM relocation families; RELA/RELR/Android packed relocations; TLS/IFUNC; constructors/destructors; `dlopen`/`dlsym`/unload; and guest execution of the real ARM32 fixture.

@@ -22,7 +22,7 @@ Minecraft PE 0.15.x is a future stress target, not the architecture.
 - CPU engine: pinned Dynarmic behind the A32 CPU adapter.
 - Memory: `LinearGuestMemory` for deterministic correctness tests; `MappedGuestMemory` for logical guest mappings, protection lifecycle, high-base fastmem reservation, and callback fallback.
 - ELF loading: shared pre-mutation load planning, explicit mapping, bounded deterministic ET_DYN placement.
-- Dynamic-linker scope: structural dynamic entries, validated linker metadata/strings, bounded dependency acquisition, transactional dependency graph loading, SysV/GNU symbol lookup, main REL plus eager JUMP_SLOT relocation, and explicit GNU RELRO sealing.
+- Dynamic-linker scope: structural dynamic entries, validated linker metadata/strings, bounded dependency acquisition, transactional dependency graph loading, SysV/GNU symbol lookup, main REL plus eager JUMP_SLOT relocation, an opt-in combined main+PLT rollback domain, and explicit GNU RELRO sealing.
 - Android validation: x86_64 standalone address-space probe plus arm64-v8a runtime/probe cross-build; real AArch64 16 KiB runtime execution remains an evidence gap.
 
 ## Dependency direction

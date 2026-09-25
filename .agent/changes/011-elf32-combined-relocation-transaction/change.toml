@@ -2,10 +2,11 @@ schema = 1
 id = "011-elf32-combined-relocation-transaction"
 kind = "feature"
 size = "S2"
-status = "implemented"
+status = "done"
 workflow = "feature"
 control_revision = "0c8f0e26c9227599eb8bfae48106b53074a24188"
 base_revision = "58e69cc7a5f40dc7ae7917f7f4435bad5145a8fc"
+result_revision = "600fad8edc3ac2a8f64fc2607e088b263adca902"
 acceptance = [
   "one additive API atomically covers the supported main DT_REL and eager PLT REL tables for one loaded object",
   "both tables complete planning, symbol resolution, validation, and final-word calculation before the first guest-memory write",
@@ -23,5 +24,5 @@ tests = "aligned"
 documentation = "aligned"
 decisions = "not_applicable"
 tasks = "aligned"
-evidence = "pending"
-repository = "pending"
+evidence = "aligned"
+repository = "aligned"
