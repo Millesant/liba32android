@@ -19,11 +19,14 @@ constexpr std::int32_t kDtSymtab = 6;
 constexpr std::int32_t kDtStrsz = 10;
 constexpr std::int32_t kDtSyment = 11;
 constexpr std::int32_t kDtSoname = 14;
+constexpr std::int32_t kDtSymbolic = 16;
 constexpr std::int32_t kDtRel = 17;
 constexpr std::int32_t kDtRelsz = 18;
 constexpr std::int32_t kDtRelent = 19;
 constexpr std::int32_t kDtPltrel = 20;
 constexpr std::int32_t kDtJmprel = 23;
+constexpr std::int32_t kDtFlags = 30;
+constexpr std::uint32_t kDfSymbolic = 0x2U;
 constexpr std::int32_t kDtGnuHash = 0x6ffffef5;
 constexpr std::int32_t kDtVersym = 0x6ffffff0;
 constexpr std::int32_t kDtVerdef = 0x6ffffffc;
@@ -121,6 +124,8 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
     std::optional<std::uint32_t> verneed;
     std::optional<std::uint32_t> verneednum;
     std::optional<std::uint32_t> soname;
+    std::optional<std::uint32_t> flags;
+    bool has_dt_symbolic = false;
 
     Elf32CollectedLinkerMetadataResult result;
 
@@ -153,6 +158,13 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
         case kDtSoname:
             accepted = assign_singleton(soname, entry.value);
             break;
+        case kDtSymbolic:
+            if (has_dt_symbolic) {
+                accepted = false;
+            } else {
+                has_dt_symbolic = true;
+            }
+            break;
         case kDtRel:
             accepted = assign_singleton(rel, entry.value);
             break;
@@ -167,6 +179,9 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
             break;
         case kDtJmprel:
             accepted = assign_singleton(jmprel, entry.value);
+            break;
+        case kDtFlags:
+            accepted = assign_singleton(flags, entry.value);
             break;
         case kDtGnuHash:
             accepted = assign_singleton(gnu_hash, entry.value);
@@ -289,6 +304,9 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
                 .count = *verneednum,
             };
     }
+    result.metadata.symbolic =
+        has_dt_symbolic ||
+        (flags.has_value() && ((*flags & kDfSymbolic) != 0));
     result.metadata.has_symbol_versioning =
         versym.has_value() || verdef.has_value() || verneed.has_value();
     result.metadata.soname_offset = soname;
@@ -306,6 +324,7 @@ Elf32LinkerMetadataResult build_elf32_linker_metadata(
     Elf32LinkerMetadataResult result;
     result.metadata.soname_offset = collected.metadata.soname_offset;
     result.metadata.needed_offsets = collected.metadata.needed_offsets;
+    result.metadata.symbolic = collected.metadata.symbolic;
     result.metadata.has_symbol_versioning =
         collected.metadata.has_symbol_versioning;
 
