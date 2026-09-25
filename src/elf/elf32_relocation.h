@@ -210,9 +210,10 @@ struct Elf32RelocationApplyResult {
 // Resolve symbol-bearing ABS32/REL32/GLOB_DAT references without writing guest
 // memory. Only GLOBAL/WEAK DEFAULT NOTYPE/OBJECT/FUNC references are accepted.
 // Protected/TLS/IFUNC/common/XINDEX semantics fail explicitly. Versioned
-// references are matched through bounded DT_VERSYM/VERNEED/VERDEF metadata
-// while retaining the existing graph-local scope. A graph miss becomes S=0
-// only for a WEAK reference.
+// references are matched through bounded DT_VERSYM/VERNEED/VERDEF metadata.
+// Plain lookup remains graph-local; callers may additionally provide an ordered
+// in-graph global scope, and DT_SYMBOLIC/DF_SYMBOLIC requesters bind themselves
+// before that scope. A lookup miss becomes S=0 only for a WEAK reference.
 [[nodiscard]] Elf32RelocationResolutionResult
 resolve_elf32_rel_relocation_references(
     const memory::GuestMemory& memory,
@@ -221,9 +222,10 @@ resolve_elf32_rel_relocation_references(
     const Elf32RelocationOptions& options);
 
 // Resolve PLT R_ARM_JUMP_SLOT references without writing guest memory. The
-// same bounded GLOBAL/WEAK DEFAULT NOTYPE/OBJECT/FUNC graph-local policy used
-// by main REL relocations applies here. A graph miss becomes S=0 only for a
-// WEAK reference. Lazy binding and DT_PLTGOT resolver state are not involved.
+// same bounded GLOBAL/WEAK DEFAULT NOTYPE/OBJECT/FUNC reference policy used by
+// main REL relocations applies here, including caller-provided global scope and
+// DT_SYMBOLIC/DF_SYMBOLIC requester-first ordering. A lookup miss becomes S=0
+// only for a WEAK reference. Lazy binding and DT_PLTGOT resolver state are not involved.
 [[nodiscard]] Elf32RelocationResolutionResult
 resolve_elf32_plt_rel_relocation_references(
     const memory::GuestMemory& memory,
