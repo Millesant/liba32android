@@ -25,6 +25,10 @@ constexpr std::int32_t kDtRelsz = 18;
 constexpr std::int32_t kDtRelent = 19;
 constexpr std::int32_t kDtPltrel = 20;
 constexpr std::int32_t kDtJmprel = 23;
+constexpr std::int32_t kDtInitArray = 25;
+constexpr std::int32_t kDtFiniArray = 26;
+constexpr std::int32_t kDtInitArraySz = 27;
+constexpr std::int32_t kDtFiniArraySz = 28;
 constexpr std::int32_t kDtFlags = 30;
 constexpr std::uint32_t kDfSymbolic = 0x2U;
 constexpr std::int32_t kDtGnuHash = 0x6ffffef5;
@@ -119,6 +123,10 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
     std::optional<std::uint32_t> jmprel;
     std::optional<std::uint32_t> pltrelsz;
     std::optional<std::uint32_t> pltrel;
+    std::optional<std::uint32_t> init_array;
+    std::optional<std::uint32_t> init_array_size;
+    std::optional<std::uint32_t> fini_array;
+    std::optional<std::uint32_t> fini_array_size;
     std::optional<std::uint32_t> versym;
     std::optional<std::uint32_t> verdef;
     std::optional<std::uint32_t> verdefnum;
@@ -182,6 +190,18 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
         case kDtJmprel:
             accepted = assign_singleton(jmprel, entry.value);
             break;
+        case kDtInitArray:
+            accepted = assign_singleton(init_array, entry.value);
+            break;
+        case kDtFiniArray:
+            accepted = assign_singleton(fini_array, entry.value);
+            break;
+        case kDtInitArraySz:
+            accepted = assign_singleton(init_array_size, entry.value);
+            break;
+        case kDtFiniArraySz:
+            accepted = assign_singleton(fini_array_size, entry.value);
+            break;
         case kDtFlags:
             accepted = assign_singleton(flags, entry.value);
             break;
@@ -243,6 +263,17 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
         return collection_failure(Elf32LinkerMetadataError::InvalidPltRelType);
     }
 
+    if (!pair_complete(init_array, init_array_size)) {
+        return collection_failure(Elf32LinkerMetadataError::IncompleteInitArray);
+    }
+    if (!pair_complete(fini_array, fini_array_size)) {
+        return collection_failure(Elf32LinkerMetadataError::IncompleteFiniArray);
+    }
+    if ((init_array_size.has_value() && (*init_array_size % 4U) != 0) ||
+        (fini_array_size.has_value() && (*fini_array_size % 4U) != 0)) {
+        return collection_failure(Elf32LinkerMetadataError::InvalidFunctionArraySize);
+    }
+
     if (!pair_complete(verdef, verdefnum)) {
         return collection_failure(
             Elf32LinkerMetadataError::IncompleteVersionDefinitionTable);
@@ -292,6 +323,18 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
             .address_value = *jmprel,
             .size = *pltrelsz,
             .entry_size = kElf32RelEntrySize,
+        };
+    }
+    if (init_array.has_value()) {
+        result.metadata.init_array = Elf32CollectedFunctionArrayMetadata{
+            .address_value = *init_array,
+            .size = *init_array_size,
+        };
+    }
+    if (fini_array.has_value()) {
+        result.metadata.fini_array = Elf32CollectedFunctionArrayMetadata{
+            .address_value = *fini_array,
+            .size = *fini_array_size,
         };
     }
     result.metadata.version_symbol_address_value = versym;
@@ -473,6 +516,37 @@ Elf32LinkerMetadataResult build_elf32_linker_metadata(
         return validation_failure(*error);
     }
 
+    const auto build_function_array =
+        [&](const std::optional<Elf32CollectedFunctionArrayMetadata>& input,
+            std::optional<Elf32FunctionArrayMetadata>& output)
+            -> std::optional<Elf32LinkerMetadataError> {
+        if (!input.has_value()) return std::nullopt;
+        std::uint32_t guest_address = 0;
+        if (!rebase_address(input->address_value, load_bias, guest_address)) {
+            return Elf32LinkerMetadataError::AddressOverflow;
+        }
+        if (!range_fits(guest_address, input->size)) {
+            return Elf32LinkerMetadataError::RangeOverflow;
+        }
+        if (!readable_range(memory, guest_address, input->size)) {
+            return Elf32LinkerMetadataError::ReadFailed;
+        }
+        output = Elf32FunctionArrayMetadata{
+            .guest_address = guest_address,
+            .size = input->size,
+        };
+        return std::nullopt;
+    };
+
+    if (const auto error = build_function_array(
+            collected.metadata.init_array, result.metadata.init_array)) {
+        return validation_failure(*error);
+    }
+    if (const auto error = build_function_array(
+            collected.metadata.fini_array, result.metadata.fini_array)) {
+        return validation_failure(*error);
+    }
+
     if (const auto& rel_table = collected.metadata.rel_table) {
         if (rel_table->entry_size != kElf32RelEntrySize) {
             return validation_failure(Elf32LinkerMetadataError::InvalidRelEntrySize);
@@ -543,6 +617,9 @@ const char* to_string(Elf32LinkerMetadataError error) noexcept {
     case Elf32LinkerMetadataError::InvalidPltRelType: return "invalid_plt_rel_type";
     case Elf32LinkerMetadataError::InvalidPltRelSize: return "invalid_plt_rel_size";
     case Elf32LinkerMetadataError::StringOffsetOutOfRange: return "string_offset_out_of_range";
+    case Elf32LinkerMetadataError::IncompleteInitArray: return "incomplete_init_array";
+    case Elf32LinkerMetadataError::IncompleteFiniArray: return "incomplete_fini_array";
+    case Elf32LinkerMetadataError::InvalidFunctionArraySize: return "invalid_function_array_size";
     }
     return "unknown";
 }
