@@ -7,7 +7,7 @@ Cleanup implementation revision: `5b1cf991272632ed44d6276d6ec5e982ef732f28`
 
 ## Phase
 
-M4 runtime/linker scope is stable through bounded main REL including R_ARM_REL32, eager JUMP_SLOT relocation, one per-object combined main+PLT relocation transaction, and GNU RELRO. Features `012-elf32-rel32-relocation`, `011-elf32-combined-relocation-transaction`, and repository-wide maintenance change `project-cleanup-v8` are DONE.
+M4 runtime/linker scope is stable through bounded main REL including R_ARM_REL32, eager JUMP_SLOT relocation, one per-object combined main+PLT relocation transaction, GNU RELRO, and host execution of the linked real ARM32 fixture. Features `013-real-arm32-fixture-execution`, `012-elf32-rel32-relocation`, `011-elf32-combined-relocation-transaction`, and repository-wide maintenance change `project-cleanup-v8` are DONE.
 
 ## Repository organization
 
@@ -39,6 +39,7 @@ Persisted inspection at `5b1cf991272632ed44d6276d6ec5e982ef732f28` confirmed 30 
 - PLT REL supports eager R_ARM_JUMP_SLOT transactionally.
 - One additive per-object API prepares main and PLT relocation tables before mutation, rejects cross-table duplicate targets, applies main then PLT writes, and rolls back across the combined sequence.
 - GNU RELRO metadata and explicit post-relocation sealing are implemented with preflight, deduplication, rollback, and no permission broadening.
+- The pinned freestanding NDK ARM32 fixture now executes `fixture_add` on the Linux validation host through the generic A32 CPU adapter after graph loading, combined relocation, BSS initialization, and RELRO sealing; the harness uses bounded guest stack/sentinel mappings and a fixed instruction budget.
 - Reproducible ARMv7 loader and JUMP_SLOT fixtures back real ELF integration tests.
 
 ## Deferred / partial
@@ -82,6 +83,14 @@ Feature 012 exact-head implementation validation at `ee4d2b364244fd842b059dd5c25
 - Android x86_64 address-space probe: check `108000309608` — PASS.
 
 The REL32 coverage proves ordinary ARM data relocation, defining Thumb-function T-bit handling with a discriminating addend, and unresolved-weak `S=0,T=0` behavior through the existing transactional write path.
+
+Feature 013 exact-head implementation validation at `e899822ae507d1d3954e670bef7365b3aa1196d4`:
+
+- Linux A32 smoke: check `108016545132` — PASS.
+- Android arm64-v8a cross-build: check `108016544793` — PASS.
+- Android x86_64 address-space probe: check `108016545125` — PASS.
+
+The Linux gate includes CTest registration plus explicit execution-evidence checks for two relocations, the `0x5a` return sentinel marker, and `fixture.execution.status=PASS`. This is host-side integrated execution evidence only; Android-device/AArch64-16-KiB execution remains unproven.
 
 Historical feature-level evidence remains available in Git history, completed `.agent/changes/` records, root historical `specs/`, and `docs/research/evidence/`.
 

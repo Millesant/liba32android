@@ -1,6 +1,6 @@
 # Design — real ARM32 fixture execution
 
-Status: ACTIVE — implementation prepared; exact-head validation NOT RUN
+Status: DONE — exact-head implementation CI PASSed at `e899822ae507d1d3954e670bef7365b3aa1196d4`
 
 ## Pipeline
 
@@ -17,10 +17,6 @@ generated ARM32 fixture
 
 The fixture is freestanding and zero-dependency. Its function accesses `fixture_data` and `fixture_bss`, so successful execution after relocation proves the CPU consumes the same guest mappings modified by the linker.
 
-## Call harness
+The harness derives Thumb state from the raw defining `STT_FUNC` value, strips bit zero from the execution entry PC, selects the matching CPU instruction set, and sets LR to a mapped return sentinel with the Thumb interworking bit restored when needed. The sentinel writes `0x5a` to r7 and loops, allowing the fixed-budget CPU adapter to prove return without a new stop-condition API.
 
-The test derives Thumb state from the raw defining `STT_FUNC` value. It strips bit zero from the execution entry PC, selects the matching CPU instruction set, and sets LR to a mapped return sentinel with the interworking bit restored for Thumb.
-
-The sentinel first writes `0x5a` to r7 and then branches to itself. The CPU adapter already steps one guest instruction at a time under a fixed instruction ceiling, so reaching the marker proves the function returned without requiring a new CPU stop-condition API.
-
-A small bounded RW guest stack is mapped independently. No host pointer is placed in guest registers.
+A bounded RW guest stack is mapped independently and kept 8-byte aligned. No host pointer is placed in guest registers.

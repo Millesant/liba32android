@@ -1,12 +1,12 @@
 # Requirements — real ARM32 fixture execution
 
-Status: ACTIVE — implementation prepared; exact-head validation NOT RUN
+Status: DONE — exact-head implementation CI PASSed at `e899822ae507d1d3954e670bef7365b3aa1196d4`
 
 ## Goal
 
 Execute the pinned real ARM32 fixture's exported `fixture_add` through the generic CPU adapter after normal dependency loading, relocation, and GNU RELRO sealing.
 
-## Requirements
+## Accepted requirements
 
 - Reuse the current generated NDK r27d/API 26 fixture; do not introduce an opaque binary.
 - Resolve `fixture_add`, `fixture_data`, and `fixture_bss` through the accepted graph-local symbol path.
@@ -19,6 +19,6 @@ Execute the pinned real ARM32 fixture's exported `fixture_add` through the gener
 - Preserve the zero-dependency provider invariant.
 - Do not claim Android-device execution from a Linux-host execution result.
 
-## Acceptance
+## Validation
 
-Linux CTest and explicit fixture evidence must report the expected function result, return marker, relocation count, and PASS status. Required Android cross-build/probe lanes must remain green.
+Linux A32 smoke check `108016545132`, Android arm64-v8a cross-build check `108016544793`, and Android x86_64 address-space probe check `108016545125` PASSed at the implementation revision.

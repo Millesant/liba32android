@@ -45,6 +45,10 @@ Real post-relocation fixture integration is verified by CI #234 / run `359468574
 
 The additive combined relocation API fully prepares the supported main `DT_REL` and eager PLT REL tables before mutation, rejects cross-table duplicate write targets, applies main writes before PLT writes, and rolls back failures in reverse across the combined sequence. Direct and rollback failures identify the source table as well as relocation index. The existing main-only and PLT-only APIs retain their independent transaction semantics.
 
-## L32-E011 — Deferred linker scope
+## L32-E011 — Real ARM32 fixture execution
+
+The pinned freestanding NDK ARM32 fixture is loadable through the dependency graph, resolvable through GNU-hash graph lookup, relocatable through the combined main+PLT transaction, sealable through GNU RELRO, and executable through the generic A32 CPU adapter on the Linux validation host. The bounded call harness supplies AAPCS r0/r1 arguments, an 8-byte-aligned mapped guest stack, ARM/Thumb state derived from the defining function symbol, and a same-state return sentinel. This proves integrated host execution only and is not Android-device execution evidence.
+
+## L32-E012 — Deferred linker scope
 
 Still outside the accepted implementation: Android namespace/search-path/link-map lifetime policy across independent graph loads; version-aware/process-wide/global-group interposition; lazy binding; broader ARM relocation families; RELA/RELR/Android packed relocations; TLS/IFUNC; constructors/destructors; `dlopen`/`dlsym`/unload; and guest execution of the real ARM32 fixture.
