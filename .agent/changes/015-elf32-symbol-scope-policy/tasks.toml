@@ -17,7 +17,7 @@ acceptance = "Add bounded explicit global-scope ordering for relocation/referenc
 id = "T003"
 status = "implemented"
 depends_on = ["T002"]
-acceptance = "Cover symbolic metadata, global-before-local ordering, requester-first override, invalid global indices, and shared scope ceilings with synthetic tests."
+acceptance = "Cover symbolic metadata, complete explicit-global-index preflight, global-before-local ordering, requester-first override, shared scope ceilings, and direct main-REL plus PLT JUMP_SLOT inheritance with focused tests."
 
 [[tasks]]
 id = "T004"
