@@ -23,6 +23,9 @@ jobs:
       ARM32_JUMP_SLOT_DIR: ${{ github.workspace }}/build-fixtures/jump-slot
       ARM32_JUMP_SLOT_CONSUMER: ${{ github.workspace }}/build-fixtures/jump-slot/liba32android_jump_slot_consumer.so
       ARM32_JUMP_SLOT_PROVIDER: ${{ github.workspace }}/build-fixtures/jump-slot/liba32android_jump_slot_provider.so
+      ARM32_VERSIONED_DIR: ${{ github.workspace }}/build-fixtures/versioned
+      ARM32_VERSIONED_CONSUMER: ${{ github.workspace }}/build-fixtures/versioned/liba32android_versioned_consumer.so
+      ARM32_VERSIONED_PROVIDER: ${{ github.workspace }}/build-fixtures/versioned/liba32android_versioned_provider.so
     steps:
       - uses: actions/checkout@v4
       - name: Install build dependencies
@@ -73,6 +76,20 @@ jobs:
           grep -F '(PLTREL)' build-fixtures/jump-slot-dynamic.txt | grep -F 'REL'
           grep -F 'R_ARM_JUMP_SLOT' build-fixtures/jump-slot-relocations.txt | grep -F 'fixture_import'
           sha256sum "$ARM32_JUMP_SLOT_CONSUMER" "$ARM32_JUMP_SLOT_PROVIDER"
+      - name: Build reproducible real ARM32 versioned-symbol fixture
+        run: |
+          set -euxo pipefail
+          bash tools/fixtures/build_arm32_versioned_fixture.sh "$ANDROID_HOME/ndk/$NDK_VERSION" "$ARM32_VERSIONED_DIR"
+          bash tools/fixtures/build_arm32_versioned_fixture.sh "$ANDROID_HOME/ndk/$NDK_VERSION" build-fixtures/versioned-second
+          cmp "$ARM32_VERSIONED_CONSUMER" build-fixtures/versioned-second/liba32android_versioned_consumer.so
+          cmp "$ARM32_VERSIONED_PROVIDER" build-fixtures/versioned-second/liba32android_versioned_provider.so
+          readelf -VW "$ARM32_VERSIONED_CONSUMER" | tee build-fixtures/versioned-consumer-versions.txt
+          readelf -VW "$ARM32_VERSIONED_PROVIDER" | tee build-fixtures/versioned-provider-versions.txt
+          readelf -rW "$ARM32_VERSIONED_CONSUMER" | tee build-fixtures/versioned-consumer-relocations.txt
+          grep -F 'LIBC' build-fixtures/versioned-consumer-versions.txt
+          grep -F 'LIBC' build-fixtures/versioned-provider-versions.txt
+          grep -F 'R_ARM_JUMP_SLOT' build-fixtures/versioned-consumer-relocations.txt | grep -F 'fixture_versioned_import'
+          sha256sum "$ARM32_VERSIONED_CONSUMER" "$ARM32_VERSIONED_PROVIDER"
       - name: Configure
         run: >-
           cmake -S . -B build -G Ninja
@@ -81,6 +98,8 @@ jobs:
           -DLIBA32ANDROID_ARM32_FIXTURE_PATH="$ARM32_FIXTURE"
           -DLIBA32ANDROID_ARM32_JUMP_SLOT_CONSUMER_PATH="$ARM32_JUMP_SLOT_CONSUMER"
           -DLIBA32ANDROID_ARM32_JUMP_SLOT_PROVIDER_PATH="$ARM32_JUMP_SLOT_PROVIDER"
+          -DLIBA32ANDROID_ARM32_VERSIONED_CONSUMER_PATH="$ARM32_VERSIONED_CONSUMER"
+          -DLIBA32ANDROID_ARM32_VERSIONED_PROVIDER_PATH="$ARM32_VERSIONED_PROVIDER"
       - name: Build
         run: cmake --build build --parallel 2
       - name: Verify shared library name
@@ -104,6 +123,8 @@ jobs:
             tee build-fixtures/execution-evidence.txt
           build/elf32_jump_slot_real_fixture_test "$ARM32_JUMP_SLOT_CONSUMER" "$ARM32_JUMP_SLOT_PROVIDER" |
             tee build-fixtures/jump-slot-apply-evidence.txt
+          build/elf32_versioned_real_fixture_test "$ARM32_VERSIONED_CONSUMER" "$ARM32_VERSIONED_PROVIDER" |
+            tee build-fixtures/versioned-apply-evidence.txt
           readelf -lW "$ARM32_FIXTURE" > build-fixtures/program-headers.txt
           grep -F 'GNU_RELRO' build-fixtures/program-headers.txt
           grep -F 'fixture.pt_gnu_relro.count=1' build-fixtures/loader-evidence.txt
@@ -129,6 +150,10 @@ jobs:
           grep -F 'fixture.jump_slot.provider_calls=1' build-fixtures/jump-slot-apply-evidence.txt
           grep -F 'fixture.jump_slot.mappings_unchanged=true' build-fixtures/jump-slot-apply-evidence.txt
           grep -F 'fixture.jump_slot.status=PASS' build-fixtures/jump-slot-apply-evidence.txt
+          grep -F 'fixture.versioned.object_count=2' build-fixtures/versioned-apply-evidence.txt
+          grep -F 'fixture.versioned.version_name=LIBC' build-fixtures/versioned-apply-evidence.txt
+          grep -F 'fixture.versioned.relocation_count=1' build-fixtures/versioned-apply-evidence.txt
+          grep -F 'fixture.versioned.status=PASS' build-fixtures/versioned-apply-evidence.txt
       - name: Upload real ARM32 fixture evidence
         uses: actions/upload-artifact@v4
         with:
@@ -146,6 +171,12 @@ jobs:
             build-fixtures/jump-slot-dynamic.txt
             build-fixtures/jump-slot-relocations.txt
             build-fixtures/jump-slot-apply-evidence.txt
+            build-fixtures/versioned/liba32android_versioned_consumer.so
+            build-fixtures/versioned/liba32android_versioned_provider.so
+            build-fixtures/versioned-consumer-versions.txt
+            build-fixtures/versioned-provider-versions.txt
+            build-fixtures/versioned-consumer-relocations.txt
+            build-fixtures/versioned-apply-evidence.txt
           if-no-files-found: error
           retention-days: 14
 

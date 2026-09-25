@@ -31,7 +31,9 @@ constexpr std::int32_t kDtJmprel = 23;
 constexpr std::int32_t kDtGnuHash = 0x6ffffef5;
 constexpr std::int32_t kDtVersym = 0x6ffffff0;
 constexpr std::int32_t kDtVerdef = 0x6ffffffc;
+constexpr std::int32_t kDtVerdefnum = 0x6ffffffd;
 constexpr std::int32_t kDtVerneed = 0x6ffffffe;
+constexpr std::int32_t kDtVerneednum = 0x6fffffff;
 
 int fail(const char* message) {
     std::cerr << message << '\n';
@@ -103,10 +105,11 @@ int test_valid_collection() {
 }
 
 int test_duplicate_singletons() {
-    constexpr std::array<std::int32_t, 13> singleton_tags{
+    constexpr std::array<std::int32_t, 18> singleton_tags{
         kDtPltrelsz, kDtHash, kDtStrtab, kDtStrsz, kDtSymtab, kDtSyment,
         kDtRel, kDtRelsz, kDtRelent, kDtPltrel, kDtJmprel, kDtSoname,
-        kDtGnuHash,
+        kDtGnuHash, kDtVersym, kDtVerdef, kDtVerdefnum, kDtVerneed,
+        kDtVerneednum,
     };
 
     for (const std::int32_t tag : singleton_tags) {
@@ -212,22 +215,82 @@ int test_unknown_tags_and_null_boundary() {
     return 0;
 }
 
-int test_symbol_versioning_presence() {
-    for (const std::int32_t tag : {kDtVersym, kDtVerdef, kDtVerneed}) {
-        const std::array entries{
-            Elf32DynamicEntry{tag, 0x1234},
-            Elf32DynamicEntry{kDtNull, 0},
-        };
-        const auto collected = collect_elf32_linker_metadata(entries);
-        if (!collected || !collected.metadata.has_symbol_versioning) {
-            return fail("symbol-version metadata presence was not retained");
-        }
+int test_symbol_versioning_metadata() {
+    const std::array entries{
+        Elf32DynamicEntry{kDtStrtab, 0x100},
+        Elf32DynamicEntry{kDtStrsz, 0x100},
+        Elf32DynamicEntry{kDtSymtab, 0x300},
+        Elf32DynamicEntry{kDtSyment, 16},
+        Elf32DynamicEntry{kDtVersym, 0x400},
+        Elf32DynamicEntry{kDtVerdef, 0x500},
+        Elf32DynamicEntry{kDtVerdefnum, 2},
+        Elf32DynamicEntry{kDtVerneed, 0x600},
+        Elf32DynamicEntry{kDtVerneednum, 3},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
 
-        LinearGuestMemory memory(0x100, 0x1000);
-        const auto built = build_elf32_linker_metadata(memory, 0, entries);
-        if (!built || !built.metadata.has_symbol_versioning) {
-            return fail("validated metadata lost symbol-version presence");
-        }
+    const auto collected = collect_elf32_linker_metadata(entries);
+    if (!collected || !collected.metadata.has_symbol_versioning ||
+        !collected.metadata.version_symbol_address_value.has_value() ||
+        *collected.metadata.version_symbol_address_value != 0x400 ||
+        !collected.metadata.version_definition_table.has_value() ||
+        collected.metadata.version_definition_table->address_value != 0x500 ||
+        collected.metadata.version_definition_table->count != 2 ||
+        !collected.metadata.version_requirement_table.has_value() ||
+        collected.metadata.version_requirement_table->address_value != 0x600 ||
+        collected.metadata.version_requirement_table->count != 3) {
+        return fail("symbol-version metadata was not collected exactly");
+    }
+
+    LinearGuestMemory memory(0x2000, 0x1000);
+    const auto built = build_elf32_linker_metadata(memory, 0x1000, entries);
+    if (!built || !built.metadata.has_symbol_versioning ||
+        !built.metadata.version_symbol_table.has_value() ||
+        built.metadata.version_symbol_table->guest_address != 0x1400 ||
+        !built.metadata.version_definition_table.has_value() ||
+        built.metadata.version_definition_table->guest_address != 0x1500 ||
+        built.metadata.version_definition_table->count != 2 ||
+        !built.metadata.version_requirement_table.has_value() ||
+        built.metadata.version_requirement_table->guest_address != 0x1600 ||
+        built.metadata.version_requirement_table->count != 3) {
+        return fail("symbol-version metadata was not rebased exactly once");
+    }
+
+    const std::array incomplete_def{
+        Elf32DynamicEntry{kDtVerdef, 0x500},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (collect_elf32_linker_metadata(incomplete_def).error !=
+        Elf32LinkerMetadataError::IncompleteVersionDefinitionTable) {
+        return fail("incomplete VERDEF group was not rejected");
+    }
+
+    const std::array incomplete_need{
+        Elf32DynamicEntry{kDtVerneednum, 1},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (collect_elf32_linker_metadata(incomplete_need).error !=
+        Elf32LinkerMetadataError::IncompleteVersionRequirementTable) {
+        return fail("incomplete VERNEED group was not rejected");
+    }
+
+    const std::array versym_without_symtab{
+        Elf32DynamicEntry{kDtVersym, 0x400},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (collect_elf32_linker_metadata(versym_without_symtab).error !=
+        Elf32LinkerMetadataError::IncompleteSymbolTable) {
+        return fail("DT_VERSYM without DYNSYM metadata was not rejected");
+    }
+
+    const std::array verdef_without_strings{
+        Elf32DynamicEntry{kDtVerdef, 0x500},
+        Elf32DynamicEntry{kDtVerdefnum, 1},
+        Elf32DynamicEntry{kDtNull, 0},
+    };
+    if (collect_elf32_linker_metadata(verdef_without_strings).error !=
+        Elf32LinkerMetadataError::IncompleteStringTable) {
+        return fail("VERDEF without STRTAB metadata was not rejected");
     }
     return 0;
 }
@@ -507,7 +570,7 @@ int main() {
     if (const int status = test_incomplete_groups(); status != 0) return status;
     if (const int status = test_invalid_plt_rel_type(); status != 0) return status;
     if (const int status = test_unknown_tags_and_null_boundary(); status != 0) return status;
-    if (const int status = test_symbol_versioning_presence(); status != 0) return status;
+    if (const int status = test_symbol_versioning_metadata(); status != 0) return status;
     if (const int status = test_valid_rebasing_and_zero_bias(); status != 0) return status;
     if (const int status = test_address_and_range_overflow(); status != 0) return status;
     if (const int status = test_unreadable_ranges(); status != 0) return status;

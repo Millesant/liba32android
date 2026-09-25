@@ -289,10 +289,6 @@ resolve_relocation_references_for_table(
     }
 
     const Elf32LoadedDependencyObject& object = graph.objects[object_index];
-    if (object.linker_metadata.has_symbol_versioning) {
-        return resolve_failure(
-            Elf32RelocationResolveError::UnsupportedVersioning, object_index);
-    }
 
     const Elf32SymbolIndexResult index =
         build_elf32_symbol_index(memory, object.linker_metadata,
@@ -389,8 +385,9 @@ resolve_relocation_references_for_table(
         reference.symbol = symbol;
 
         const Elf32GraphSymbolLookupResult lookup =
-            lookup_elf32_graph_symbol(memory, graph, object_index,
-                                      name.value, options.symbols);
+            lookup_elf32_graph_symbol_for_reference(
+                memory, graph, object_index, entry.symbol_index,
+                name.value, options.symbols);
         if (lookup) {
             reference.defining_symbol = lookup.symbol.symbol.symbol;
             reference.symbol_value = lookup.symbol.symbol.guest_value;

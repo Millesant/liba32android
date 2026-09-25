@@ -115,6 +115,11 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
     std::optional<std::uint32_t> jmprel;
     std::optional<std::uint32_t> pltrelsz;
     std::optional<std::uint32_t> pltrel;
+    std::optional<std::uint32_t> versym;
+    std::optional<std::uint32_t> verdef;
+    std::optional<std::uint32_t> verdefnum;
+    std::optional<std::uint32_t> verneed;
+    std::optional<std::uint32_t> verneednum;
     std::optional<std::uint32_t> soname;
 
     Elf32CollectedLinkerMetadataResult result;
@@ -167,11 +172,19 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
             accepted = assign_singleton(gnu_hash, entry.value);
             break;
         case kDtVersym:
+            accepted = assign_singleton(versym, entry.value);
+            break;
         case kDtVerdef:
+            accepted = assign_singleton(verdef, entry.value);
+            break;
         case kDtVerdefnum:
+            accepted = assign_singleton(verdefnum, entry.value);
+            break;
         case kDtVerneed:
+            accepted = assign_singleton(verneed, entry.value);
+            break;
         case kDtVerneednum:
-            result.metadata.has_symbol_versioning = true;
+            accepted = assign_singleton(verneednum, entry.value);
             break;
         default:
             break;
@@ -210,6 +223,21 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
         return collection_failure(Elf32LinkerMetadataError::InvalidPltRelType);
     }
 
+    if (!pair_complete(verdef, verdefnum)) {
+        return collection_failure(
+            Elf32LinkerMetadataError::IncompleteVersionDefinitionTable);
+    }
+    if (!pair_complete(verneed, verneednum)) {
+        return collection_failure(
+            Elf32LinkerMetadataError::IncompleteVersionRequirementTable);
+    }
+    if (versym.has_value() && !symtab.has_value()) {
+        return collection_failure(Elf32LinkerMetadataError::IncompleteSymbolTable);
+    }
+    if ((verdef.has_value() || verneed.has_value()) && !strtab.has_value()) {
+        return collection_failure(Elf32LinkerMetadataError::IncompleteStringTable);
+    }
+
     if (strtab.has_value()) {
         result.metadata.string_table = Elf32CollectedStringTableMetadata{
             .address_value = *strtab,
@@ -246,6 +274,23 @@ Elf32CollectedLinkerMetadataResult collect_elf32_linker_metadata(
             .entry_size = kElf32RelEntrySize,
         };
     }
+    result.metadata.version_symbol_address_value = versym;
+    if (verdef.has_value()) {
+        result.metadata.version_definition_table =
+            Elf32CollectedVersionTableMetadata{
+                .address_value = *verdef,
+                .count = *verdefnum,
+            };
+    }
+    if (verneed.has_value()) {
+        result.metadata.version_requirement_table =
+            Elf32CollectedVersionTableMetadata{
+                .address_value = *verneed,
+                .count = *verneednum,
+            };
+    }
+    result.metadata.has_symbol_versioning =
+        versym.has_value() || verdef.has_value() || verneed.has_value();
     result.metadata.soname_offset = soname;
     return result;
 }
@@ -347,6 +392,58 @@ Elf32LinkerMetadataResult build_elf32_linker_metadata(
         return validation_failure(*error);
     }
 
+    if (collected.metadata.version_symbol_address_value.has_value()) {
+        std::uint32_t guest_address = 0;
+        if (!rebase_address(*collected.metadata.version_symbol_address_value,
+                            load_bias, guest_address)) {
+            return validation_failure(Elf32LinkerMetadataError::AddressOverflow);
+        }
+        if (!range_fits(guest_address, 2U)) {
+            return validation_failure(Elf32LinkerMetadataError::RangeOverflow);
+        }
+        if (!readable_range(memory, guest_address, 2U)) {
+            return validation_failure(Elf32LinkerMetadataError::ReadFailed);
+        }
+        result.metadata.version_symbol_table =
+            Elf32VersionSymbolTableMetadata{.guest_address = guest_address};
+    }
+
+    const auto build_version_table =
+        [&](const std::optional<Elf32CollectedVersionTableMetadata>& input,
+            std::uint32_t fixed_record_size,
+            std::optional<Elf32VersionTableMetadata>& output)
+            -> std::optional<Elf32LinkerMetadataError> {
+        if (!input.has_value()) return std::nullopt;
+        std::uint32_t guest_address = 0;
+        if (!rebase_address(input->address_value, load_bias, guest_address)) {
+            return Elf32LinkerMetadataError::AddressOverflow;
+        }
+        if (input->count != 0) {
+            if (!range_fits(guest_address, fixed_record_size)) {
+                return Elf32LinkerMetadataError::RangeOverflow;
+            }
+            if (!readable_range(memory, guest_address, fixed_record_size)) {
+                return Elf32LinkerMetadataError::ReadFailed;
+            }
+        }
+        output = Elf32VersionTableMetadata{
+            .guest_address = guest_address,
+            .count = input->count,
+        };
+        return std::nullopt;
+    };
+
+    if (const auto error = build_version_table(
+            collected.metadata.version_definition_table, 20U,
+            result.metadata.version_definition_table)) {
+        return validation_failure(*error);
+    }
+    if (const auto error = build_version_table(
+            collected.metadata.version_requirement_table, 16U,
+            result.metadata.version_requirement_table)) {
+        return validation_failure(*error);
+    }
+
     if (const auto& rel_table = collected.metadata.rel_table) {
         if (rel_table->entry_size != kElf32RelEntrySize) {
             return validation_failure(Elf32LinkerMetadataError::InvalidRelEntrySize);
@@ -406,6 +503,8 @@ const char* to_string(Elf32LinkerMetadataError error) noexcept {
     case Elf32LinkerMetadataError::IncompleteSymbolTable: return "incomplete_symbol_table";
     case Elf32LinkerMetadataError::IncompleteRelTable: return "incomplete_rel_table";
     case Elf32LinkerMetadataError::IncompletePltRelTable: return "incomplete_plt_rel_table";
+    case Elf32LinkerMetadataError::IncompleteVersionDefinitionTable: return "incomplete_version_definition_table";
+    case Elf32LinkerMetadataError::IncompleteVersionRequirementTable: return "incomplete_version_requirement_table";
     case Elf32LinkerMetadataError::AddressOverflow: return "address_overflow";
     case Elf32LinkerMetadataError::RangeOverflow: return "range_overflow";
     case Elf32LinkerMetadataError::ReadFailed: return "read_failed";

@@ -1,5 +1,6 @@
 #include "elf/elf32_symbol_lookup.h"
 
+#include "elf/elf32_symbol_versioning.h"
 #include "elf/internal/elf32_bytes.h"
 
 #include <algorithm>
@@ -57,6 +58,38 @@ constexpr std::size_t kReadValidationChunkSize = 256;
     result.error = error;
     result.failing_object = failing_object;
     return result;
+}
+
+[[nodiscard]] Elf32SymbolVersionOptions version_options(
+    const Elf32SymbolLookupOptions& options) noexcept {
+    return Elf32SymbolVersionOptions{
+        .max_records = options.max_version_records,
+        .max_name_bytes = options.max_name_bytes,
+    };
+}
+
+[[nodiscard]] Elf32SymbolLookupError version_lookup_error(
+    Elf32SymbolVersionError error) noexcept {
+    switch (error) {
+    case Elf32SymbolVersionError::None:
+        return Elf32SymbolLookupError::None;
+    case Elf32SymbolVersionError::InvalidOptions:
+        return Elf32SymbolLookupError::InvalidOptions;
+    case Elf32SymbolVersionError::ReadFailed:
+        return Elf32SymbolLookupError::VersionReadFailed;
+    case Elf32SymbolVersionError::StringReadFailed:
+        return Elf32SymbolLookupError::StringReadFailed;
+    case Elf32SymbolVersionError::RecordLimitExceeded:
+        return Elf32SymbolLookupError::VersionRecordLimitExceeded;
+    case Elf32SymbolVersionError::VersionIndexNotFound:
+        return Elf32SymbolLookupError::VersionIndexNotFound;
+    case Elf32SymbolVersionError::DependencyNotFound:
+        return Elf32SymbolLookupError::VersionDependencyNotFound;
+    case Elf32SymbolVersionError::InvalidMetadata:
+    case Elf32SymbolVersionError::InvalidRecord:
+        return Elf32SymbolLookupError::InvalidVersionMetadata;
+    }
+    return Elf32SymbolLookupError::InvalidVersionMetadata;
 }
 
 [[nodiscard]] bool read_u32(const memory::GuestMemory& memory,
@@ -473,13 +506,14 @@ Elf32SymbolReadResult read_elf32_symbol_entry(
     return result;
 }
 
-Elf32ObjectSymbolLookupResult lookup_elf32_symbol(
+static Elf32ObjectSymbolLookupResult lookup_elf32_symbol_impl(
     const memory::GuestMemory& memory,
     std::uint32_t load_bias,
     const Elf32LinkerMetadata& metadata,
     const Elf32SymbolIndex& index,
     std::string_view name,
-    const Elf32SymbolLookupOptions& options) {
+    const Elf32SymbolLookupOptions& options,
+    const std::optional<Elf32SymbolVersionRequirement>& requirement) {
     if (options.max_name_bytes == 0) {
         return lookup_failure(Elf32SymbolLookupError::InvalidOptions);
     }
@@ -492,9 +526,9 @@ Elf32ObjectSymbolLookupResult lookup_elf32_symbol(
         (!index.gnu_hash.has_value() && !index.sysv_hash.has_value())) {
         return lookup_failure(Elf32SymbolLookupError::InvalidMetadata);
     }
-    if (metadata.has_symbol_versioning) {
-        return lookup_failure(Elf32SymbolLookupError::UnsupportedVersioning);
-    }
+    Elf32LoadedDependencyObject version_object;
+    version_object.load.load_bias = load_bias;
+    version_object.linker_metadata = metadata;
 
     const auto evaluate_candidate =
         [&](std::uint32_t symbol_index)
@@ -565,6 +599,21 @@ Elf32ObjectSymbolLookupResult lookup_elf32_symbol(
         }
         if (symbol.type == kSttGnuIfunc) {
             return lookup_failure(Elf32SymbolLookupError::UnsupportedType);
+        }
+
+        const auto version_match = match_elf32_symbol_version(
+            memory,
+            version_object,
+            symbol_index,
+            requirement,
+            version_options(options));
+        if (!version_match) {
+            return lookup_failure(
+                version_lookup_error(version_match.error),
+                version_match.string_error);
+        }
+        if (!version_match.matches) {
+            return std::nullopt;
         }
 
         std::uint32_t guest_value = symbol.value;
@@ -677,12 +726,24 @@ Elf32ObjectSymbolLookupResult lookup_elf32_symbol(
     return lookup_failure(Elf32SymbolLookupError::SymbolNotFound);
 }
 
-Elf32GraphSymbolLookupResult lookup_elf32_graph_symbol(
+Elf32ObjectSymbolLookupResult lookup_elf32_symbol(
+    const memory::GuestMemory& memory,
+    std::uint32_t load_bias,
+    const Elf32LinkerMetadata& metadata,
+    const Elf32SymbolIndex& index,
+    std::string_view name,
+    const Elf32SymbolLookupOptions& options) {
+    return lookup_elf32_symbol_impl(
+        memory, load_bias, metadata, index, name, options, std::nullopt);
+}
+
+static Elf32GraphSymbolLookupResult lookup_elf32_graph_symbol_impl(
     const memory::GuestMemory& memory,
     const Elf32DependencyGraph& graph,
     std::size_t start_object,
     std::string_view name,
-    const Elf32SymbolLookupOptions& options) {
+    const Elf32SymbolLookupOptions& options,
+    const std::optional<Elf32SymbolVersionRequirement>& requirement) {
     if (options.max_scope_objects == 0) {
         return graph_failure(Elf32GraphSymbolLookupError::InvalidOptions);
     }
@@ -728,9 +789,10 @@ Elf32GraphSymbolLookupResult lookup_elf32_graph_symbol(
             }
 
             const Elf32ObjectSymbolLookupResult lookup =
-                lookup_elf32_symbol(
+                lookup_elf32_symbol_impl(
                     memory, object.load.load_bias,
-                    object.linker_metadata, index.index, name, options);
+                    object.linker_metadata, index.index, name, options,
+                    requirement);
             if (lookup) {
                 Elf32GraphSymbolLookupResult result;
                 result.symbol.object_index = object_index;
@@ -760,6 +822,46 @@ Elf32GraphSymbolLookupResult lookup_elf32_graph_symbol(
     }
 
     return graph_failure(Elf32GraphSymbolLookupError::SymbolNotFound);
+}
+
+Elf32GraphSymbolLookupResult lookup_elf32_graph_symbol(
+    const memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t start_object,
+    std::string_view name,
+    const Elf32SymbolLookupOptions& options) {
+    return lookup_elf32_graph_symbol_impl(
+        memory, graph, start_object, name, options, std::nullopt);
+}
+
+Elf32GraphSymbolLookupResult lookup_elf32_graph_symbol_for_reference(
+    const memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t start_object,
+    std::uint32_t reference_symbol_index,
+    std::string_view name,
+    const Elf32SymbolLookupOptions& options) {
+    if (options.max_scope_objects == 0) {
+        return graph_failure(Elf32GraphSymbolLookupError::InvalidOptions);
+    }
+    if (start_object >= graph.objects.size()) {
+        return graph_failure(
+            Elf32GraphSymbolLookupError::InvalidGraphStart, start_object);
+    }
+
+    const auto version = resolve_elf32_symbol_version_requirement(
+        memory, graph, start_object, reference_symbol_index,
+        version_options(options));
+    if (!version) {
+        auto result = graph_failure(
+            Elf32GraphSymbolLookupError::ObjectLookupFailed, start_object);
+        result.lookup_error = version_lookup_error(version.error);
+        result.string_error = version.string_error;
+        return result;
+    }
+
+    return lookup_elf32_graph_symbol_impl(
+        memory, graph, start_object, name, options, version.requirement);
 }
 
 const char* to_string(Elf32SymbolIndexError error) noexcept {
@@ -801,6 +903,11 @@ const char* to_string(Elf32SymbolLookupError error) noexcept {
     case Elf32SymbolLookupError::InvalidMetadata: return "invalid_metadata";
     case Elf32SymbolLookupError::InvalidLookupName: return "invalid_lookup_name";
     case Elf32SymbolLookupError::UnsupportedVersioning: return "unsupported_versioning";
+    case Elf32SymbolLookupError::VersionReadFailed: return "version_read_failed";
+    case Elf32SymbolLookupError::InvalidVersionMetadata: return "invalid_version_metadata";
+    case Elf32SymbolLookupError::VersionRecordLimitExceeded: return "version_record_limit_exceeded";
+    case Elf32SymbolLookupError::VersionIndexNotFound: return "version_index_not_found";
+    case Elf32SymbolLookupError::VersionDependencyNotFound: return "version_dependency_not_found";
     case Elf32SymbolLookupError::HashReadFailed: return "hash_read_failed";
     case Elf32SymbolLookupError::HashIndexOutOfRange: return "hash_index_out_of_range";
     case Elf32SymbolLookupError::InvalidHashChain: return "invalid_hash_chain";

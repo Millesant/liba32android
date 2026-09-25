@@ -761,8 +761,8 @@ int test_version_string_and_chain_failures() {
         md.has_symbol_versioning = true;
         if (lookup_elf32_symbol(memory, 0x4000, md, index.index,
                                 "target", options()).error !=
-            Elf32SymbolLookupError::UnsupportedVersioning) {
-            return fail("versioned name-only lookup was not rejected");
+            Elf32SymbolLookupError::InvalidVersionMetadata) {
+            return fail("inconsistent version marker was not rejected");
         }
         if (lookup_elf32_symbol(memory, 0x4000, metadata(true, false),
                                 index.index, "", options()).error !=

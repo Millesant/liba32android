@@ -17,6 +17,8 @@ enum class Elf32LinkerMetadataError : std::uint8_t {
     IncompleteSymbolTable,
     IncompleteRelTable,
     IncompletePltRelTable,
+    IncompleteVersionDefinitionTable,
+    IncompleteVersionRequirementTable,
     AddressOverflow,
     RangeOverflow,
     ReadFailed,
@@ -48,6 +50,11 @@ struct Elf32CollectedRelTableMetadata {
     std::uint32_t entry_size{};
 };
 
+struct Elf32CollectedVersionTableMetadata {
+    std::uint32_t address_value{};
+    std::uint32_t count{};
+};
+
 struct Elf32CollectedLinkerMetadata {
     std::optional<Elf32CollectedStringTableMetadata> string_table;
     std::optional<Elf32CollectedSymbolTableMetadata> symbol_table;
@@ -57,6 +64,9 @@ struct Elf32CollectedLinkerMetadata {
     // AArch32 PLT relocations are accepted only in Elf32_Rel form. This is a
     // validated descriptor only; JUMP_SLOT/lazy-binding semantics are downstream.
     std::optional<Elf32CollectedRelTableMetadata> plt_rel_table;
+    std::optional<std::uint32_t> version_symbol_address_value;
+    std::optional<Elf32CollectedVersionTableMetadata> version_definition_table;
+    std::optional<Elf32CollectedVersionTableMetadata> version_requirement_table;
     std::optional<std::uint32_t> soname_offset;
     std::vector<std::uint32_t> needed_offsets;
     bool has_symbol_versioning{};
@@ -94,6 +104,15 @@ struct Elf32RelTableMetadata {
     std::uint32_t entry_size{};
 };
 
+struct Elf32VersionSymbolTableMetadata {
+    std::uint32_t guest_address{};
+};
+
+struct Elf32VersionTableMetadata {
+    std::uint32_t guest_address{};
+    std::uint32_t count{};
+};
+
 struct Elf32LinkerMetadata {
     std::optional<Elf32StringTableMetadata> string_table;
     std::optional<Elf32SymbolTableMetadata> symbol_table;
@@ -103,11 +122,14 @@ struct Elf32LinkerMetadata {
     // Guest-only DT_JMPREL/DT_PLTRELSZ descriptor after DT_PLTREL == DT_REL
     // validation. No relocation-entry or JUMP_SLOT semantics are implied.
     std::optional<Elf32RelTableMetadata> plt_rel_table;
+    // GNU/SysV symbol-version descriptors remain guest-only. DT_VERSYM has
+    // one 16-bit entry per dynamic symbol; VERDEF/VERNEED are bounded linked
+    // record sets interpreted by elf32_symbol_versioning.
+    std::optional<Elf32VersionSymbolTableMetadata> version_symbol_table;
+    std::optional<Elf32VersionTableMetadata> version_definition_table;
+    std::optional<Elf32VersionTableMetadata> version_requirement_table;
     std::optional<std::uint32_t> soname_offset;
     std::vector<std::uint32_t> needed_offsets;
-    // True when DT_VERSYM/DT_VERDEF/DT_VERNEED metadata is declared. The
-    // first symbol-lookup feature records the boundary but rejects versioned
-    // name-only lookup until version matching has its own contract.
     bool has_symbol_versioning{};
 };
 

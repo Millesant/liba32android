@@ -23,6 +23,9 @@ struct Elf32SymbolLookupOptions {
     std::uint32_t max_gnu_bloom_words{};
     std::uint32_t max_scope_objects{};
     std::uint32_t max_name_bytes{};
+    // Aggregate ceiling for VERNEED/VERNAUX/VERDEF records when version
+    // matching is required. Unversioned objects do not consume this budget.
+    std::uint32_t max_version_records{};
 };
 
 struct Elf32SysvHashIndex {
@@ -119,6 +122,11 @@ enum class Elf32SymbolLookupError : std::uint8_t {
     InvalidMetadata,
     InvalidLookupName,
     UnsupportedVersioning,
+    VersionReadFailed,
+    InvalidVersionMetadata,
+    VersionRecordLimitExceeded,
+    VersionIndexNotFound,
+    VersionDependencyNotFound,
     HashReadFailed,
     HashIndexOutOfRange,
     InvalidHashChain,
@@ -215,6 +223,19 @@ struct Elf32GraphSymbolLookupResult {
     const memory::GuestMemory& memory,
     const Elf32DependencyGraph& graph,
     std::size_t start_object,
+    std::string_view name,
+    const Elf32SymbolLookupOptions& options);
+
+// Resolve one relocation/reference symbol using its requester's DT_VERSYM
+// entry. Indices 0/1 behave as unversioned requests; higher indices are
+// resolved through bounded VERNEED/VERDEF metadata before the normal graph
+// scope is searched.
+[[nodiscard]] Elf32GraphSymbolLookupResult
+lookup_elf32_graph_symbol_for_reference(
+    const memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t start_object,
+    std::uint32_t reference_symbol_index,
     std::string_view name,
     const Elf32SymbolLookupOptions& options);
 

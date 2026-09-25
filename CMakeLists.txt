@@ -27,6 +27,10 @@ set(LIBA32ANDROID_ARM32_JUMP_SLOT_CONSUMER_PATH "" CACHE FILEPATH
     "Optional generated ARM32 Android JUMP_SLOT consumer DSO used by feature-009 integration")
 set(LIBA32ANDROID_ARM32_JUMP_SLOT_PROVIDER_PATH "" CACHE FILEPATH
     "Optional generated ARM32 Android JUMP_SLOT provider DSO used by feature-009 integration")
+set(LIBA32ANDROID_ARM32_VERSIONED_CONSUMER_PATH "" CACHE FILEPATH
+    "Optional generated ARM32 Android versioned-symbol consumer DSO used by feature-014 integration")
+set(LIBA32ANDROID_ARM32_VERSIONED_PROVIDER_PATH "" CACHE FILEPATH
+    "Optional generated ARM32 Android versioned-symbol provider DSO used by feature-014 integration")
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/LibA32AndroidDependencies.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/LibA32AndroidRuntime.cmake)

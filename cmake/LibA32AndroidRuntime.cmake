@@ -10,6 +10,7 @@ add_library(liba32android SHARED
     src/elf/linking/elf32_dependency_resolver.cpp
     src/elf/linking/elf32_relocation.cpp
     src/elf/linking/elf32_symbol_lookup.cpp
+    src/elf/linking/elf32_symbol_versioning.cpp
     src/elf/hardening/elf32_relro.cpp
     src/memory/guest_memory.cpp
     src/memory/guest_va_allocator.cpp

@@ -537,10 +537,12 @@ int test_reference_validation_failures() {
             return fail("could not stage versioned reference case");
         }
         graph.objects[0].linker_metadata.has_symbol_versioning = true;
-        if (resolve_elf32_rel_relocation_references(
-                memory, graph, 0, options()).error !=
-            Elf32RelocationResolveError::UnsupportedVersioning) {
-            return fail("versioned relocation requester was not rejected");
+        const auto result = resolve_elf32_rel_relocation_references(
+            memory, graph, 0, options());
+        if (result.error != Elf32RelocationResolveError::SymbolLookupFailed ||
+            result.lookup_error !=
+                liba32android::elf::Elf32SymbolLookupError::InvalidVersionMetadata) {
+            return fail("inconsistent relocation version marker was not rejected");
         }
     }
     return 0;
