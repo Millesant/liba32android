@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -26,6 +27,9 @@ struct Elf32SymbolLookupOptions {
     // Aggregate ceiling for VERNEED/VERNAUX/VERDEF records when version
     // matching is required. Unversioned objects do not consume this budget.
     std::uint32_t max_version_records{};
+    // Ordered caller-owned process/global-group candidates used only by
+    // relocation/reference lookup. Plain graph lookup remains graph-local.
+    std::span<const std::size_t> global_scope_objects{};
 };
 
 struct Elf32SysvHashIndex {
@@ -160,6 +164,7 @@ enum class Elf32GraphSymbolLookupError : std::uint8_t {
     InvalidOptions,
     InvalidGraphStart,
     InvalidGraphEdge,
+    InvalidGlobalScopeObject,
     ScopeLimitExceeded,
     IndexBuildFailed,
     ObjectLookupFailed,
@@ -230,8 +235,11 @@ struct Elf32GraphSymbolLookupResult {
 
 // Resolve one relocation/reference symbol using its requester's DT_VERSYM
 // entry. Indices 0/1 behave as unversioned requests; higher indices are
-// resolved through bounded VERNEED/VERDEF metadata before the normal graph
-// scope is searched.
+// resolved through bounded VERNEED/VERDEF metadata. If global_scope_objects
+// is non-empty, ordinary requesters search that ordered scope before their
+// graph-local BFS closure. DT_SYMBOLIC/DF_SYMBOLIC requesters search themselves
+// first, then the explicit global scope, then the remaining local closure.
+// Every unique searched object consumes the same max_scope_objects budget.
 [[nodiscard]] Elf32GraphSymbolLookupResult
 lookup_elf32_graph_symbol_for_reference(
     const memory::GuestMemory& memory,
