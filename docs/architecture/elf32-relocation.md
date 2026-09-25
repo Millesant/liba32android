@@ -17,7 +17,8 @@ It consumes only logical 32-bit guest state:
 The public APIs keep the two table contracts separate:
 
 - `build_elf32_rel_relocation_plan` / `resolve_elf32_rel_relocation_references` / `apply_elf32_rel_relocations` operate only on the main `DT_REL` table;
-- `build_elf32_plt_rel_relocation_plan` / `resolve_elf32_plt_rel_relocation_references` / `apply_elf32_plt_rel_relocations` operate only on the feature-008 PLT REL descriptor.
+- `build_elf32_plt_rel_relocation_plan` / `resolve_elf32_plt_rel_relocation_references` / `apply_elf32_plt_rel_relocations` operate only on the feature-008 PLT REL descriptor;
+- `apply_elf32_combined_relocations` fully prepares both tables and applies main then PLT writes as one rollback domain.
 
 Internal decoding, reference validation, and transactional-write mechanics are shared so the two paths do not drift, but each table has its own accepted relocation-type policy.
 
@@ -39,7 +40,7 @@ For main REL, the captured word is both rollback state and the implicit REL adde
 
 For PLT `R_ARM_JUMP_SLOT`, the captured word is rollback state only. Eager JUMP_SLOT semantics never treat the in-place word as an addend.
 
-Missing main or PLT descriptors independently succeed as empty work. Main and PLT tables are not combined into one implicit transaction.
+Missing main or PLT descriptors independently succeed as empty work. The existing per-table APIs remain independent transactions. The explicit combined API prepares both tables before mutation and rejects a write target appearing in both tables.
 
 ## Reference resolution
 
@@ -92,7 +93,7 @@ First, the complete selected table is decoded and every semantic condition is ch
 
 No relocation write occurs before that phase completes.
 
-Second, writes occur through `GuestMemory::write` in selected-table order. If a later write fails, earlier successful relocation-owned writes are restored in reverse order from captured original words. Restoration is reread and verified.
+Second, writes occur through `GuestMemory::write`. Single-table calls preserve selected-table order; the combined call uses main-table order followed by PLT-table order. If a later write fails, earlier successful writes are restored in reverse order across the active transaction. Restoration is reread and verified.
 
 A successful rollback returns the primary target-write failure with no published successful application writes. If restoration itself fails, the result is `RollbackFailed`, preserves the primary `TargetWriteFailed`, and identifies the rollback-failing relocation when available.
 
@@ -104,7 +105,8 @@ The layer never changes guest page permissions to make a relocation succeed.
 - All guest bytes are accessed through `GuestMemory`.
 - The graph is borrowed and immutable for one plan/resolve/apply call.
 - Plans own only decoded metadata plus original/final 32-bit words and bounded reference state.
-- Main and PLT APIs remain separate even though implementation helpers are shared.
+- Main and PLT single-table APIs remain separate; the combined API is opt-in and does not change their transaction boundaries.
+- Combined preparation rejects cross-table duplicate write targets before mutation.
 - Failure before the write phase leaves relocation targets unchanged.
 - Main-`DT_REL` feature-007 formulas remain unchanged by feature 009.
 
@@ -154,7 +156,6 @@ The run uploaded artifact `arm32-loader-fixture-815386149732201ce5b64e1b5ad20707
 The current relocation layer still does not implement:
 
 - lazy PLT binding, resolver trampolines, or `DT_PLTGOT` runtime protocol;
-- an atomic combined main-REL + PLT-REL transaction;
 - REL32, COPY, instruction relocations, RELA, RELR, Android packed relocations, or APS2;
 - symbol-version matching or requester-specific protected/`DT_SYMBOLIC` self-binding;
 - Android namespaces, preloads, global groups, or process-wide interposition policy;

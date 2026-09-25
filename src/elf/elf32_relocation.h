@@ -18,6 +18,11 @@ inline constexpr std::uint8_t kRArmGlobDat = 21;
 inline constexpr std::uint8_t kRArmJumpSlot = 22;
 inline constexpr std::uint8_t kRArmRelative = 23;
 
+enum class Elf32RelocationTable : std::uint8_t {
+    MainRel = 0,
+    PltRel,
+};
+
 // Caller-selected bounds for one relocation-table operation. max_relocations
 // applies independently to the selected main REL or PLT REL table. Symbol
 // limits are shared by the reference-resolution/application stages.
@@ -129,6 +134,7 @@ struct Elf32RelocationWrite {
     std::uint32_t place_guest_address{};
     std::uint32_t original_word{};
     std::uint32_t final_word{};
+    Elf32RelocationTable table{Elf32RelocationTable::MainRel};
 };
 
 struct Elf32RelocationApplication {
@@ -141,6 +147,7 @@ enum class Elf32RelocationApplyError : std::uint8_t {
     ResolveFailed,
     InvalidRelativeSymbol,
     InvalidResolvedEntry,
+    DuplicateTargetAcrossTables,
     TargetWriteFailed,
     RollbackFailed,
 };
@@ -153,6 +160,8 @@ struct Elf32RelocationApplyResult {
     Elf32RelocationResolutionResult resolution_failure;
     std::optional<std::uint32_t> failing_relocation;
     std::optional<std::uint32_t> rollback_failing_relocation;
+    std::optional<Elf32RelocationTable> failing_table;
+    std::optional<Elf32RelocationTable> rollback_failing_table;
     // Populated only on complete success. Failure never publishes a partial
     // successful application.
     Elf32RelocationApplication application;
@@ -249,6 +258,16 @@ resolve_elf32_plt_rel_relocation_references(
 // function does not implement lazy binding, DT_PLTGOT resolver state, guest
 // execution, or page-permission changes.
 [[nodiscard]] Elf32RelocationApplyResult apply_elf32_plt_rel_relocations(
+    memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t object_index,
+    const Elf32RelocationOptions& options);
+
+// Atomically prepare and apply the supported main REL and eager PLT REL
+// tables for one object. Both tables complete semantic validation before the
+// first write. Writes run main then PLT and roll back as one reverse-ordered
+// transaction. Cross-table duplicate targets fail before mutation.
+[[nodiscard]] Elf32RelocationApplyResult apply_elf32_combined_relocations(
     memory::GuestMemory& memory,
     const Elf32DependencyGraph& graph,
     std::size_t object_index,

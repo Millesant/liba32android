@@ -17,8 +17,10 @@ using liba32android::elf::Elf32HashTableMetadata;
 using liba32android::elf::Elf32RelTableMetadata;
 using liba32android::elf::Elf32RelocationApplyError;
 using liba32android::elf::Elf32RelocationOptions;
+using liba32android::elf::Elf32RelocationTable;
 using liba32android::elf::Elf32StringTableMetadata;
 using liba32android::elf::Elf32SymbolTableMetadata;
+using liba32android::elf::apply_elf32_combined_relocations;
 using liba32android::elf::apply_elf32_plt_rel_relocations;
 using liba32android::elf::apply_elf32_rel_relocations;
 using liba32android::elf::kRArmAbs32;
@@ -111,6 +113,19 @@ Elf32DependencyGraph graph_with_plt_rel(std::uint32_t load_bias,
             .size = count * 8U,
             .entry_size = 8,
         };
+    return graph;
+}
+
+Elf32DependencyGraph graph_with_both(std::uint32_t load_bias,
+                                     std::uint32_t rel_count,
+                                     std::uint32_t plt_count) {
+    Elf32DependencyGraph graph = graph_with_rel(load_bias, rel_count);
+    graph.objects[0].identity = "combined-relocation-apply-test";
+    graph.objects[0].linker_metadata.plt_rel_table = Elf32RelTableMetadata{
+        .guest_address = kPltRelTable,
+        .size = plt_count * 8U,
+        .entry_size = 8,
+    };
     return graph;
 }
 
@@ -543,6 +558,114 @@ int test_plt_rollback_failure_is_explicit() {
     return 0;
 }
 
+
+int test_combined_applies_main_then_plt() {
+    LinearGuestMemory memory(0x20000, kMemoryBase);
+    auto graph = graph_with_both(0x1000, 1, 1);
+    if (!stage_symbol(memory, graph.objects[0], "target", 0x1000, 0x234, 1, 1, 2) ||
+        !write_rel(memory, 0, 0x11000, 0, kRArmRelative) ||
+        !write_rel_at(memory, kPltRelTable, 0, 0x11004, 1, kRArmJumpSlot) ||
+        !write_u32(memory, kTarget0, 0x10U) || !write_u32(memory, kTarget1, 0x20U)) {
+        return fail("could not stage combined success case");
+    }
+    const auto result = apply_elf32_combined_relocations(memory, graph, 0, options());
+    std::uint32_t first = 0, second = 0;
+    if (!result || result.application.writes.size() != 2 ||
+        result.application.writes[0].table != Elf32RelocationTable::MainRel ||
+        result.application.writes[0].final_word != 0x1010U ||
+        result.application.writes[1].table != Elf32RelocationTable::PltRel ||
+        result.application.writes[1].final_word != 0x1234U ||
+        !read_u32(memory, kTarget0, first) || first != 0x1010U ||
+        !read_u32(memory, kTarget1, second) || second != 0x1234U) {
+        return fail("combined transaction did not apply main then PLT");
+    }
+    return 0;
+}
+
+int test_combined_plt_prepare_failure_is_prewrite() {
+    LinearGuestMemory memory(0x20000, kMemoryBase);
+    auto graph = graph_with_both(0x1000, 1, 1);
+    if (!stage_symbol(memory, graph.objects[0], "missing", 0x1000, 0, 1, 0, 2) ||
+        !write_rel(memory, 0, 0x11000, 0, kRArmRelative) ||
+        !write_rel_at(memory, kPltRelTable, 0, 0x11004, 1, kRArmJumpSlot) ||
+        !write_u32(memory, kTarget0, 0x10U) || !write_u32(memory, kTarget1, 0x20U)) {
+        return fail("could not stage combined prepare failure");
+    }
+    const auto result = apply_elf32_combined_relocations(memory, graph, 0, options());
+    std::uint32_t first = 0, second = 0;
+    if (result.error != Elf32RelocationApplyError::ResolveFailed ||
+        !result.failing_table.has_value() || *result.failing_table != Elf32RelocationTable::PltRel ||
+        !read_u32(memory, kTarget0, first) || first != 0x10U ||
+        !read_u32(memory, kTarget1, second) || second != 0x20U) {
+        return fail("PLT prepare failure mutated combined targets");
+    }
+    return 0;
+}
+
+int test_combined_duplicate_target_is_prewrite() {
+    LinearGuestMemory memory(0x20000, kMemoryBase);
+    auto graph = graph_with_both(0x1000, 1, 1);
+    if (!stage_symbol(memory, graph.objects[0], "target", 0x1000, 0x234, 1, 1, 2) ||
+        !write_rel(memory, 0, 0x11000, 0, kRArmRelative) ||
+        !write_rel_at(memory, kPltRelTable, 0, 0x11000, 1, kRArmJumpSlot) ||
+        !write_u32(memory, kTarget0, 0x10U)) {
+        return fail("could not stage combined duplicate");
+    }
+    const auto result = apply_elf32_combined_relocations(memory, graph, 0, options());
+    std::uint32_t value = 0;
+    if (result.error != Elf32RelocationApplyError::DuplicateTargetAcrossTables ||
+        !result.failing_table.has_value() || *result.failing_table != Elf32RelocationTable::PltRel ||
+        !read_u32(memory, kTarget0, value) || value != 0x10U) {
+        return fail("cross-table duplicate target was not rejected prewrite");
+    }
+    return 0;
+}
+
+int test_combined_plt_write_failure_rolls_back_main() {
+    ScriptedWriteMemory memory(0x20000, kMemoryBase);
+    auto graph = graph_with_both(0x1000, 1, 1);
+    if (!stage_symbol(memory, graph.objects[0], "target", 0x1000, 0x234, 1, 1, 2) ||
+        !write_rel(memory, 0, 0x11000, 0, kRArmRelative) ||
+        !write_rel_at(memory, kPltRelTable, 0, 0x11004, 1, kRArmJumpSlot) ||
+        !write_u32(memory, kTarget0, 0x10U) || !write_u32(memory, kTarget1, 0x20U)) {
+        return fail("could not stage combined rollback");
+    }
+    memory.arm_failures({2});
+    const auto result = apply_elf32_combined_relocations(memory, graph, 0, options());
+    std::uint32_t first = 0, second = 0;
+    if (result.error != Elf32RelocationApplyError::TargetWriteFailed ||
+        !result.failing_table.has_value() || *result.failing_table != Elf32RelocationTable::PltRel ||
+        result.rollback_failing_table.has_value() ||
+        !read_u32(memory, kTarget0, first) || first != 0x10U ||
+        !read_u32(memory, kTarget1, second) || second != 0x20U) {
+        return fail("PLT failure did not roll back main write");
+    }
+    return 0;
+}
+
+int test_combined_cross_table_rollback_failure_is_explicit() {
+    ScriptedWriteMemory memory(0x20000, kMemoryBase);
+    auto graph = graph_with_both(0x1000, 1, 1);
+    if (!stage_symbol(memory, graph.objects[0], "target", 0x1000, 0x234, 1, 1, 2) ||
+        !write_rel(memory, 0, 0x11000, 0, kRArmRelative) ||
+        !write_rel_at(memory, kPltRelTable, 0, 0x11004, 1, kRArmJumpSlot) ||
+        !write_u32(memory, kTarget0, 0x10U) || !write_u32(memory, kTarget1, 0x20U)) {
+        return fail("could not stage combined rollback failure");
+    }
+    memory.arm_failures({2, 3});
+    const auto result = apply_elf32_combined_relocations(memory, graph, 0, options());
+    std::uint32_t first = 0, second = 0;
+    if (result.error != Elf32RelocationApplyError::RollbackFailed ||
+        !result.failing_table.has_value() || *result.failing_table != Elf32RelocationTable::PltRel ||
+        !result.rollback_failing_table.has_value() ||
+        *result.rollback_failing_table != Elf32RelocationTable::MainRel ||
+        !read_u32(memory, kTarget0, first) || first != 0x1010U ||
+        !read_u32(memory, kTarget1, second) || second != 0x20U) {
+        return fail("cross-table rollback failure was not explicit");
+    }
+    return 0;
+}
+
 }  // namespace
 
 int main() {
@@ -558,5 +681,10 @@ int main() {
     if (const int status = test_jump_slot_resolve_failure_is_prewrite(); status != 0) return status;
     if (const int status = test_plt_late_write_failure_rolls_back(); status != 0) return status;
     if (const int status = test_plt_rollback_failure_is_explicit(); status != 0) return status;
+    if (const int status = test_combined_applies_main_then_plt(); status != 0) return status;
+    if (const int status = test_combined_plt_prepare_failure_is_prewrite(); status != 0) return status;
+    if (const int status = test_combined_duplicate_target_is_prewrite(); status != 0) return status;
+    if (const int status = test_combined_plt_write_failure_rolls_back_main(); status != 0) return status;
+    if (const int status = test_combined_cross_table_rollback_failure_is_explicit(); status != 0) return status;
     return 0;
 }

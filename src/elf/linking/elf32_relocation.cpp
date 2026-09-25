@@ -107,12 +107,14 @@ struct PendingRelocationWrite {
     Elf32RelocationApplyError error,
     Elf32RelocationApplyError primary,
     std::size_t object_index,
-    std::optional<std::uint32_t> failing_relocation = std::nullopt) {
+    std::optional<std::uint32_t> failing_relocation = std::nullopt,
+    std::optional<Elf32RelocationTable> failing_table = std::nullopt) {
     Elf32RelocationApplyResult result;
     result.error = error;
     result.primary_error = primary;
     result.application.object_index = object_index;
     result.failing_relocation = failing_relocation;
+    result.failing_table = failing_table;
     return result;
 }
 
@@ -120,15 +122,10 @@ struct PendingRelocationWrite {
 
 namespace {
 
-enum class RelocationTableKind : std::uint8_t {
-    MainRel,
-    PltRel,
-};
-
 [[nodiscard]] bool supported_type_for_table(
     std::uint8_t type,
-    RelocationTableKind kind) noexcept {
-    if (kind == RelocationTableKind::PltRel) {
+    Elf32RelocationTable kind) noexcept {
+    if (kind == Elf32RelocationTable::PltRel) {
         return type == kRArmJumpSlot;
     }
     return supported_type(type);
@@ -139,7 +136,7 @@ enum class RelocationTableKind : std::uint8_t {
     const Elf32DependencyGraph& graph,
     std::size_t object_index,
     const Elf32RelocationOptions& options,
-    RelocationTableKind kind) {
+    Elf32RelocationTable kind) {
     if (object_index >= graph.objects.size()) {
         return failure(Elf32RelocationPlanError::InvalidGraphObject,
                        object_index);
@@ -150,7 +147,7 @@ enum class RelocationTableKind : std::uint8_t {
 
     const Elf32LoadedDependencyObject& object = graph.objects[object_index];
     const std::optional<Elf32RelTableMetadata>& selected_table =
-        kind == RelocationTableKind::PltRel
+        kind == Elf32RelocationTable::PltRel
             ? object.linker_metadata.plt_rel_table
             : object.linker_metadata.rel_table;
     if (!selected_table.has_value()) {
@@ -249,7 +246,7 @@ resolve_relocation_references_for_table(
     const Elf32DependencyGraph& graph,
     std::size_t object_index,
     const Elf32RelocationOptions& options,
-    RelocationTableKind kind) {
+    Elf32RelocationTable kind) {
     const Elf32RelocationPlanResult plan =
         build_relocation_plan_for_table(
             memory, graph, object_index, options, kind);
@@ -427,7 +424,7 @@ Elf32RelocationPlanResult build_elf32_rel_relocation_plan(
     std::size_t object_index,
     const Elf32RelocationOptions& options) {
     return build_relocation_plan_for_table(
-        memory, graph, object_index, options, RelocationTableKind::MainRel);
+        memory, graph, object_index, options, Elf32RelocationTable::MainRel);
 }
 
 Elf32RelocationPlanResult build_elf32_plt_rel_relocation_plan(
@@ -436,7 +433,7 @@ Elf32RelocationPlanResult build_elf32_plt_rel_relocation_plan(
     std::size_t object_index,
     const Elf32RelocationOptions& options) {
     return build_relocation_plan_for_table(
-        memory, graph, object_index, options, RelocationTableKind::PltRel);
+        memory, graph, object_index, options, Elf32RelocationTable::PltRel);
 }
 
 Elf32RelocationResolutionResult resolve_elf32_rel_relocation_references(
@@ -445,7 +442,7 @@ Elf32RelocationResolutionResult resolve_elf32_rel_relocation_references(
     std::size_t object_index,
     const Elf32RelocationOptions& options) {
     return resolve_relocation_references_for_table(
-        memory, graph, object_index, options, RelocationTableKind::MainRel);
+        memory, graph, object_index, options, Elf32RelocationTable::MainRel);
 }
 
 Elf32RelocationResolutionResult
@@ -455,17 +452,18 @@ resolve_elf32_plt_rel_relocation_references(
     std::size_t object_index,
     const Elf32RelocationOptions& options) {
     return resolve_relocation_references_for_table(
-        memory, graph, object_index, options, RelocationTableKind::PltRel);
+        memory, graph, object_index, options, Elf32RelocationTable::PltRel);
 }
 
 namespace {
 
-[[nodiscard]] Elf32RelocationApplyResult apply_relocations_for_table(
-    memory::GuestMemory& memory,
+[[nodiscard]] Elf32RelocationApplyResult prepare_relocations_for_table(
+    const memory::GuestMemory& memory,
     const Elf32DependencyGraph& graph,
     std::size_t object_index,
     const Elf32RelocationOptions& options,
-    RelocationTableKind kind) {
+    Elf32RelocationTable kind,
+    std::vector<PendingRelocationWrite>& pending) {
     Elf32RelocationResolutionResult resolution =
         resolve_relocation_references_for_table(
             memory, graph, object_index, options, kind);
@@ -473,7 +471,7 @@ namespace {
         auto result = apply_failure(
             Elf32RelocationApplyError::ResolveFailed,
             Elf32RelocationApplyError::ResolveFailed,
-            object_index, resolution.failing_relocation);
+            object_index, resolution.failing_relocation, kind);
         result.resolution_failure = std::move(resolution);
         return result;
     }
@@ -481,27 +479,20 @@ namespace {
         return apply_failure(
             Elf32RelocationApplyError::InvalidResolvedEntry,
             Elf32RelocationApplyError::InvalidResolvedEntry,
-            object_index);
+            object_index, std::nullopt, kind);
     }
 
-    const std::uint32_t load_bias =
-        graph.objects[object_index].load.load_bias;
-    std::vector<PendingRelocationWrite> pending;
+    const std::uint32_t load_bias = graph.objects[object_index].load.load_bias;
+    pending.clear();
     pending.reserve(resolution.resolution.entries.size());
-
-    // Complete every semantic check and every final-word calculation before
-    // the first GuestMemory::write. This is the key no-partial-mutation
-    // invariant for malformed/unsupported relocation input.
-    for (const Elf32ResolvedRelocationEntry& resolved :
-         resolution.resolution.entries) {
+    for (const Elf32ResolvedRelocationEntry& resolved : resolution.resolution.entries) {
         const Elf32RelocationEntry& entry = resolved.relocation;
         if (entry.type == kRArmNone) continue;
-
         if (!entry.original_word.has_value()) {
             return apply_failure(
                 Elf32RelocationApplyError::InvalidResolvedEntry,
                 Elf32RelocationApplyError::InvalidResolvedEntry,
-                object_index, entry.index);
+                object_index, entry.index, kind);
         }
 
         std::uint32_t final_word = 0;
@@ -511,7 +502,7 @@ namespace {
                 return apply_failure(
                     Elf32RelocationApplyError::InvalidRelativeSymbol,
                     Elf32RelocationApplyError::InvalidRelativeSymbol,
-                    object_index, entry.index);
+                    object_index, entry.index, kind);
             }
             final_word = wrap_add(load_bias, *entry.original_word);
             break;
@@ -521,11 +512,8 @@ namespace {
                 return apply_failure(
                     Elf32RelocationApplyError::InvalidResolvedEntry,
                     Elf32RelocationApplyError::InvalidResolvedEntry,
-                    object_index, entry.index);
+                    object_index, entry.index, kind);
             }
-            // Android bionic uses the non-REL-addend path for ARM GLOB_DAT
-            // and JUMP_SLOT. For JUMP_SLOT, AAELF32 also specifies A=0 in
-            // REL form. The captured original word is rollback state only.
             final_word = resolved.reference->symbol_value;
             break;
         case kRArmAbs32:
@@ -533,78 +521,76 @@ namespace {
                 return apply_failure(
                     Elf32RelocationApplyError::InvalidResolvedEntry,
                     Elf32RelocationApplyError::InvalidResolvedEntry,
-                    object_index, entry.index);
+                    object_index, entry.index, kind);
             }
-            final_word = wrap_add(
-                resolved.reference->symbol_value, *entry.original_word);
+            final_word = wrap_add(resolved.reference->symbol_value, *entry.original_word);
             break;
         default:
             return apply_failure(
                 Elf32RelocationApplyError::InvalidResolvedEntry,
                 Elf32RelocationApplyError::InvalidResolvedEntry,
-                object_index, entry.index);
+                object_index, entry.index, kind);
         }
 
-        pending.push_back(PendingRelocationWrite{
-            .write = Elf32RelocationWrite{
-                .relocation_index = entry.index,
-                .type = entry.type,
-                .place_guest_address = entry.place_guest_address,
-                .original_word = *entry.original_word,
-                .final_word = final_word,
-            },
-        });
+        pending.push_back(PendingRelocationWrite{.write = Elf32RelocationWrite{
+            .relocation_index = entry.index,
+            .type = entry.type,
+            .place_guest_address = entry.place_guest_address,
+            .original_word = *entry.original_word,
+            .final_word = final_word,
+            .table = kind,
+        }});
     }
 
+    Elf32RelocationApplyResult result;
+    result.application.object_index = object_index;
+    return result;
+}
+
+[[nodiscard]] Elf32RelocationApplyResult apply_pending_relocations(
+    memory::GuestMemory& memory,
+    std::size_t object_index,
+    const std::vector<PendingRelocationWrite>& pending) {
     std::vector<std::size_t> applied;
     applied.reserve(pending.size());
-
     for (std::size_t i = 0; i < pending.size(); ++i) {
         const Elf32RelocationWrite& write = pending[i].write;
-        if (write_word(memory, write.place_guest_address,
-                       write.final_word)) {
+        if (write_word(memory, write.place_guest_address, write.final_word)) {
             applied.push_back(i);
             continue;
         }
 
         bool rollback_failed = false;
         std::optional<std::uint32_t> rollback_failure;
-
-        // GuestMemory implementations used by the project validate the whole
-        // span before copying, but the interface does not promise that every
-        // future backend is failure-atomic. Re-read the failed target; if it
-        // changed or cannot be proven unchanged, attempt to restore it too.
+        std::optional<Elf32RelocationTable> rollback_failure_table;
         std::uint32_t failed_target_now = 0;
         const bool failed_target_unchanged =
-            read_word(memory, write.place_guest_address,
-                      failed_target_now) &&
+            read_word(memory, write.place_guest_address, failed_target_now) &&
             failed_target_now == write.original_word;
         if (!failed_target_unchanged &&
-            !restore_word(memory, write.place_guest_address,
-                          write.original_word)) {
+            !restore_word(memory, write.place_guest_address, write.original_word)) {
             rollback_failed = true;
             rollback_failure = write.relocation_index;
+            rollback_failure_table = write.table;
         }
-
         for (auto it = applied.rbegin(); it != applied.rend(); ++it) {
-            const Elf32RelocationWrite& previous =
-                pending[*it].write;
-            if (!restore_word(memory, previous.place_guest_address,
-                              previous.original_word)) {
+            const Elf32RelocationWrite& previous = pending[*it].write;
+            if (!restore_word(memory, previous.place_guest_address, previous.original_word)) {
                 if (!rollback_failure.has_value()) {
                     rollback_failure = previous.relocation_index;
+                    rollback_failure_table = previous.table;
                 }
                 rollback_failed = true;
             }
         }
 
         auto result = apply_failure(
-            rollback_failed
-                ? Elf32RelocationApplyError::RollbackFailed
-                : Elf32RelocationApplyError::TargetWriteFailed,
+            rollback_failed ? Elf32RelocationApplyError::RollbackFailed
+                            : Elf32RelocationApplyError::TargetWriteFailed,
             Elf32RelocationApplyError::TargetWriteFailed,
-            object_index, write.relocation_index);
+            object_index, write.relocation_index, write.table);
         result.rollback_failing_relocation = rollback_failure;
+        result.rollback_failing_table = rollback_failure_table;
         return result;
     }
 
@@ -617,6 +603,19 @@ namespace {
     return result;
 }
 
+[[nodiscard]] Elf32RelocationApplyResult apply_relocations_for_table(
+    memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t object_index,
+    const Elf32RelocationOptions& options,
+    Elf32RelocationTable kind) {
+    std::vector<PendingRelocationWrite> pending;
+    Elf32RelocationApplyResult prepared = prepare_relocations_for_table(
+        memory, graph, object_index, options, kind, pending);
+    if (!prepared) return prepared;
+    return apply_pending_relocations(memory, object_index, pending);
+}
+
 }  // namespace
 
 Elf32RelocationApplyResult apply_elf32_rel_relocations(
@@ -625,7 +624,7 @@ Elf32RelocationApplyResult apply_elf32_rel_relocations(
     std::size_t object_index,
     const Elf32RelocationOptions& options) {
     return apply_relocations_for_table(
-        memory, graph, object_index, options, RelocationTableKind::MainRel);
+        memory, graph, object_index, options, Elf32RelocationTable::MainRel);
 }
 
 Elf32RelocationApplyResult apply_elf32_plt_rel_relocations(
@@ -634,7 +633,46 @@ Elf32RelocationApplyResult apply_elf32_plt_rel_relocations(
     std::size_t object_index,
     const Elf32RelocationOptions& options) {
     return apply_relocations_for_table(
-        memory, graph, object_index, options, RelocationTableKind::PltRel);
+        memory, graph, object_index, options, Elf32RelocationTable::PltRel);
+}
+
+Elf32RelocationApplyResult apply_elf32_combined_relocations(
+    memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t object_index,
+    const Elf32RelocationOptions& options) {
+    std::vector<PendingRelocationWrite> main_pending;
+    Elf32RelocationApplyResult main_prepared = prepare_relocations_for_table(
+        memory, graph, object_index, options, Elf32RelocationTable::MainRel,
+        main_pending);
+    if (!main_prepared) return main_prepared;
+
+    std::vector<PendingRelocationWrite> plt_pending;
+    Elf32RelocationApplyResult plt_prepared = prepare_relocations_for_table(
+        memory, graph, object_index, options, Elf32RelocationTable::PltRel,
+        plt_pending);
+    if (!plt_prepared) return plt_prepared;
+
+    std::unordered_set<std::uint32_t> targets;
+    targets.reserve(main_pending.size() + plt_pending.size());
+    for (const PendingRelocationWrite& item : main_pending) {
+        targets.insert(item.write.place_guest_address);
+    }
+    for (const PendingRelocationWrite& item : plt_pending) {
+        if (!targets.insert(item.write.place_guest_address).second) {
+            return apply_failure(
+                Elf32RelocationApplyError::DuplicateTargetAcrossTables,
+                Elf32RelocationApplyError::DuplicateTargetAcrossTables,
+                object_index, item.write.relocation_index,
+                Elf32RelocationTable::PltRel);
+        }
+    }
+
+    std::vector<PendingRelocationWrite> combined;
+    combined.reserve(main_pending.size() + plt_pending.size());
+    combined.insert(combined.end(), main_pending.begin(), main_pending.end());
+    combined.insert(combined.end(), plt_pending.begin(), plt_pending.end());
+    return apply_pending_relocations(memory, object_index, combined);
 }
 
 const char* to_string(Elf32RelocationPlanError error) noexcept {
@@ -683,6 +721,8 @@ const char* to_string(Elf32RelocationApplyError error) noexcept {
         return "invalid_relative_symbol";
     case Elf32RelocationApplyError::InvalidResolvedEntry:
         return "invalid_resolved_entry";
+    case Elf32RelocationApplyError::DuplicateTargetAcrossTables:
+        return "duplicate_target_across_tables";
     case Elf32RelocationApplyError::TargetWriteFailed:
         return "target_write_failed";
     case Elf32RelocationApplyError::RollbackFailed:
