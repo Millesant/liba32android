@@ -11,4 +11,4 @@ Android bionic's VersionTracker resolves requester VERSYM indices through VERNEE
 Primary source:
 - Android bionic linker source, VersionTracker / versioned lookup: https://android.googlesource.com/platform/bionic/+/master/linker/linker.cpp
 
-The project intentionally adopts only these version-table matching semantics. Namespace/global-group and DT_SYMBOLIC ordering remain separate accepted gaps.
+Feature 014 intentionally adopted only these version-table matching semantics. At that feature boundary, namespace/global-group and DT_SYMBOLIC ordering were separate accepted gaps. Active feature 015 now implements DT_SYMBOLIC/DF_SYMBOLIC requester-first ordering plus a caller-provided in-graph global candidate list; namespace/global-group construction and process-wide lifetime remain separate work.
