@@ -209,8 +209,10 @@ struct Elf32RelocationApplyResult {
 
 // Resolve symbol-bearing ABS32/REL32/GLOB_DAT references without writing guest
 // memory. Only GLOBAL/WEAK DEFAULT NOTYPE/OBJECT/FUNC references are accepted.
-// Protected/versioned/TLS/IFUNC/common/XINDEX semantics fail explicitly.
-// A graph miss becomes S=0 only for a WEAK reference.
+// Protected/TLS/IFUNC/common/XINDEX semantics fail explicitly. Versioned
+// references are matched through bounded DT_VERSYM/VERNEED/VERDEF metadata
+// while retaining the existing graph-local scope. A graph miss becomes S=0
+// only for a WEAK reference.
 [[nodiscard]] Elf32RelocationResolutionResult
 resolve_elf32_rel_relocation_references(
     const memory::GuestMemory& memory,

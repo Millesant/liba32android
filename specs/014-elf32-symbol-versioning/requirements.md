@@ -1,12 +1,12 @@
 # Requirements — ELF32 symbol versioning
 
-Status: ACTIVE — implementation prepared; exact-head validation NOT RUN
+Status: DONE — exact-head implementation CI PASSed at `5ba659dbf3ad9328c8e46af4441db3a0c4bb4a26`
 
 ## Goal
 
 Allow supported ARM32 relocation references in versioned Android ELF DSOs to resolve through the existing dependency graph without weakening bounds, mutation discipline, or guest-address isolation.
 
-## Requirements
+## Accepted requirements
 
 - Retain and validate DT_VERSYM, DT_VERDEF/DT_VERDEFNUM, and DT_VERNEED/DT_VERNEEDNUM as guest-only descriptors.
 - Preserve duplicate-singleton, completeness, rebasing, range, and readable-memory validation.
@@ -19,8 +19,8 @@ Allow supported ARM32 relocation references in versioned Android ELF DSOs to res
 - For an explicit version request, match provider VERDEF by ELF hash plus exact version name; if no matching VERDEF exists, compare against global version index 1.
 - Preserve current symbol eligibility, hash-index, graph BFS, strong/weak, relocation transaction, and rollback semantics.
 - Keep malformed/oversized version metadata read-only and fail explicitly.
-- Add reproducible real ARM32 consumer/provider evidence with a version named `LIBC`.
+- Maintain a reproducible real ARM32 consumer/provider fixture with a version named `LIBC`.
 
-## Non-goals
+## Validation
 
-DT_SYMBOLIC/self-first relocation ordering, Android global groups/namespaces, process-wide interposition, dlvsym, TLS/IFUNC, constructors, lazy PLT binding, and compatibility-library implementations.
+At `5ba659dbf3ad9328c8e46af4441db3a0c4bb4a26`, Linux A32 smoke check `108040133539`, Android arm64-v8a cross-build check `108040133332`, and Android x86_64 address-space probe check `108040133467` PASSed. Linux includes the generated versioned fixture and explicit version-aware JUMP_SLOT application.

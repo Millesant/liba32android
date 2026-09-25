@@ -13,6 +13,7 @@ This directory separates current architecture/development guidance from research
 - [Dependency resolution](architecture/elf32-dependency-resolution.md)
 - [Dependency loading](architecture/elf32-dependency-loading.md)
 - [Symbol resolution](architecture/elf32-symbol-resolution.md)
+- [Symbol versioning](architecture/elf32-symbol-versioning.md)
 - [Relocation](architecture/elf32-relocation.md)
 - [Real fixture execution](architecture/elf32-execution.md)
 - [GNU RELRO](architecture/elf32-relro.md)

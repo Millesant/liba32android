@@ -7,7 +7,7 @@ Cleanup implementation revision: `5b1cf991272632ed44d6276d6ec5e982ef732f28`
 
 ## Phase
 
-M4 runtime/linker scope is stable through bounded main REL including R_ARM_REL32, eager JUMP_SLOT relocation, one per-object combined main+PLT relocation transaction, GNU RELRO, and host execution of the linked real ARM32 fixture. Features `013-real-arm32-fixture-execution`, `012-elf32-rel32-relocation`, `011-elf32-combined-relocation-transaction`, and repository-wide maintenance change `project-cleanup-v8` are DONE.
+M4 runtime/linker scope is stable through bounded main REL including R_ARM_REL32, eager JUMP_SLOT relocation, one per-object combined main+PLT relocation transaction, GNU RELRO, host execution of the linked real ARM32 fixture, and bounded GNU/SysV symbol-version matching. Features `014-elf32-symbol-versioning`, `013-real-arm32-fixture-execution`, `012-elf32-rel32-relocation`, `011-elf32-combined-relocation-transaction`, and repository-wide maintenance change `project-cleanup-v8` are DONE.
 
 ## Repository organization
 
@@ -34,7 +34,7 @@ Persisted inspection at `5b1cf991272632ed44d6276d6ec5e982ef732f28` confirmed 30 
 - PT_DYNAMIC parsing is structural and guest-memory based.
 - Linker metadata/strings validate the implemented STRTAB/SYMTAB/main REL/PLT REL/SONAME/NEEDED scope.
 - Dependency acquisition is provider-backed and bounded; recursive dependency graph loading is transactional.
-- Symbol lookup supports bounded SysV/GNU hash indexing and graph-local exact-name resolution.
+- Symbol lookup supports bounded SysV/GNU hash indexing, graph-local exact-name resolution, and bounded DT_VERSYM/VERNEED/VERDEF matching for versioned references while preserving the existing breadth-first graph scope.
 - Main DT_REL relocation supports R_ARM_NONE, R_ARM_RELATIVE, R_ARM_GLOB_DAT, R_ARM_ABS32, and AAELF32 R_ARM_REL32 transactionally, including defining-symbol Thumb T-bit handling.
 - PLT REL supports eager R_ARM_JUMP_SLOT transactionally.
 - One additive per-object API prepares main and PLT relocation tables before mutation, rejects cross-table duplicate targets, applies main then PLT writes, and rolls back across the combined sequence.
@@ -47,7 +47,7 @@ Persisted inspection at `5b1cf991272632ed44d6276d6ec5e982ef732f28` confirmed 30 
 Still outside the accepted implementation:
 
 - Android search-path/namespace/pathname policy and process-wide link-map lifetime across independent graph loads;
-- version-aware/process-wide/global-group symbol interposition;
+- process-wide/global-group interposition, DT_SYMBOLIC/DF_SYMBOLIC requester-first semantics, and namespace/preload ordering beyond the graph-local scope;
 - lazy binding and DT_PLTGOT resolver state;
 - broader ARM relocation families, packed/RELA/RELR forms;
 - TLS/IFUNC and constructors/destructors;
@@ -91,6 +91,12 @@ Feature 013 exact-head implementation validation at `e899822ae507d1d3954e670bef7
 - Android x86_64 address-space probe: check `108016545125` — PASS.
 
 The Linux gate includes CTest registration plus explicit execution-evidence checks for two relocations, the `0x5a` return sentinel marker, and `fixture.execution.status=PASS`. This is host-side integrated execution evidence only; Android-device/AArch64-16-KiB execution remains unproven.
+
+Feature 014 exact-head implementation validation at `5ba659dbf3ad9328c8e46af4441db3a0c4bb4a26`:
+
+- Linux A32 smoke: check `108040133539` — PASS, including the generated LIBC-versioned two-DSO fixture and version-aware JUMP_SLOT application.
+- Android arm64-v8a cross-build: check `108040133332` — PASS.
+- Android x86_64 address-space probe: check `108040133467` — PASS.
 
 Historical feature-level evidence remains available in Git history, completed `.agent/changes/` records, root historical `specs/`, and `docs/research/evidence/`.
 

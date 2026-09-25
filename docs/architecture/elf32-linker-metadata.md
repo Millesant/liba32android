@@ -54,7 +54,7 @@ The current semantic set recognizes:
 - `DT_JMPREL` + `DT_PLTRELSZ` + `DT_PLTREL`, with `DT_PLTREL == DT_REL` required for the AArch32 PLT table;
 - `DT_SONAME`;
 - repeated `DT_NEEDED` offsets;
-- a presence marker for GNU/SysV symbol-version metadata (`DT_VERSYM` / `DT_VERDEF*` / `DT_VERNEED*`) so name-only lookup can reject unsupported versioning explicitly.
+- validated guest descriptors for GNU/SysV symbol-version metadata (`DT_VERSYM`, `DT_VERDEF`/`DT_VERDEFNUM`, and `DT_VERNEED`/`DT_VERNEEDNUM`), consumed downstream by bounded version-aware symbol lookup.
 
 Recognized singleton tags are unique. A duplicate is rejected even if the value matches. `DT_NEEDED` is intentionally repeatable and preserves dynamic-array order.
 
@@ -107,3 +107,6 @@ The original linker-metadata T003 integration passed GitHub Actions run `3533205
 Feature 008 T001 required-job validation passed on GitHub Actions CI #222 / run `35933694619` at `9a81ed71a027beb166970bcf137bac9a71112f98`: Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all completed successfully. This head includes the explicit pinned-fixture no-PLT oracle required by AC8.
 
 Feature 008 T002 documentation/spec/state convergence and final exact-head gate PASSed on CI #223 / run `35934340806` at `79e9d8c90824baf76d7ff382661422af17e3cb6e`. Linux A32 smoke, Android x86_64 address-space probe, and Android arm64-v8a cross-build all PASSed; the bounded PLT REL metadata contract is complete with PLT relocation application/lazy binding still explicitly deferred.
+
+
+Feature 014 upgrades the previous presence-only version marker to concrete guest descriptors. VERDEF and VERNEED pointer/count pairs are all-or-nothing, pointer-like values are rebased once, and their fixed first records must be readable when the declared count is non-zero. Variable linked-record traversal remains in the version layer where caller-selected ceilings are available.

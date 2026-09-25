@@ -1,35 +1,21 @@
 # Design — ELF32 symbol versioning
 
-Status: ACTIVE — implementation prepared; exact-head validation NOT RUN
+Status: DONE — exact-head implementation CI PASSed at `5ba659dbf3ad9328c8e46af4441db3a0c4bb4a26`
 
 ## Metadata
 
-The linker-metadata layer now retains three bounded guest descriptors:
-
-- DT_VERSYM: guest address of 16-bit symbol-version entries;
-- DT_VERDEF + DT_VERDEFNUM: guest address and top-level definition count;
-- DT_VERNEED + DT_VERNEEDNUM: guest address and top-level requirement count.
-
-VERDEF and VERNEED pointer/count pairs are all-or-nothing. Version names continue to use the already-validated dynamic string table.
+The linker-metadata layer retains guest descriptors for DT_VERSYM, DT_VERDEF/DT_VERDEFNUM, and DT_VERNEED/DT_VERNEEDNUM. Pointer/count pairs are validated before downstream interpretation.
 
 ## Request-side resolution
 
-A relocation supplies its requester dynamic-symbol index. The matching VERSYM entry is read from guest memory and masked with `0x7fff`.
-
-Indices 0/1 carry no explicit version. Higher indices are resolved by bounded VERNEED/Vernaux traversal. The VERNEED `vn_file` name must identify a direct dependency by SONAME, matching Android/bionic's validation posture. Requester VERDEF records are processed after VERNEED so a same-index local definition can supersede a requirement.
+A relocation supplies its requester dynamic-symbol index. The VERSYM entry is read from GuestMemory and masked with `0x7fff`. Indices 0/1 carry no explicit version. Higher indices are resolved through bounded VERNEED/Vernaux records; requester VERDEF is processed afterward to match bionic's tracker ordering. VERNEED `vn_file` must identify a direct dependency SONAME.
 
 ## Provider-side matching
 
-If a provider has no VERSYM table, its otherwise-eligible symbol can satisfy the request.
+A provider without VERSYM remains eligible. For unversioned requests, hidden provider versions are skipped. For explicit requests, provider VERDEF is searched by recorded ELF hash and exact name; absent a matching definition, global version index 1 is required.
 
-For an unversioned request, a provider candidate is eligible only when the VERSYM hidden bit `0x8000` is clear.
+## Integration
 
-For an explicit request, VERDEF is searched by the request's stored ELF hash and exact version name. A match selects `vd_ndx & 0x7fff`. If no VERDEF matches, the expected provider version is global index 1. The candidate's hidden bit is ignored for explicit matching.
+Version filtering is inside object lookup, preserving existing SysV/GNU hash traversal and graph-local BFS. Relocation resolution passes the requester symbol index to the version-aware graph entry point. No new guest-memory mutation is introduced.
 
-## Scope
-
-Version filtering is inserted inside the existing object lookup, so SysV/GNU hash traversal and graph-local BFS ordering remain unchanged. Relocation resolution now derives the requester version and calls the same graph search. No new mutation occurs in the version layer.
-
-## Real fixture
-
-A pinned-NDK freestanding provider exports `fixture_versioned_import@@LIBC` through a linker version script. A consumer linked against that DSO carries a VERNEED `LIBC` reference and one JUMP_SLOT relocation. CI regenerates both DSOs twice, compares bytes, inspects version/relocation metadata with readelf, and applies the relocation through the real loader graph.
+The generated ARMv7 provider exports `fixture_versioned_import@@LIBC`; the consumer carries a `LIBC` VERNEED and JUMP_SLOT reference. CI rebuilds both reproducibly and applies the reference through the real dependency graph.

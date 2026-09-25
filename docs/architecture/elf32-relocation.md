@@ -168,7 +168,7 @@ The current relocation layer still does not implement:
 
 - lazy PLT binding, resolver trampolines, or `DT_PLTGOT` runtime protocol;
 - COPY, instruction relocations, RELA, RELR, Android packed relocations, or APS2;
-- symbol-version matching or requester-specific protected/`DT_SYMBOLIC` self-binding;
+- requester-specific protected/`DT_SYMBOLIC` self-binding and process/global-group interposition beyond the existing graph-local scope;
 - Android namespaces, preloads, global groups, or process-wide interposition policy;
 - TLS relocations/addressing or GNU IFUNC execution;
 - Android RELRO serialization/sharing and lazy-binding interactions beyond the implemented eager sealing contract;
@@ -176,3 +176,10 @@ The current relocation layer still does not implement:
 - constructors/destructors, `dlopen`, `dlsym`, unload, or guest execution.
 
 Those remain separate contracts rather than implicit compatibility behavior.
+
+
+## Feature 014 version-aware references
+
+Relocation resolution now passes each symbol-bearing relocation's requester dynamic-symbol index into version-aware graph lookup. VERSYM indices 0/1 keep the prior unversioned behavior; higher indices are resolved through bounded VERNEED/VERDEF metadata before the existing graph-local search runs. This changes reference selection only: relocation planning, preflight, transaction ordering, final-word formulas, rollback, and permission behavior are unchanged.
+
+The generated real ARM32 feature-014 consumer carries a `LIBC`-versioned JUMP_SLOT reference and resolves/applies it successfully in Linux exact-head check `108040133539` at `5ba659dbf3ad9328c8e46af4441db3a0c4bb4a26`.

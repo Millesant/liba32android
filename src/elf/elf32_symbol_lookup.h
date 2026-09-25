@@ -202,7 +202,8 @@ struct Elf32GraphSymbolLookupResult {
 // SysV fallback. GLOBAL/WEAK DEFAULT/PROTECTED normal or SHN_ABS definitions
 // are supported. LOCAL/UNDEF/HIDDEN/INTERNAL entries are ordinary misses.
 // Matching TLS/COMMON/XINDEX/IFUNC/nonstandard semantics fail explicitly.
-// Versioned metadata is rejected until version matching is implemented.
+// Versioned provider candidates are filtered by the bounded feature-014
+// version layer; this API itself carries no explicit requester version.
 // The operation is read-only and uses only logical guest addresses.
 [[nodiscard]] Elf32ObjectSymbolLookupResult lookup_elf32_symbol(
     const memory::GuestMemory& memory,
@@ -216,9 +217,10 @@ struct Elf32GraphSymbolLookupResult {
 // visited first, then direct/transitive dependency targets in stored edge
 // order, each object at most once. Object-vector discovery order is not a
 // lookup scope. The first eligible definition wins, including an earlier weak
-// definition. Objects without SYMTAB are skipped; malformed/versioned
-// searchable objects fail instead of being skipped. The operation is
-// read-only and bounded by max_scope_objects.
+// definition. Objects without SYMTAB are skipped; malformed searchable
+// objects fail instead of being skipped. Versioned objects are eligible and
+// unversioned lookup ignores hidden definitions. The operation is read-only
+// and bounded by max_scope_objects.
 [[nodiscard]] Elf32GraphSymbolLookupResult lookup_elf32_graph_symbol(
     const memory::GuestMemory& memory,
     const Elf32DependencyGraph& graph,

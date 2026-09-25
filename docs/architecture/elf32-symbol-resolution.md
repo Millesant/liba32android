@@ -77,7 +77,7 @@ After count derivation, the complete `Elf32_Sym` range is validated read-only be
 - Ordinary supported definitions return checked `load_bias + st_value`.
 - The first eligible definition found by the selected hash traversal wins, including a weak definition.
 
-Matching forms that require semantics not implemented here fail explicitly rather than being approximated: TLS, COMMON, XINDEX, GNU IFUNC or other unsupported type/binding/visibility forms. If the object declares symbol-version metadata, name-only lookup returns `UnsupportedVersioning`.
+Matching forms that require semantics not implemented here still fail explicitly rather than being approximated: TLS, COMMON, XINDEX, GNU IFUNC or unsupported type/binding/visibility forms. Symbol-version metadata is now interpreted through the bounded feature-014 layer: unversioned lookups skip hidden definitions, while relocation/reference lookups derive explicit version requirements from requester DT_VERSYM and VERNEED/VERDEF records.
 
 The result includes symbol index, raw decoded ELF32 symbol metadata, exact name, and the resolved logical guest value.
 
@@ -145,8 +145,8 @@ T005 documentation/state/spec convergence and the final feature-head gate PASSed
 This feature does not implement:
 
 - relocation writes are outside this layer and live in `elf32_relocation`; PLT/GOT/JMPREL and lazy binding remain unimplemented;
-- symbol version matching;
 - Android/global-group/namespace/preload/process-wide interposition policy;
+- requester-first DT_SYMBOLIC/DF_SYMBOLIC ordering and protected self-binding beyond the current default-visibility relocation policy;
 - requester-specific `DT_SYMBOLIC` / protected self-binding relocation semantics;
 - TLS address calculation or TLS relocations;
 - GNU IFUNC execution;
@@ -154,3 +154,10 @@ This feature does not implement:
 - guest execution.
 
 Those limits are explicit compatibility boundaries, not silent fallbacks.
+
+
+## Feature 014 — bounded symbol-version matching
+
+Feature 014 retains validated DT_VERSYM, VERNEED, and VERDEF descriptors and adds a caller-bounded version-record walk. VERNEED library names must identify direct dependency SONAMEs. Request indices 0/1 remain unversioned; explicit requests carry the recorded ELF hash and exact version name. Provider matching skips hidden definitions only for unversioned requests, and explicit requests select a matching VERDEF index or fall back to global index 1.
+
+Exact-head implementation CI at `5ba659dbf3ad9328c8e46af4441db3a0c4bb4a26` passed Linux A32 smoke check `108040133539`, Android arm64-v8a cross-build check `108040133332`, and Android x86_64 address-space probe check `108040133467`. The Linux gate includes a generated freestanding ARM32 consumer/provider pair whose JUMP_SLOT import is versioned `LIBC`.

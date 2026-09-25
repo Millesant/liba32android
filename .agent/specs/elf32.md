@@ -25,7 +25,7 @@ Dependency acquisition is provider-backed and bounded; filesystem/search-path/na
 
 ## L32-E006 — Symbol resolution
 
-Dynamic-symbol indexing supports bounded SysV/GNU hash processing and exact byte-name lookup. Graph-local resolution uses deterministic breadth-first dependency scope. Version-aware/process-wide interposition, TLS, IFUNC, and unsupported special-section semantics fail explicitly rather than being approximated.
+Dynamic-symbol indexing supports bounded SysV/GNU hash processing and exact byte-name lookup. Graph-local resolution uses deterministic breadth-first dependency scope. DT_VERSYM plus bounded VERNEED/VERDEF matching is supported for relocation/reference lookups: indices 0/1 are unversioned, unversioned lookup skips hidden definitions, explicit versions match provider VERDEF hash/name and otherwise global version index 1. VERNEED target SONAMEs must map to direct dependencies. Process-wide/global-group/DT_SYMBOLIC interposition, TLS, IFUNC, and unsupported special-section semantics remain outside this contract.
 
 ## L32-E007 — Main REL relocations
 
@@ -49,6 +49,12 @@ The additive combined relocation API fully prepares the supported main `DT_REL` 
 
 The pinned freestanding NDK ARM32 fixture is loadable through the dependency graph, resolvable through GNU-hash graph lookup, relocatable through the combined main+PLT transaction, sealable through GNU RELRO, and executable through the generic A32 CPU adapter on the Linux validation host. The bounded call harness supplies AAPCS r0/r1 arguments, an 8-byte-aligned mapped guest stack, ARM/Thumb state derived from the defining function symbol, and a same-state return sentinel. This proves integrated host execution only and is not Android-device execution evidence.
 
-## L32-E012 — Deferred linker scope
+## L32-E012 — Symbol versioning
 
-Still outside the accepted implementation: Android namespace/search-path/link-map lifetime policy across independent graph loads; version-aware/process-wide/global-group interposition; lazy binding; broader ARM relocation families; RELA/RELR/Android packed relocations; TLS/IFUNC; constructors/destructors; `dlopen`/`dlsym`/unload; and guest execution of the real ARM32 fixture.
+Validated guest-only DT_VERSYM, DT_VERDEF/DT_VERDEFNUM, and DT_VERNEED/DT_VERNEEDNUM descriptors feed a bounded version layer. Relocation references derive their request version from the requester symbol index; provider candidates are filtered with Android/bionic-compatible hidden/default and explicit-version matching while the existing graph-local breadth-first scope remains unchanged. Malformed or oversized version metadata fails explicitly before any relocation write.
+
+The generated feature-014 two-DSO ARM32 fixture records a `LIBC` version requirement and a JUMP_SLOT import; exact-head Linux CI resolves and applies it successfully.
+
+## L32-E013 — Deferred linker scope
+
+Still outside the accepted implementation: Android namespace/search-path/link-map lifetime policy across independent graph loads; process-wide/global-group interposition and DT_SYMBOLIC/DF_SYMBOLIC requester-first behavior; lazy binding; broader ARM relocation families; RELA/RELR/Android packed relocations; TLS/IFUNC; constructors/destructors; `dlopen`/`dlsym`/unload; and guest execution of the real ARM32 fixture on Android.
