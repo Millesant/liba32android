@@ -7,7 +7,7 @@ Cleanup implementation revision: `5b1cf991272632ed44d6276d6ec5e982ef732f28`
 
 ## Phase
 
-M4 runtime/linker scope is stable through bounded main REL including R_ARM_REL32, eager JUMP_SLOT relocation, one per-object combined main+PLT relocation transaction, GNU RELRO, host execution of the linked real ARM32 fixture, and bounded GNU/SysV symbol-version matching. Features `014-elf32-symbol-versioning`, `013-real-arm32-fixture-execution`, `012-elf32-rel32-relocation`, `011-elf32-combined-relocation-transaction`, and repository-wide maintenance change `project-cleanup-v8` are DONE.
+M4 runtime/linker scope is stable through bounded main REL including R_ARM_REL32, eager JUMP_SLOT relocation, one per-object combined main+PLT relocation transaction, GNU RELRO, host execution of the linked real ARM32 fixture, and bounded GNU/SysV symbol-version matching. Features `014-elf32-symbol-versioning`, `013-real-arm32-fixture-execution`, `012-elf32-rel32-relocation`, `011-elf32-combined-relocation-transaction`, and repository-wide maintenance change `project-cleanup-v8` are DONE. Feature `015-elf32-symbol-scope-policy` is ACTIVE: DT_SYMBOLIC/DF_SYMBOLIC metadata retention, bounded caller-provided global-scope ordering, requester-first symbolic lookup, and focused synthetic/relocation coverage are implemented in the current tree; exact-head CI verification is not yet recorded.
 
 ## Repository organization
 
@@ -32,9 +32,9 @@ Persisted inspection at `5b1cf991272632ed44d6276d6ec5e982ef732f28` confirmed 30 
 - ELF32 supports validated ARM little-endian ET_EXEC and explicit-base ET_DYN mapping with rollback.
 - Shared load planning and deterministic bounded ET_DYN automatic placement are implemented.
 - PT_DYNAMIC parsing is structural and guest-memory based.
-- Linker metadata/strings validate the implemented STRTAB/SYMTAB/main REL/PLT REL/SONAME/NEEDED scope.
+- Linker metadata/strings validate the implemented STRTAB/SYMTAB/main REL/PLT REL/SONAME/NEEDED scope and retain DT_SYMBOLIC plus DF_SYMBOLIC requester-binding metadata.
 - Dependency acquisition is provider-backed and bounded; recursive dependency graph loading is transactional.
-- Symbol lookup supports bounded SysV/GNU hash indexing, graph-local exact-name resolution, and bounded DT_VERSYM/VERNEED/VERDEF matching for versioned references while preserving the existing breadth-first graph scope.
+- Plain symbol lookup supports bounded SysV/GNU hash indexing and deterministic graph-local breadth-first resolution. Relocation/reference lookup can additionally consume an ordered caller-owned global-scope list from the same graph; ordinary requesters search global then local scope, while DT_SYMBOLIC/DF_SYMBOLIC requesters search self then global then remaining local scope. Version matching applies across the selected ordering and all unique candidates share the existing scope ceiling.
 - Main DT_REL relocation supports R_ARM_NONE, R_ARM_RELATIVE, R_ARM_GLOB_DAT, R_ARM_ABS32, and AAELF32 R_ARM_REL32 transactionally, including defining-symbol Thumb T-bit handling.
 - PLT REL supports eager R_ARM_JUMP_SLOT transactionally.
 - One additive per-object API prepares main and PLT relocation tables before mutation, rejects cross-table duplicate targets, applies main then PLT writes, and rolls back across the combined sequence.
@@ -47,7 +47,7 @@ Persisted inspection at `5b1cf991272632ed44d6276d6ec5e982ef732f28` confirmed 30 
 Still outside the accepted implementation:
 
 - Android search-path/namespace/pathname policy and process-wide link-map lifetime across independent graph loads;
-- process-wide/global-group interposition, DT_SYMBOLIC/DF_SYMBOLIC requester-first semantics, and namespace/preload ordering beyond the graph-local scope;
+- process-wide/global-group construction and lifetime across independent graph loads, plus namespace/preload ordering beyond the caller-provided in-graph global list;
 - lazy binding and DT_PLTGOT resolver state;
 - broader ARM relocation families, packed/RELA/RELR forms;
 - TLS/IFUNC and constructors/destructors;
@@ -97,6 +97,8 @@ Feature 014 exact-head implementation validation at `5ba659dbf3ad9328c8e46af4441
 - Linux A32 smoke: check `108040133539` — PASS, including the generated LIBC-versioned two-DSO fixture and version-aware JUMP_SLOT application.
 - Android arm64-v8a cross-build: check `108040133332` — PASS.
 - Android x86_64 address-space probe: check `108040133467` — PASS.
+
+Feature 015 validation is currently NOT RECORDED: source-level coverage is present, but no exact-head GitHub Actions result has surfaced yet for the active implementation.
 
 Historical feature-level evidence remains available in Git history, completed `.agent/changes/` records, root historical `specs/`, and `docs/research/evidence/`.
 
