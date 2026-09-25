@@ -96,11 +96,24 @@ Cycles and shared dependencies therefore terminate naturally. Repeated edges rem
 
 Objects without a symbol table are skipped. A malformed/versioned searchable object encountered before a definition fails the lookup instead of being silently skipped. The first eligible definition in BFS scope wins, including an earlier weak definition.
 
-This scope is intentionally local to one loaded dependency graph. Android global groups, namespaces, preloads, requester-sensitive policy, and process-wide link-map lifetime remain outside this feature.
+Plain `lookup_elf32_graph_symbol` remains intentionally local to one loaded dependency graph and ignores any relocation/reference global-scope option.
+
+## Relocation/reference scope policy
+
+`lookup_elf32_graph_symbol_for_reference` adds one bounded ordering layer without creating a process-wide linker. Callers may provide an ordered `global_scope_objects` span containing object indices from the same already-loaded graph.
+
+- ordinary requesters search the explicit global span first, then the requester's deterministic graph-local BFS closure;
+- requesters whose validated metadata carries `DT_SYMBOLIC` or `DF_SYMBOLIC` search themselves first, then the explicit global span, then the remaining local closure;
+- the searched-object set is deduplicated, so an object appearing in more than one phase is evaluated once;
+- every unique searched object consumes the same `max_scope_objects` budget;
+- an out-of-range explicit global index fails as `InvalidGlobalScopeObject`;
+- version filtering is applied identically to self, global, and local candidates.
+
+Global candidates are lookup entries, not implicit dependency roots: their dependency edges are not traversed merely because the object appears in the global span.
 
 ## Downstream relocation policy
 
-Feature 007 consumes this layer without widening its lookup contract. `elf32_relocation` starts graph-local BFS lookup at the relocating object, preserves returned logical guest symbol values, rejects protected requester semantics and versioned/TLS/IFUNC/common/XINDEX reference forms explicitly, and maps an unresolved weak reference to `S = 0` only in the relocation context. Those mutation/reference-policy decisions do not belong in this read-only symbol layer.
+`elf32_relocation` already resolves both main REL and eager PLT references through `lookup_elf32_graph_symbol_for_reference`, so the caller-provided global span and requester symbolic flag flow through that existing reference path without adding a second relocation policy. Returned logical guest symbol values are preserved, protected requester semantics and TLS/IFUNC/common/XINDEX forms remain explicit failures, and an unresolved weak reference maps to `S = 0` only in the relocation context.
 
 ## Resource and failure model
 
@@ -145,9 +158,8 @@ T005 documentation/state/spec convergence and the final feature-head gate PASSed
 This feature does not implement:
 
 - relocation writes are outside this layer and live in `elf32_relocation`; PLT/GOT/JMPREL and lazy binding remain unimplemented;
-- Android/global-group/namespace/preload/process-wide interposition policy;
-- requester-first DT_SYMBOLIC/DF_SYMBOLIC ordering and protected self-binding beyond the current default-visibility relocation policy;
-- requester-specific `DT_SYMBOLIC` / protected self-binding relocation semantics;
+- Android namespace/preload/search-path policy and process-wide link-map/global-group construction across independent graph loads;
+- protected-reference self-binding beyond the current default-visibility relocation policy;
 - TLS address calculation or TLS relocations;
 - GNU IFUNC execution;
 - RELRO, constructors/destructors, `dlopen`, `dlsym`, or unload;
@@ -161,3 +173,8 @@ Those limits are explicit compatibility boundaries, not silent fallbacks.
 Feature 014 retains validated DT_VERSYM, VERNEED, and VERDEF descriptors and adds a caller-bounded version-record walk. VERNEED library names must identify direct dependency SONAMEs. Request indices 0/1 remain unversioned; explicit requests carry the recorded ELF hash and exact version name. Provider matching skips hidden definitions only for unversioned requests, and explicit requests select a matching VERDEF index or fall back to global index 1.
 
 Exact-head implementation CI at `5ba659dbf3ad9328c8e46af4441db3a0c4bb4a26` passed Linux A32 smoke check `108040133539`, Android arm64-v8a cross-build check `108040133332`, and Android x86_64 address-space probe check `108040133467`. The Linux gate includes a generated freestanding ARM32 consumer/provider pair whose JUMP_SLOT import is versioned `LIBC`.
+
+
+## Feature 015 — bounded requester/global scope ordering
+
+Feature 015 retains `DT_SYMBOLIC` and the `DF_SYMBOLIC` bit of `DT_FLAGS` as validated linker metadata, adds caller-owned ordered global-scope candidates to relocation/reference lookup, and preserves plain graph-local lookup as-is. Synthetic metadata, symbol-lookup, and relocation tests cover the new ordering paths in source. Exact-head CI validation for this active feature has not yet been observed, so these changes are implemented but not yet verified.
