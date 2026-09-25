@@ -1,6 +1,6 @@
 # ELF32 dependency loading
 
-Status: one-shot graph loading complete; feature 016 persistent link-map append implemented through T003
+Status: feature 016 DONE — exact-head implementation CI PASSed at `0c374ff84990ee3d64c06a1037f846d90054e5e4`
 
 ## Boundary
 
@@ -145,12 +145,13 @@ Pre-convergence head `78665e000a67b559c694aef5b1e22f0742f360c0` PASSed GitHub Ac
 
 Final head `1ac47ef59f3570989d6fc07cd187c129cbe76588` PASSed GitHub Actions CI #199 / run `35708717172` with 39/39 CTest and both Android jobs. PR #32 was then squash-merged to `bleeding` as `17c2aa78535adbd2084c9396f525750e10c0eff8`, preserving the validated source tree.
 
+Feature 016 result revision `0c374ff84990ee3d64c06a1037f846d90054e5e4` PASSed GitHub Actions CI run `36201652255` (#299). The Linux suite includes the persistent link-map/global-scope regressions, while Android x86_64 probe and Android arm64-v8a cross-build lanes also completed successfully.
+
 ## Deliberate limits
 
 This feature does not define:
 
 - Android/bionic search paths, namespaces, requester-sensitive resolution, or APK/package policy;
-- process-wide loaded-object cache/link-map lifetime across separate calls;
 - symbol lookup/interposition/versioning or hash-table semantics;
 - ARM relocations, PLT/JMPREL, or packed relocations;
 - RELRO, TLS, constructors/destructors, `dlopen`, `dlsym`, or unload;
