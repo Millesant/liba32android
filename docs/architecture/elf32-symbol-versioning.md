@@ -10,7 +10,7 @@ The implementation understands DT_VERSYM, DT_VERDEF/DT_VERDEFNUM, and DT_VERNEED
 
 Traversal is bounded by `Elf32SymbolLookupOptions::max_version_records` plus the existing string-size ceiling. Version metadata does not add a new mutation path.
 
-The version layer preserves the existing graph-local breadth-first lookup order. It does not approximate Android namespace/global-group policy or DT_SYMBOLIC.
+The version filter does not choose candidate-object order. Feature 015 composes the same matching rules with relocation/reference scope ordering: ordinary requesters may search a caller-provided in-graph global list before their local breadth-first closure, while DT_SYMBOLIC/DF_SYMBOLIC requesters search themselves first. Android namespace/global-group construction and process-wide link-map lifetime remain outside this layer.
 
 ## Matching rules
 
@@ -24,4 +24,4 @@ A VERNEED library name is accepted only when it corresponds to a direct dependen
 
 At `5ba659dbf3ad9328c8e46af4441db3a0c4bb4a26`, Linux A32 smoke check `108040133539`, Android arm64-v8a cross-build check `108040133332`, and Android x86_64 address-space probe check `108040133467` all PASSed. Linux validates the synthetic version edge cases and a reproducible generated ARM32 `LIBC`-versioned JUMP_SLOT consumer/provider pair.
 
-DT_SYMBOLIC/self-first ordering, process/global groups, namespaces, compatibility shims, constructors, TLS/IFUNC, and Android-device execution remain separate work.
+Process-wide/global-group construction, namespaces, compatibility shims, constructors, TLS/IFUNC, and Android-device execution remain separate work. DT_SYMBOLIC/DF_SYMBOLIC requester-first ordering itself is implemented by active feature 015 and reuses this version filter.
