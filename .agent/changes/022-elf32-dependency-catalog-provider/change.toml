@@ -2,10 +2,11 @@ schema = 1
 id = "022-elf32-dependency-catalog-provider"
 kind = "feature"
 size = "S1"
-status = "active"
+status = "done"
 workflow = "feature"
 control_revision = "f4e926e81ad91d13d02a006f4a18a00f66ae0bab"
 base_revision = "afbafe4b7541de6d91ff3304905ba637614739d5"
+result_revision = "4b91211abd005584992c4ddd75435c31a4ce0f2c"
 acceptance = [
   "a caller-owned exact-name catalog implements Elf32DependencyProvider without changing resolver/loader APIs",
   "catalog entries borrow requested-name bytes, provider identity bytes, and image bytes; the catalog provider itself owns none of them",
@@ -20,12 +21,12 @@ acceptance = [
 ]
 
 [convergence]
-requirements = "pending"
-specs = "pending"
-implementation = "pending"
-tests = "pending"
-documentation = "pending"
+requirements = "aligned"
+specs = "aligned"
+implementation = "aligned"
+tests = "aligned"
+documentation = "aligned"
 decisions = "not_applicable"
-tasks = "pending"
-evidence = "pending"
-repository = "pending"
+tasks = "aligned"
+evidence = "aligned"
+repository = "aligned"

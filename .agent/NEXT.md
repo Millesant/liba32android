@@ -4,7 +4,7 @@ Repository integration is on `bleeding`. The current control-plane round is pinn
 
 `project-cleanup-v8` and its source/test, tooling, and documentation child changes are DONE. Features `011-elf32-combined-relocation-transaction` through `019-elf32-init-call-execution` are DONE. Feature 019 result revision `28a4f92f78b8ff156ee9dd3083d1218af8b7b125` passed exact-head Linux A32 smoke and both required Android checks.
 
-Features 020 and 021 are DONE. Feature 021 result revision `4324883faef008810bcf77c390eecd92c16718cd` passed exact-head Linux A32 smoke and both required Android checks. Feature `022-elf32-dependency-catalog-provider` is ACTIVE and implemented in the current tree. Exact/raw-byte lookup, owned result copying, miss/duplicate/malformed/oversize semantics, requester fallback, and application-to-platform catalog-chain coverage are present. Exact-head CI verification/convergence remains.
+Features 020 through 022 are DONE. Feature 022 result revision `4b91211abd005584992c4ddd75435c31a4ce0f2c` passed exact-head Linux A32 smoke and both required Android checks. The runtime can now compose requester-aware application/platform providers and exact-name caller-owned image catalogs while filesystem/APK/namespace policy remains external.
 
 ## Candidate runtime directions
 
@@ -13,7 +13,7 @@ Choose a bounded next feature from accepted gaps rather than continuing cosmetic
 Current candidates include:
 
 - layer Android namespace/search-path/platform-provider policy above the persistent link-map provider boundary;
-- complete feature 022 exact-name dependency catalogs, then use separate application/platform catalogs to model the supplied VLC/FMOD dependency shapes before introducing filesystem/APK search policy;
+- add a guest-to-host service-call seam for future Android compatibility shims, then use catalog-provided shim images to satisfy the supplied VLC/FMOD platform dependency names;
 - broader ARM relocation coverage beyond REL32, such as COPY/instruction families or RELA/RELR/Android packed encodings, when a concrete target requires them;
 - TLS/IFUNC groundwork when a concrete target requires it;
 - end-to-end real ARM32 fixture execution on Android once the required runtime environment is available.

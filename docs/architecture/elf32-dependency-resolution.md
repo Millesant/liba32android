@@ -1,6 +1,6 @@
 # ELF32 dependency resolution
 
-Status: feature 021 provider chain verified; feature 022 exact-name catalog provider implemented, exact-head verification pending
+Status: feature 022 exact-name dependency catalogs complete; exact-head implementation CI PASSed
 
 ## Boundary
 
@@ -182,13 +182,17 @@ The higher `elf32_dependency_loader` layer consumes this resolver's host-owned r
 
 The resolver itself still does none of that work. This preserves the acquisition boundary and the project invariant that guest virtual addresses are logical 32-bit values independent of host-pointer identity. Persistent link-map lifetime is implemented downstream, while Android namespace/search policy remains external even though feature 020 now supplies the requester-context seam it requires. Symbols, relocations, and execution remain separate concerns.
 
-## Feature 022 implementation coverage
+## Feature 022 validation
+
+Result revision `4b91211abd005584992c4ddd75435c31a4ce0f2c`
+PASSed Linux A32 smoke check `108374222890`, Android x86_64
+address-space probe check `108374222960`, and Android arm64-v8a cross-build
+check `108374222849`.
 
 Focused resolver tests cover raw/embedded-NUL exact-name matching, owned result
 copies independent of catalog backing storage, NotFound misses, duplicate-name
 ambiguity, malformed/oversized selected entries, requester fallback, and
 application-local to platform catalog composition through the provider chain.
-Exact-head CI verification is pending.
 
 ## Feature 021 validation
 
