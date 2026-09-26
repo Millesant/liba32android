@@ -8,10 +8,15 @@
 
 namespace {
 
+using liba32android::elf::Elf32DependencyEdge;
+using liba32android::elf::Elf32DependencyGraph;
 using liba32android::elf::Elf32FunctionArrayDecodeError;
 using liba32android::elf::Elf32FunctionArrayDecodeOptions;
 using liba32android::elf::Elf32FunctionArrayMetadata;
+using liba32android::elf::Elf32InitPlanError;
+using liba32android::elf::Elf32InitPlanOptions;
 using liba32android::elf::decode_elf32_function_array;
+using liba32android::elf::plan_elf32_init_array_calls;
 using liba32android::memory::LinearGuestMemory;
 
 int fail(const char* message) {
@@ -127,6 +132,185 @@ int test_unreadable_and_empty_arrays() {
     return 0;
 }
 
+bool stage_init_array(LinearGuestMemory& memory,
+                      Elf32DependencyGraph& graph,
+                      std::size_t object_index,
+                      std::uint32_t address,
+                      const std::vector<std::uint32_t>& entries) {
+    if (object_index >= graph.objects.size()) return false;
+    for (std::size_t index = 0; index < entries.size(); ++index) {
+        if (!write_u32(memory,
+                       address + static_cast<std::uint32_t>(index * 4U),
+                       entries[index])) {
+            return false;
+        }
+    }
+    graph.objects[object_index].linker_metadata.init_array =
+        Elf32FunctionArrayMetadata{
+            .guest_address = address,
+            .size = static_cast<std::uint32_t>(entries.size() * 4U),
+        };
+    return true;
+}
+
+int test_init_plan_dependency_order_cycles_and_sentinels() {
+    LinearGuestMemory memory(0x200, 0x1000);
+    Elf32DependencyGraph graph;
+    graph.objects.resize(4);
+
+    graph.objects[0].dependencies = {
+        Elf32DependencyEdge{.requested_name = "one", .target_object = 1},
+        Elf32DependencyEdge{.requested_name = "two", .target_object = 2},
+    };
+    graph.objects[1].dependencies = {
+        Elf32DependencyEdge{.requested_name = "shared", .target_object = 3},
+    };
+    graph.objects[2].dependencies = {
+        Elf32DependencyEdge{.requested_name = "shared", .target_object = 3},
+    };
+    graph.objects[3].dependencies = {
+        Elf32DependencyEdge{.requested_name = "cycle", .target_object = 0},
+    };
+
+    if (!stage_init_array(memory, graph, 3, 0x1010, {0x3001U}) ||
+        !stage_init_array(memory, graph, 1, 0x1020, {0U, 0x1001U}) ||
+        !stage_init_array(memory, graph, 2, 0x1030,
+                          {0xffffffffU, 0x2000U}) ||
+        !stage_init_array(memory, graph, 0, 0x1040, {0x4000U})) {
+        return fail("could not stage INIT_ARRAY planning graph");
+    }
+
+    std::array<std::uint8_t, 0x40> before{};
+    if (!memory.read(0x1010, before)) {
+        return fail("could not snapshot INIT_ARRAY planning bytes");
+    }
+
+    const auto plan = plan_elf32_init_array_calls(
+        memory, graph, 0,
+        Elf32InitPlanOptions{.max_objects = 4, .max_entries = 6});
+    if (!plan || plan.calls.size() != 4) {
+        return fail("dependency-first INIT_ARRAY plan did not produce four calls");
+    }
+
+    const std::array<std::size_t, 4> expected_objects{3, 1, 2, 0};
+    const std::array<std::uint32_t, 4> expected_indices{0, 1, 1, 0};
+    const std::array<std::uint32_t, 4> expected_functions{
+        0x3001U, 0x1001U, 0x2000U, 0x4000U};
+    for (std::size_t index = 0; index < plan.calls.size(); ++index) {
+        if (plan.calls[index].object_index != expected_objects[index] ||
+            plan.calls[index].array_index != expected_indices[index] ||
+            plan.calls[index].function != expected_functions[index]) {
+            return fail("INIT_ARRAY plan changed dependency/order/provenance semantics");
+        }
+    }
+
+    std::array<std::uint8_t, 0x40> after{};
+    if (!memory.read(0x1010, after) || after != before ||
+        graph.objects[0].dependencies.size() != 2 ||
+        graph.objects[3].dependencies.size() != 1) {
+        return fail("INIT_ARRAY planning mutated guest memory or graph state");
+    }
+    return 0;
+}
+
+int test_init_plan_input_limits_and_decode_failures() {
+    LinearGuestMemory memory(0x200, 0x1000);
+
+    {
+        Elf32DependencyGraph graph;
+        graph.objects.resize(1);
+        const auto invalid = plan_elf32_init_array_calls(
+            memory, graph, 0,
+            Elf32InitPlanOptions{.max_objects = 0, .max_entries = 0});
+        if (invalid.error != Elf32InitPlanError::InvalidOptions ||
+            !invalid.calls.empty()) {
+            return fail("zero INIT_ARRAY object ceiling was not rejected");
+        }
+
+        const auto bad_root = plan_elf32_init_array_calls(
+            memory, graph, 9,
+            Elf32InitPlanOptions{.max_objects = 1, .max_entries = 0});
+        if (bad_root.error != Elf32InitPlanError::InvalidRootObject ||
+            !bad_root.failing_object.has_value() ||
+            *bad_root.failing_object != 9) {
+            return fail("invalid INIT_ARRAY root was not classified");
+        }
+
+        const auto empty = plan_elf32_init_array_calls(
+            memory, graph, 0,
+            Elf32InitPlanOptions{.max_objects = 1, .max_entries = 0});
+        if (!empty || !empty.calls.empty()) {
+            return fail("array-free INIT_ARRAY plan did not allow zero entry budget");
+        }
+    }
+
+    {
+        Elf32DependencyGraph graph;
+        graph.objects.resize(2);
+        graph.objects[0].dependencies = {
+            Elf32DependencyEdge{.requested_name = "child", .target_object = 1},
+        };
+        const auto capped = plan_elf32_init_array_calls(
+            memory, graph, 0,
+            Elf32InitPlanOptions{.max_objects = 1, .max_entries = 0});
+        if (capped.error != Elf32InitPlanError::ObjectLimitExceeded ||
+            !capped.failing_object.has_value() ||
+            *capped.failing_object != 1 || !capped.calls.empty()) {
+            return fail("INIT_ARRAY unique-object ceiling was not enforced");
+        }
+
+        graph.objects[0].dependencies[0].target_object = 9;
+        const auto bad_edge = plan_elf32_init_array_calls(
+            memory, graph, 0,
+            Elf32InitPlanOptions{.max_objects = 2, .max_entries = 0});
+        if (bad_edge.error != Elf32InitPlanError::InvalidGraphEdge ||
+            !bad_edge.failing_object.has_value() ||
+            *bad_edge.failing_object != 0 || !bad_edge.calls.empty()) {
+            return fail("invalid INIT_ARRAY graph edge was not rejected");
+        }
+    }
+
+    {
+        Elf32DependencyGraph graph;
+        graph.objects.resize(1);
+        if (!stage_init_array(memory, graph, 0, 0x1080,
+                              {0x1111U, 0x2222U})) {
+            return fail("could not stage INIT_ARRAY entry-limit fixture");
+        }
+        const auto capped = plan_elf32_init_array_calls(
+            memory, graph, 0,
+            Elf32InitPlanOptions{.max_objects = 1, .max_entries = 1});
+        if (capped.error != Elf32InitPlanError::EntryLimitExceeded ||
+            capped.decode_error !=
+                Elf32FunctionArrayDecodeError::TooManyEntries ||
+            !capped.failing_object.has_value() ||
+            *capped.failing_object != 0 || !capped.calls.empty()) {
+            return fail("INIT_ARRAY total-entry ceiling was not surfaced");
+        }
+    }
+
+    {
+        Elf32DependencyGraph graph;
+        graph.objects.resize(1);
+        graph.objects[0].linker_metadata.init_array =
+            Elf32FunctionArrayMetadata{
+                .guest_address = 0x9000,
+                .size = 4,
+            };
+        const auto failed = plan_elf32_init_array_calls(
+            memory, graph, 0,
+            Elf32InitPlanOptions{.max_objects = 1, .max_entries = 1});
+        if (failed.error != Elf32InitPlanError::DecodeFailed ||
+            failed.decode_error != Elf32FunctionArrayDecodeError::ReadFailed ||
+            !failed.failing_object.has_value() ||
+            *failed.failing_object != 0 || !failed.calls.empty()) {
+            return fail("INIT_ARRAY nested decoder failure was not surfaced");
+        }
+    }
+
+    return 0;
+}
+
 }  // namespace
 
 int main() {
@@ -141,6 +325,14 @@ int main() {
         return status;
     }
     if (const int status = test_unreadable_and_empty_arrays(); status != 0) {
+        return status;
+    }
+    if (const int status = test_init_plan_dependency_order_cycles_and_sentinels();
+        status != 0) {
+        return status;
+    }
+    if (const int status = test_init_plan_input_limits_and_decode_failures();
+        status != 0) {
         return status;
     }
     return 0;
