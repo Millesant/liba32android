@@ -51,7 +51,7 @@ Persisted inspection at `5b1cf991272632ed44d6276d6ec5e982ef732f28` confirmed 30 
 
 Still outside the accepted implementation:
 
-- Android search-path/namespace/pathname/accessibility policy, LD_PRELOAD/RTLD policy, and platform-library provider composition above the persistent link map;
+- Android search-path/namespace/pathname/accessibility policy, LD_PRELOAD/RTLD policy, concrete platform-library catalog contents/search, and compatibility-shim selection above the generic provider chain/catalog seams;
 - lazy binding and DT_PLTGOT resolver state;
 - broader ARM relocation families, packed/RELA/RELR forms;
 - TLS/IFUNC and lifecycle behavior beyond bounded INIT_ARRAY execution, including persisted constructor-called state and destructor/unload execution;

@@ -12,11 +12,11 @@ ARM ELF32 image
   -> relocation
   -> RELRO hardening
 
-GuestMemory
-  -> CPU adapter
+runtime host-service dispatch
+  -> GuestMemory + CPU adapter
   -> Dynarmic (internal implementation detail)
 ```
 
-Implementation files are grouped under `src/elf/loading/`, `metadata/`, `linking/`, and `hardening/`. ELF interface headers remain at `src/elf/` so layer contracts are easy to discover and include paths stay stable within the repository.
+Game-agnostic execution orchestration lives under `src/runtime/`. ELF implementation files are grouped under `src/elf/loading/`, `metadata/`, `linking/`, and `hardening/`. ELF interface headers remain at `src/elf/` so layer contracts are easy to discover and include paths stay stable within the repository.
 
 Each architecture document describes one boundary and should avoid folding later-layer policy into earlier layers.
