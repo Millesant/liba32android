@@ -128,6 +128,9 @@ Calls that reach the stop PC complete in order. Constructor guest-memory writes
 are intentionally preserved for following calls. CPU exceptions, memory
 faults, invalid function/options, or an exhausted instruction ceiling stop the
 sequence and report completed-call count plus failing call/object provenance.
+When the CPU backend reports both a memory fault and a generic exception for
+the same step, lifecycle execution preserves the more specific memory-fault
+classification.
 No later call is claimed or attempted.
 
 The executor does not allocate a stack, map/protect/unmap memory, roll back

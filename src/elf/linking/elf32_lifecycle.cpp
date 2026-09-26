@@ -268,15 +268,17 @@ Elf32InitExecutionResult execute_elf32_init_calls(
         request.stop_pc = options.return_pc;
 
         auto cpu_result = cpu::execute(memory, request);
-        if (cpu_result.exception_raised) {
-            return execution_failure(
-                Elf32InitExecutionError::CpuException,
-                result.calls_completed, index, call.object_index,
-                std::move(cpu_result));
-        }
+        // Instruction-fetch/data faults can also make the CPU backend report a
+        // generic exception. Preserve the more specific memory-fault cause.
         if (cpu_result.memory_fault) {
             return execution_failure(
                 Elf32InitExecutionError::MemoryFault,
+                result.calls_completed, index, call.object_index,
+                std::move(cpu_result));
+        }
+        if (cpu_result.exception_raised) {
+            return execution_failure(
+                Elf32InitExecutionError::CpuException,
                 result.calls_completed, index, call.object_index,
                 std::move(cpu_result));
         }

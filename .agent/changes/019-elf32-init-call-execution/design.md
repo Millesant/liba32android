@@ -25,8 +25,10 @@ For each call:
 3. zero deterministic register state, set SP to the caller stack top and LR to
    return PC with the constructor's interworking bit;
 4. execute under the per-call ceiling with `stop_pc = return_pc`;
-5. fail with call/object provenance on exception, memory fault, or missing
-   return before the ceiling.
+5. fail with call/object provenance on memory fault, exception, or missing
+   return before the ceiling. If the CPU backend reports both a memory fault
+   and a generic exception for one step, the executor preserves the more
+   specific memory-fault classification.
 
 The same caller stack top is restored for each constructor call. Guest memory
 writes performed by completed constructors remain visible to later calls.
