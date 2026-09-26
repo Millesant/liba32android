@@ -9,18 +9,18 @@ acceptance = "Audit active/pending markers, stale current docs, historical-spec 
 
 [[tasks]]
 id = "T002"
-status = "active"
+status = "done"
 depends_on = ["T001"]
 acceptance = "Reconcile canonical STATE/NEXT and current architecture/diagnostic docs with implemented features 011-024 and accepted deferred gaps."
 
 [[tasks]]
 id = "T003"
-status = "pending"
+status = "done"
 depends_on = ["T001"]
 acceptance = "Strengthen historical-spec orientation without rewriting historical feature packages."
 
 [[tasks]]
 id = "T004"
-status = "pending"
+status = "active"
 depends_on = ["T002", "T003"]
 acceptance = "Record bounded audit evidence, verify exact-head CI, and close repository convergence."

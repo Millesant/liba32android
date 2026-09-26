@@ -253,7 +253,7 @@ This layer does **not**:
 - deduplicate names or provider identities;
 - detect cycles;
 - build a dependency graph or link map;
-- choose guest addresses or map dependency ELF images itself (the separate automatic placement primitive is available to a future graph/loader layer);
+- choose guest addresses or map dependency ELF images itself (the implemented `elf32_dependency_loader` consumes the separate automatic-placement and loader layers);
 - parse dependency dynamic metadata as part of resolution;
 - consume SysV/GNU hash tables for lookup;
 - perform symbol lookup/interposition/versioning;

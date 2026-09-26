@@ -1,10 +1,10 @@
 # ELF32 dynamic-array parsing
 
-Status: M3 structural metadata layer
+Status: stable structural dynamic-array layer; current downstream linker/runtime consumers are implemented
 
 ## Boundary
 
-`elf32_dynamic` sits above validated ELF mapping and below any future dynamic linker. It consumes only:
+`elf32_dynamic` sits above validated ELF mapping and below the current linker metadata/string/dependency/symbol/relocation layers. It consumes only:
 
 - `memory::GuestMemory` reads;
 - a loader-produced `Elf32DynamicSegment` containing biased guest VA, `p_filesz`, and `p_memsz`.

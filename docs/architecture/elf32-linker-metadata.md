@@ -86,18 +86,20 @@ For `DT_HASH` and `DT_GNU_HASH`, this layer deliberately validates only pointer 
 
 The validator is read-only. Failure paths do not change guest bytes, mappings, or permissions.
 
-## Deliberate limits
+## Deliberate layer-local limits
 
-This layer does not yet:
+These are ownership boundaries for `elf32_linker_metadata`, not a repository-wide list of missing functionality. Several capabilities are implemented by downstream layers; genuinely deferred semantics are called out explicitly.
 
-- load `DT_NEEDED` dependencies or apply search-path/namespace policy;
-- interpret variable SysV/GNU hash arrays or consume symbol entries;
-- decode or apply ARM relocations;
-- decode or apply PLT/JMPREL entries, implement `R_ARM_JUMP_SLOT`, or perform lazy binding;
-- perform symbol lookup itself or implement version-aware/process-wide interposition policy;
-- execute constructors/destructors, process TLS, or decode Android packed relocations.
+This layer does not itself:
 
-Bounded SONAME/NEEDED string consumption lives in `elf32_linker_strings`; bounded hash/dynsym indexing, exact per-object lookup, and graph-local BFS scope live in `elf32_symbol_lookup`; bounded main-`DT_REL` ARM relocation planning/application lives downstream in `elf32_relocation`. PLT REL metadata is now validated here, while PLT entry decoding/application, `R_ARM_JUMP_SLOT`, lazy binding, version-aware/global-group policy, RELRO, TLS, and broader runtime behavior remain separate downstream contracts.
+- load `DT_NEEDED` dependencies or apply search-path/namespace policy (bounded dependency loading is implemented downstream; Android search/namespace policy remains deferred);
+- interpret variable SysV/GNU hash arrays or consume symbol entries (implemented downstream by bounded symbol lookup);
+- decode or apply ARM relocations (the accepted main REL set is implemented downstream);
+- decode or apply PLT/JMPREL entries (eager `R_ARM_JUMP_SLOT` is implemented downstream; lazy binding remains deferred);
+- perform symbol lookup itself (bounded version-aware/global-group lookup is implemented downstream; broader process policy remains separate);
+- execute lifecycle functions, process TLS, or decode Android packed relocations (bounded INIT_ARRAY execution is implemented downstream; destructor/TLS/packed-relocation semantics remain deferred).
+
+Bounded SONAME/NEEDED string consumption lives in `elf32_linker_strings`; bounded hash/dynsym indexing, exact per-object lookup, and graph-local BFS scope live in `elf32_symbol_lookup`; bounded main-`DT_REL` ARM relocation planning/application lives downstream in `elf32_relocation`. PLT REL metadata is validated here; eager PLT entry decoding/application, `R_ARM_JUMP_SLOT`, version-aware/global-group policy, RELRO, and bounded INIT_ARRAY execution are implemented by separate downstream contracts. Lazy binding, TLS, destructor/unload lifecycle, packed relocations, and broader Android policy remain deferred.
 
 ## Feature 016 metadata extension
 

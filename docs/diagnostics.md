@@ -1,6 +1,6 @@
 # Diagnostics and error sharing
 
-Status: current CI, address-space probe, and Android runtime-smoke behavior documented; runtime-wide public structured errors remain future API work.
+Status: current CI, address-space probe, Android runtime-smoke, and internal runtime-service behavior documented; stable public embedding/error API remains future work.
 
 ## Goal
 
@@ -207,7 +207,7 @@ Android storage references:
 
 ## Runtime-wide structured error format
 
-The public runtime API is not implemented yet, so runtime-wide error delivery remains **NOT IMPLEMENTED**. The intended stable text shape is:
+A stable public embedding/runtime API is not implemented yet, so runtime-wide public error delivery remains **NOT IMPLEMENTED**. Internal game-agnostic orchestration under `src/runtime/` is implemented, including bounded host-service dispatch; it is not a stable external error API. The intended stable text shape is:
 
 ```text
 A32ERR|component=<component>|code=<stable_code>|pc=<guest_pc>|addr=<guest_addr>|message=<human text>

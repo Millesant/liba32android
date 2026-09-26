@@ -1,6 +1,6 @@
 # ELF32 loader architecture
 
-Status: current through feature 010; validated `PT_LOAD`/`PT_DYNAMIC`/`PT_GNU_RELRO` planning and mapping metadata are implemented, with automatic `ET_DYN` placement and post-load RELRO sealing kept as separate layers
+Status: loader boundary stable through feature 010; automatic placement, dependency loading, relocation, RELRO, lifecycle, and runtime execution now exist as separate downstream layers
 
 ## Boundary
 
@@ -29,10 +29,10 @@ ELF32 byte image
                      structural raw tags
                             |
                             v
-                      future linker layer
+                      downstream linker/runtime layers
 ```
 
-The loader itself does not parse `Elf32_Dyn` entries. Structural parsing is the responsibility of `src/elf/elf32_dynamic.*`, and dynamic-linker semantics remain a later layer above both mapping and structural parsing.
+The loader itself does not parse `Elf32_Dyn` entries. Structural parsing is the responsibility of `src/elf/elf32_dynamic.*`, and dynamic-linker semantics remain downstream of both mapping and structural parsing; those downstream layers are now implemented for the accepted bounded feature set.
 
 ## Supported image policy
 
@@ -85,7 +85,7 @@ On success, `Elf32LoadResult::dynamic_segment` reports only:
 
 `src/elf/elf32_dynamic_placement.*` consumes that same plan plus `MappedGuestMemory` state. It performs a caller-bounded, deterministic low-to-high first-fit search through `memory::find_free_guest_range`, preserving host-page alignment and every accepted `PT_LOAD p_align` constraint. Placement is non-mutating: it returns only a `dynamic_base`; `load_elf32` remains the mapping authority and can still report `AddressConflict` if memory changes after placement.
 
-The default placement search begins at guest VA `0x10000` and ends at the 32-bit guest-address-space limit. Callers may provide a narrower explicit window. Recursive dependency graph/link-map ownership and complete process-layout policy remain later layers.
+The default placement search begins at guest VA `0x10000` and ends at the 32-bit guest-address-space limit. Callers may provide a narrower explicit window. Recursive dependency graph/link-map ownership is implemented downstream; complete process-layout and Android namespace/search policy remain external/later policy.
 
 ## Validation-before-mapping rule
 

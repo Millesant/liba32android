@@ -10,7 +10,7 @@ Repository maintenance change `project-cleanup-v9` is ACTIVE. It audits canonica
 
 ## Candidate runtime directions
 
-Choose a bounded next feature from accepted gaps rather than continuing cosmetic repository churn. The supplied VLC ARMv7 four-DSO scan is recorded in `docs/research/evidence/vlc-armv7-gap-scan-2026-09-25.md`: every observed relocation is already inside the implemented REL/JUMP_SLOT set, while APK-external Android providers and INIT_ARRAY/FINI_ARRAY lifecycle metadata are concrete remaining requirements.
+Choose the next bounded feature from accepted gaps after this cleanup closes. The supplied VLC ARMv7/FMOD evidence shows the observed relocation set is already inside the implemented REL/JUMP_SLOT subset. Provider composition, exact-name catalogs, INIT_ARRAY planning/execution, and host-service dispatch are now implemented; the remaining concrete compatibility work is Android namespace/search policy, actual platform/shim contents, lifecycle state/destructors, unsupported relocation/TLS/IFUNC families, and Android-device execution evidence.
 
 Current candidates include:
 
