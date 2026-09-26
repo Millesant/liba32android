@@ -1,10 +1,10 @@
 # Next Work
 
-Repository integration is on `bleeding`. The current control-plane round is pinned to `millesant/.gpt@2b7c8b9245a64560cc9e986d554d99233e34b8c5`.
+Repository integration is on `bleeding`. The current control-plane round is pinned to `millesant/.gpt@f4e926e81ad91d13d02a006f4a18a00f66ae0bab`.
 
-`project-cleanup-v8` and its source/test, tooling, and documentation child changes are DONE. Features `011-elf32-combined-relocation-transaction` through `017-elf32-lifecycle-array-metadata` are DONE. Feature 017 result revision `e380b96f4e5d2c81a471d051f568b7c2dbef2c1c` passed exact-head Linux A32 smoke and both required Android checks.
+`project-cleanup-v8` and its source/test, tooling, and documentation child changes are DONE. Features `011-elf32-combined-relocation-transaction` through `019-elf32-init-call-execution` are DONE. Feature 019 result revision `28a4f92f78b8ff156ee9dd3083d1218af8b7b125` passed exact-head Linux A32 smoke and both required Android checks.
 
-Feature 019 is DONE. Result revision `28a4f92f78b8ff156ee9dd3083d1218af8b7b125` passed exact-head Linux A32 smoke and both required Android checks. Feature `020-elf32-requester-aware-provider` is ACTIVE as the next Android-provider prerequisite: the dependency provider must receive the currently loading object's opaque identity while preserving the existing context-free provider API as the default fallback.
+Feature `020-elf32-requester-aware-provider` is ACTIVE and implemented in the current tree. The resolver has an additive requester-aware provider hook with legacy fallback, and recursive one-shot/persistent loading forwards exact root and nested graph-object identities. Focused context/compatibility coverage is present; exact-head CI verification/convergence remains.
 
 ## Candidate runtime directions
 

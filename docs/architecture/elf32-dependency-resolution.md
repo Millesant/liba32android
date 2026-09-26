@@ -1,6 +1,6 @@
 # ELF32 dependency resolution
 
-Status: complete; merged through PR #17
+Status: current through feature 020 requester context; exact-head verification pending
 
 ## Boundary
 
@@ -10,6 +10,7 @@ It consumes:
 
 - host-owned ordered `Elf32LinkerStrings::needed` names;
 - a caller-owned `Elf32DependencyProvider`;
+- an optional borrowed opaque requester identity used only during synchronous provider calls;
 - explicit caller-selected limits for dependency count, per-image bytes, and total acquired image bytes.
 
 It returns host-owned dependency image inputs only. It does not map those images into guest memory, choose `ET_DYN` bases, recurse dependencies, construct a link map, resolve symbols, apply relocations, or execute guest code.
@@ -28,7 +29,7 @@ elf32_linker_strings
     | ordered/repeated DT_NEEDED byte strings
     v
 elf32_dependency_resolver
-    | exact request bytes
+    | optional requester identity + exact request bytes
     | explicit acquisition ceilings
     v
 caller/platform Elf32DependencyProvider
@@ -48,12 +49,18 @@ The generic ELF core therefore remains independent from Android filesystem layou
 
 ## Provider contract
 
-`Elf32DependencyProvider::resolve` receives:
+The original `Elf32DependencyProvider::resolve` receives the exact requested
+dependency bytes plus a finite image-byte ceiling. Feature 020 adds
+`resolve_for(requester_identity, requested_name, max_image_bytes)`. Its
+default implementation delegates to `resolve`, so existing context-free
+providers remain source-compatible and behaviorally unchanged.
 
-- the exact requested dependency bytes as a `std::string_view`;
-- a finite maximum image-byte ceiling for that occurrence.
+`Elf32DependencyResolveOptions::requester_identity` is an optional borrowed
+byte string. The resolver forwards it unchanged to every ordered provider
+occurrence and never stores it in successful output. Callers must keep its
+storage valid only for the synchronous resolve call.
 
-The resolver does not normalize, UTF-8 validate, rewrite separators, prepend directories, or otherwise reinterpret a non-empty dependency name.
+The resolver does not normalize, UTF-8 validate, rewrite separators, prepend directories, or otherwise reinterpret the requester identity or a non-empty dependency name.
 
 An empty dependency name is rejected before provider invocation.
 
@@ -119,9 +126,9 @@ The ELF loader still consumes an explicit `Elf32LoadOptions::dynamic_base` for `
 
 This dependency-resolution layer deliberately does not call either placement or `load_elf32`; it remains an acquisition-only boundary.
 
-The higher `elf32_dependency_loader` layer now consumes this resolver's host-owned results. Within one graph-loading call it uses provider identity as the object key, preserves ordered/repeated dependency edges, terminates cycles by reusing already known identities, automatically places/loads first-seen `ET_DYN` dependencies, runs each new object's dynamic → metadata → string pipeline, and rolls back graph-owned mappings on aggregate failure.
+The higher `elf32_dependency_loader` layer consumes this resolver's host-owned results. For every object it passes that graph object's exact owned identity as requester context before acquiring its direct dependencies. Within one graph-loading call it then uses provider result identity as the object key, preserves ordered/repeated dependency edges, terminates cycles by reusing already known identities, automatically places/loads first-seen `ET_DYN` dependencies, runs each new object's dynamic → metadata → string pipeline, and rolls back graph-owned mappings on aggregate failure. The same requester propagation applies to persistent link-map appends.
 
-The resolver itself still does none of that work. This preserves the acquisition boundary and the project invariant that guest virtual addresses are logical 32-bit values independent of host-pointer identity. Process-wide link-map lifetime, Android requester-sensitive lookup policy, symbols, relocations, and execution remain downstream concerns.
+The resolver itself still does none of that work. This preserves the acquisition boundary and the project invariant that guest virtual addresses are logical 32-bit values independent of host-pointer identity. Persistent link-map lifetime is implemented downstream, while Android namespace/search policy remains external even though feature 020 now supplies the requester-context seam it requires. Symbols, relocations, and execution remain separate concerns.
 
 ## Validation evidence
 
@@ -140,7 +147,11 @@ Synthetic coverage includes:
 - remaining-total budget propagated as the provider request ceiling;
 - oversized/buggy provider results rejected;
 - later-occurrence failure with no successful partial aggregate;
-- successful result ownership independent of provider temporary storage.
+- successful result ownership independent of provider temporary storage;
+- legacy providers exercised through the default requester-aware fallback;
+- requester identities containing arbitrary bytes forwarded unchanged;
+- repeated requester-aware occurrences retain order and the existing ceilings;
+- recursive loader coverage proving root and nested object identities reach the provider.
 
 The pinned NDK-generated ARM32 fixture is also exercised through:
 

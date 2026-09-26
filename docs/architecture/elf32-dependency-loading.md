@@ -1,6 +1,6 @@
 # ELF32 dependency loading
 
-Status: feature 016 DONE — exact-head implementation CI PASSed at `0c374ff84990ee3d64c06a1037f846d90054e5e4`
+Status: persistent loading complete through feature 016; feature 020 requester context implemented, exact-head verification pending
 
 ## Boundary
 
@@ -42,6 +42,13 @@ load plan
 ```
 
 The original graph API owns per-call object identity/lifetime, placement/loading, recursion, aggregate limits, and rollback. Feature 016 adds an additive caller-owned `Elf32LinkMap`: successive roots share one accumulated graph, stable object indexes, and persistent mappings while provider pathname/namespace policy remains external. It does not perform symbol lookup, relocations, constructors, TLS/RELRO, unload, or execution.
+
+Feature 020 leaves that ownership model unchanged but forwards the exact
+currently processed object's opaque identity to the provider for every direct
+DT_NEEDED acquisition. Root and nested identities are borrowed synchronously;
+the resolver/provider stores no view. Context-free providers continue through
+the default fallback. This enables later requester-sensitive Android
+namespace/search policy without implementing that policy in the graph loader.
 
 ## Object and edge model
 
@@ -131,7 +138,7 @@ Nested stage-specific error enums remain attached to the result, along with fail
 
 ## Validation
 
-Focused synthetic coverage exercises dependency-free roots, direct dependencies, aliases/repeats, transitive traversal, cycles, shared dependencies, identity/image mismatch, non-dynamic dependency rejection, limits, late failures, rollback, source ownership, and preservation of unrelated mappings. Feature 016 extends that suite with multi-root identity reuse, local-to-global root promotion, DF_1_GLOBAL ordering, failed-append preservation of prior roots/global scope/mappings, accumulated max-object enforcement, full persistent-state preflight (identity uniqueness, dependency-edge targets, root records, exact global-membership consistency, and strictly increasing discovery order), and direct feature-015 global-scope consumption.
+Focused synthetic coverage exercises dependency-free roots, direct dependencies, aliases/repeats, transitive traversal, cycles, shared dependencies, identity/image mismatch, non-dynamic dependency rejection, limits, late failures, rollback, source ownership, and preservation of unrelated mappings. Feature 016 extends that suite with multi-root identity reuse, local-to-global root promotion, DF_1_GLOBAL ordering, failed-append preservation of prior roots/global scope/mappings, accumulated max-object enforcement, full persistent-state preflight (identity uniqueness, dependency-edge targets, root records, exact global-membership consistency, and strictly increasing discovery order), and direct feature-015 global-scope consumption. Feature 020 adds direct root/nested requester-context assertions plus persistent cross-root requester identity coverage.
 
 The pinned NDK ARMv7 fixture is also loaded through the graph API. Its integration requires:
 
@@ -151,7 +158,7 @@ Feature 016 result revision `0c374ff84990ee3d64c06a1037f846d90054e5e4` PASSed Gi
 
 This feature does not define:
 
-- Android/bionic search paths, namespaces, requester-sensitive resolution, or APK/package policy;
+- Android/bionic search paths, namespace accessibility/linking, RUNPATH/RPATH, or APK/package policy beyond forwarding requester identity to the external provider;
 - symbol lookup/interposition/versioning or hash-table semantics;
 - ARM relocations, PLT/JMPREL, or packed relocations;
 - RELRO, TLS, constructors/destructors, `dlopen`, `dlsym`, or unload;
