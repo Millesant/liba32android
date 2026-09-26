@@ -1,6 +1,6 @@
 # ELF32 dependency loading
 
-Status: persistent loading complete through feature 016; feature 020 requester context implemented, exact-head verification pending
+Status: persistent loading complete through feature 020 requester context; exact-head implementation CI PASSed
 
 ## Boundary
 
@@ -164,3 +164,12 @@ This feature does not define:
 - RELRO, TLS, constructors/destructors, `dlopen`, `dlsym`, or unload;
 - concurrent graph mutation / atomic address reservation;
 - guest execution.
+
+
+## Feature 020 validation
+
+Feature 020 result revision `2509dce17e8d1b993325ed810d37a29e1b46df45`
+PASSed Linux A32 smoke and both required Android lanes. Recursive one-shot and
+persistent loading tests verify that root and nested graph-object identities are
+forwarded unchanged as synchronous requester context while provider-result
+identity, rollback, and resource accounting remain unchanged.

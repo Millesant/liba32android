@@ -1,6 +1,6 @@
 # ELF32 dependency resolution
 
-Status: current through feature 020 requester context; exact-head verification pending
+Status: current through feature 020 requester context; exact-head implementation CI PASSed
 
 ## Boundary
 
@@ -183,3 +183,15 @@ This layer does **not**:
 - perform symbol lookup/interposition/versioning;
 - decode or apply ARM relocations or PLT/JMPREL;
 - process RELRO, TLS, constructors/destructors, or Android packed relocations.
+
+
+## Feature 020 validation
+
+Result revision `2509dce17e8d1b993325ed810d37a29e1b46df45`
+PASSed Linux A32 smoke check `108312595857`, Android x86_64
+address-space probe check `108312595898`, and Android arm64-v8a cross-build
+check `108312595982`.
+
+Focused coverage proves exact opaque requester-byte forwarding, the default
+legacy-provider fallback, ordered/repeated request preservation, nested
+requester propagation, and persistent cross-root requester identity handling.

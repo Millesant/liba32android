@@ -2,10 +2,11 @@ schema = 1
 id = "020-elf32-requester-aware-provider"
 kind = "feature"
 size = "S1"
-status = "active"
+status = "done"
 workflow = "feature"
 control_revision = "f4e926e81ad91d13d02a006f4a18a00f66ae0bab"
 base_revision = "2079b29f4be2f38fbadfa3a8b8fd15c7078544e8"
+result_revision = "2509dce17e8d1b993325ed810d37a29e1b46df45"
 acceptance = [
   "dependency resolution can carry a borrowed requester identity alongside each exact DT_NEEDED request without changing provider-result ownership",
   "Elf32DependencyProvider exposes an additive requester-aware hook whose default implementation delegates to the existing context-free resolve method so existing providers remain source-compatible",
@@ -18,12 +19,12 @@ acceptance = [
 ]
 
 [convergence]
-requirements = "pending"
-specs = "pending"
-implementation = "pending"
-tests = "pending"
-documentation = "pending"
+requirements = "aligned"
+specs = "aligned"
+implementation = "aligned"
+tests = "aligned"
+documentation = "aligned"
 decisions = "not_applicable"
-tasks = "pending"
-evidence = "pending"
-repository = "pending"
+tasks = "aligned"
+evidence = "aligned"
+repository = "aligned"
