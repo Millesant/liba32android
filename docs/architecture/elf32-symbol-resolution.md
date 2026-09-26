@@ -153,17 +153,19 @@ T004 Linux validation passed 41/41 CTest including `elf32_symbol_index` and `elf
 
 T005 documentation/state/spec convergence and the final feature-head gate PASSed exact-head CI #207 / run `35847914558` at `ad022c2cc569c3175ad1cef0140f964817f5a820`. Linux passed 41/41 CTest including `elf32_real_symbol_lookup`; Android x86_64 address-space probe and Android arm64-v8a cross-build also passed. Feature 006 is complete.
 
-## Deliberate limits
+## Deliberate layer-local limits
 
-This feature does not implement:
+These are symbol-layer ownership boundaries, not a repository-wide list of
+missing functionality.
 
-- relocation writes are outside this layer and live in `elf32_relocation`; PLT/GOT/JMPREL and lazy binding remain unimplemented;
-- Android namespace/preload/search-path/RTLD selection policy; persistent cross-root link-map/global-group construction is provided by feature 016;
-- protected-reference self-binding beyond the current default-visibility relocation policy;
-- TLS address calculation or TLS relocations;
-- GNU IFUNC execution;
-- RELRO, constructors/destructors, `dlopen`, `dlsym`, or unload;
-- guest execution.
+This layer does not itself:
+
+- write relocations; bounded main REL and eager PLT/JUMP_SLOT writes are implemented in `elf32_relocation`, while lazy binding/DT_PLTGOT resolver state remains deferred;
+- define Android namespace/preload/search-path/RTLD policy; persistent link-map/global-group construction and generic requester-aware provider chaining/catalogs exist downstream, while Android policy remains deferred;
+- implement protected-reference self-binding beyond the current accepted relocation policy;
+- calculate TLS addresses/relocations or execute GNU IFUNC;
+- seal RELRO or run lifecycle code; RELRO plus bounded INIT_ARRAY planning/execution are implemented downstream, while destructor/unload lifecycle and `dlopen`/`dlsym` remain deferred;
+- execute guest code; host fixture and lifecycle execution occur in downstream integration/runtime layers.
 
 Those limits are explicit compatibility boundaries, not silent fallbacks.
 

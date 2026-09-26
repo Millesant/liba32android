@@ -162,18 +162,21 @@ Exact-head implementation validation PASSed at `ee4d2b364244fd842b059dd5c254de01
 
 Feature 011 exact-head implementation validation PASSed at `600fad8edc3ac2a8f64fc2607e088b263adca902`: Linux A32 smoke check `107911342972`, Android arm64-v8a cross-build check `107911343141`, and Android x86_64 address-space probe check `107911343155` all completed successfully. Focused unit coverage proves that PLT preparation failure leaves a prepared main table untouched, cross-table duplicate targets fail before mutation, a PLT write failure restores an earlier main write, and rollback failure identifies the main table explicitly.
 
-## Deliberate limits
+## Deliberate layer-local limits
+
+These are relocation-layer boundaries. Some later runtime/linker behavior is
+implemented elsewhere and should not be read as a relocation gap.
 
 The current relocation layer still does not implement:
 
 - lazy PLT binding, resolver trampolines, or `DT_PLTGOT` runtime protocol;
 - COPY, instruction relocations, RELA, RELR, Android packed relocations, or APS2;
 - protected-reference self-binding;
-- Android namespaces, search paths, preloads/RTLD policy, platform-provider selection, or broader interposition policy beyond feature 016's persistent global group;
+- Android namespace/search/preload/RTLD policy or concrete platform-library/shim selection; generic requester-aware provider chaining/catalogs and persistent global-group ownership are implemented elsewhere;
 - TLS relocations/addressing or GNU IFUNC execution;
 - Android RELRO serialization/sharing and lazy-binding interactions beyond the implemented eager sealing contract;
 - text-relocation permission broadening;
-- constructors/destructors, `dlopen`, `dlsym`, unload, or guest execution.
+- lifecycle ownership, `dlopen`, `dlsym`, or unload. Bounded INIT_ARRAY execution and host-side guest execution exist downstream; destructor/unload lifecycle remains deferred.
 
 Those remain separate contracts rather than implicit compatibility behavior.
 

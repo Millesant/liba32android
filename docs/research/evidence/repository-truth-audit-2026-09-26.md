@@ -75,3 +75,13 @@ historical feature-002 task record shows T005 DONE at CI #106, and downstream
 dependency loading/link-map/provider work is implemented. Cleanup v9 updates
 that current architecture page while leaving the historical numbered spec body
 unchanged.
+
+
+## Layer-local non-goal ambiguity
+
+The audit also found current symbol, relocation, RELRO, and dependency-loading
+architecture pages whose "does not implement" lists mixed true repository gaps
+with behavior that was already implemented in downstream layers. Cleanup v9
+rewrites those sections as explicit layer-local ownership boundaries and names
+which downstream capabilities are already implemented versus genuinely
+deferred.

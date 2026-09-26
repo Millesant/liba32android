@@ -154,16 +154,19 @@ Final head `1ac47ef59f3570989d6fc07cd187c129cbe76588` PASSed GitHub Actions CI #
 
 Feature 016 result revision `0c374ff84990ee3d64c06a1037f846d90054e5e4` PASSed GitHub Actions CI run `36201652255` (#299). The Linux suite includes the persistent link-map/global-scope regressions, while Android x86_64 probe and Android arm64-v8a cross-build lanes also completed successfully.
 
-## Deliberate limits
+## Deliberate layer-local limits
 
-This feature does not define:
+These are dependency-loader ownership boundaries, not a repository-wide list
+of absent features.
 
-- Android/bionic search paths, namespace accessibility/linking, RUNPATH/RPATH, or APK/package policy beyond forwarding requester identity to the external provider;
-- symbol lookup/interposition/versioning or hash-table semantics;
-- ARM relocations, PLT/JMPREL, or packed relocations;
-- RELRO, TLS, constructors/destructors, `dlopen`, `dlsym`, or unload;
+This layer does not define:
+
+- Android/bionic search paths, namespace accessibility/linking, RUNPATH/RPATH, or APK/package policy beyond forwarding requester identity to external providers;
+- symbol lookup/interposition/versioning or hash-table semantics (implemented downstream for the accepted bounded scope);
+- ARM relocation or PLT/JMPREL application (implemented downstream for the accepted REL/JUMP_SLOT subset); packed relocation formats remain deferred;
+- RELRO or lifecycle execution (GNU RELRO and bounded INIT_ARRAY execution are downstream); TLS, destructor/unload lifecycle, `dlopen`, and `dlsym` remain deferred;
 - concurrent graph mutation / atomic address reservation;
-- guest execution.
+- guest execution itself; host fixture execution and the generic runtime/service layers consume loaded graphs downstream.
 
 
 ## Feature 020 validation

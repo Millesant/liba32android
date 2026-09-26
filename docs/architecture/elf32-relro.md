@@ -85,7 +85,7 @@ The accepted eager-linker sequence is:
 5. seal GNU RELRO;
 6. continue with later runtime work.
 
-A future lazy-binding contract must define GOT/RELRO interaction explicitly. The current implementation does not weaken RELRO in anticipation of an unimplemented resolver.
+A future lazy-binding contract must define GOT/RELRO interaction explicitly. The current implementation does not weaken RELRO in anticipation of an unimplemented lazy-binding resolver.
 
 ## Real fixture evidence
 
@@ -105,14 +105,17 @@ T003 is verified by CI #234 / run `35946857448` at `ff1792457f05bd9dd58740e1b768
 - non-RELRO mapped-page permissions remain unchanged;
 - no guest ARM code is executed.
 
-## Deliberate limits
+## Deliberate layer-local limits
 
-This bounded feature does not implement:
+These are GNU-RELRO ownership boundaries. They do not imply that every listed
+downstream capability is absent from the repository.
+
+This layer does not itself implement:
 
 - lazy PLT binding or `DT_PLTGOT` resolver state;
 - Android RELRO serialization/sharing APIs;
 - one atomic transaction spanning graph-wide relocation plus RELRO;
-- symbol-version/process-wide/global-group interposition policy;
+- symbol-version/global-group policy (implemented by the symbol/link-map layers);
 - TLS or IFUNC;
-- broader relocation forms;
-- constructors/destructors, `dlopen`, `dlsym`, unload, or guest execution.
+- broader relocation forms outside the accepted REL/JUMP_SLOT subset;
+- lifecycle execution or guest execution (bounded INIT_ARRAY execution and host fixture execution exist downstream); destructor/unload lifecycle and `dlopen`/`dlsym` remain deferred.
