@@ -4,7 +4,7 @@ Repository integration is on `bleeding`. The current control-plane round is pinn
 
 `project-cleanup-v8` and its source/test, tooling, and documentation child changes are DONE. Features `011-elf32-combined-relocation-transaction` through `019-elf32-init-call-execution` are DONE. Feature 019 result revision `28a4f92f78b8ff156ee9dd3083d1218af8b7b125` passed exact-head Linux A32 smoke and both required Android checks.
 
-Features 020 through 023 are DONE. Feature 023 result revision `4b6234232cef70655272b0877f6c8ae971236a77` passed exact-head Linux A32 smoke and both required Android checks. Feature `024-a32-host-service-dispatch` is ACTIVE: add a new game-agnostic runtime layer that repeatedly executes under one total instruction budget, dispatches exact SVC IDs to a caller-owned handler, and resumes returned CPU state under a separate service-call ceiling.
+Features 020 through 023 are DONE. Feature 023 result revision `4b6234232cef70655272b0877f6c8ae971236a77` passed exact-head Linux A32 smoke and both required Android checks. Feature `024-a32-host-service-dispatch` is ACTIVE and implemented in the current tree. The new runtime layer carries one total instruction budget across SVC resumptions, separately bounds handled services, preserves stop-PC/fixed-budget behavior, exposes exact service/failure provenance, and has ARM/Thumb plus failure-path coverage. Exact-head CI verification/convergence remains.
 
 ## Candidate runtime directions
 

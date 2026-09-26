@@ -8,6 +8,7 @@ The project keeps CPU execution, guest memory, ELF loading, dynamic-linker seman
 
 The current C++20/CMake runtime provides:
 
+- bounded ARM/Thumb execution with exact stop-PC termination, resumable SVC trap state, and game-agnostic bounded host-service dispatch;
 - A32 ARM/Thumb execution through an internal Dynarmic adapter;
 - an engine-independent `memory::GuestMemory` seam with deterministic and mapped backends;
 - logical 32-bit guest virtual addresses with optional high-base 4 GiB fastmem backing and callback fallback;
@@ -27,6 +28,7 @@ Current accepted runtime and ELF behavior is defined by `.agent/specs/runtime.md
 ```text
 src/
   cpu/                 CPU abstraction and Dynarmic adapter
+  runtime/             game-agnostic execution/service orchestration
   memory/              guest-memory contracts and mapped address space
   elf/
     loading/           load planning, placement, and mapping implementations
@@ -38,6 +40,7 @@ src/
 
 tests/
   cpu/                 CPU regressions
+  runtime/             runtime orchestration regressions
   memory/              guest-memory regressions
   elf/
     unit/              synthetic ELF/linker tests

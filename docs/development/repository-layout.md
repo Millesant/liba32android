@@ -5,6 +5,7 @@ The repository is organized by ownership and runtime layer rather than by featur
 ## Runtime source
 
 - `src/cpu/`: engine-independent A32 CPU contract plus Dynarmic adapter. Dynarmic types must not escape this directory.
+- `src/runtime/`: game-agnostic orchestration above CPU/memory, including bounded host-service dispatch; platform API policy does not belong here.
 - `src/memory/`: logical guest-address and mapped-memory contracts.
 - `src/elf/`: ELF interface headers.
   - `loading/`: validation/layout planning, automatic placement, and mapping implementations.
@@ -18,6 +19,7 @@ Headers intentionally remain at `src/elf/` while implementation files are groupe
 ## Tests
 
 - `tests/cpu/`: CPU execution/fastmem regressions.
+- `tests/runtime/`: game-agnostic CPU/memory orchestration regressions.
 - `tests/memory/`: guest-memory and guest-VA allocator regressions.
 - `tests/elf/unit/`: synthetic deterministic ELF/linker tests.
 - `tests/elf/integration/`: tests that consume generated real ARM32 fixtures.
@@ -28,7 +30,7 @@ CTest names and executable target identities are compatibility surfaces for CI a
 
 ## Build configuration
 
-Top-level `CMakeLists.txt` defines project-wide options and includes focused modules under `cmake/`. Test registration is split by domain under `cmake/tests/` so CPU, memory, and ELF test ownership can evolve independently without recreating target setup boilerplate.
+Top-level `CMakeLists.txt` defines project-wide options and includes focused modules under `cmake/`. Test registration is split by domain under `cmake/tests/` so CPU, runtime, memory, and ELF test ownership can evolve independently without recreating target setup boilerplate.
 
 ## Tooling
 

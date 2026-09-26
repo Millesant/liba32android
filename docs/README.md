@@ -6,6 +6,7 @@ This directory separates current architecture/development guidance from research
 
 - [Architecture index](architecture/README.md)
 - [CPU engine](architecture/cpu-engine.md)
+- [A32 host-service dispatch](architecture/a32-service-dispatch.md)
 - [ELF32 loader](architecture/elf32-loader.md)
 - [ELF32 dynamic metadata](architecture/elf32-dynamic.md)
 - [Linker metadata](architecture/elf32-linker-metadata.md)

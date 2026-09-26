@@ -25,6 +25,7 @@ Persisted inspection at `5b1cf991272632ed44d6276d6ec5e982ef732f28` confirmed 30 
 
 - A32 ARM/Thumb execution is isolated behind `src/cpu/` with pinned Dynarmic.
 - Feature 023 adds exact SVC-immediate reporting plus optional initial-CPSR seeding to the engine-independent CPU seam. SVC still raises the existing generic exception flag, while returned registers/PC/CPSR can be fed into a follow-up bounded request to resume ARM or Thumb execution after the trap. Exact-head Linux and required Android CI are verified.
+- Feature 024 adds a game-agnostic `src/runtime/` host-service dispatcher above CPU and GuestMemory. It carries one total instruction budget across SVC resumptions, separately bounds handled service calls, forwards exact SVC IDs to a caller-owned mutable register/CPSR/memory handler, preserves stop-PC semantics and completed handler side effects, and classifies memory faults, ordinary CPU exceptions, service-limit, unhandled/failed service, and instruction exhaustion distinctly. Focused runtime tests are implemented; exact-head verification is pending.
 - `memory::GuestMemory` is the engine-independent memory seam.
 - `LinearGuestMemory` provides deterministic correctness behavior.
 - `MappedGuestMemory` provides logical 32-bit guest mappings, map/protect/unmap lifecycle, high-base 4 GiB reservation support, Dynarmic fastmem, and callback fallback.

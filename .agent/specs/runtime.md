@@ -1,7 +1,7 @@
 # Runtime contract
 
 Status: Accepted current project contract
-Last reconciled: 2026-09-23
+Last reconciled: 2026-09-26
 
 ## L32-R001 — Game-agnostic runtime
 
@@ -38,3 +38,9 @@ A passing cross-build, emulator sample, or device sample proves only the stated 
 ## L32-R009 — Resumable A32 SVC state
 
 The engine-independent CPU result may report the exact A32 SVC immediate while retaining the existing generic exception flag for source-compatible callers. Execution requests may optionally seed a full returned CPSR snapshot; when absent, the adapter retains the existing Arm/Thumb user-mode initialization. Returned general registers, logical PC, and CPSR after an SVC are valid input to a follow-up bounded execution request so guest execution can continue after the trap without exposing Dynarmic types. Host-service dispatch, ABI marshalling, compatibility shims, syscall emulation, and Android API behavior remain separate layers.
+
+## L32-R010 — Bounded host-service dispatch
+
+A game-agnostic runtime layer may execute A32 under one total finite guest-instruction budget while synchronously handling feature-023 SVC traps through a caller-owned service handler. The handler receives the exact SVC immediate plus mutable guest registers/CPSR and `memory::GuestMemory`, and returns Handled, Unhandled, or Failed. Successfully handled traps resume from the returned post-SVC logical PC/register/CPSR state while preserving the original stop-PC target. A separate finite service-call ceiling bounds successful handler invocations.
+
+Memory faults, ordinary non-SVC CPU exceptions, unhandled or failed services, service-limit exhaustion, and exhausting a requested stop-PC instruction budget are distinct outcomes. With no stop target, ordinary fixed-budget completion remains successful. Completed handler register/memory effects are not rolled back. The dispatcher performs no guest mapping/protection lifecycle and contains no service registry, ABI marshalling, syscall semantics, Android API behavior, or platform-specific policy.

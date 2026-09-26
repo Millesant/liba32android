@@ -19,7 +19,8 @@ Minecraft PE 0.15.x is a future stress target, not the architecture.
 ## Current stack
 
 - Language/build: C++20, CMake 3.24+, Ninja in CI.
-- CPU engine: pinned Dynarmic behind the A32 CPU adapter.
+- CPU engine: pinned Dynarmic behind the A32 CPU adapter, including exact resumable SVC reporting.
+- Runtime services: bounded game-agnostic SVC dispatch above CPU/GuestMemory with caller-owned handlers; no Android API policy in the CPU layer.
 - Memory: `LinearGuestMemory` for deterministic correctness tests; `MappedGuestMemory` for logical guest mappings, protection lifecycle, high-base fastmem reservation, and callback fallback.
 - ELF loading: shared pre-mutation load planning, explicit mapping, bounded deterministic ET_DYN placement.
 - Dynamic-linker scope: structural dynamic entries, validated linker metadata/strings including GNU/SysV version descriptors, bounded dependency acquisition, transactional dependency graph loading, SysV/GNU symbol lookup with bounded version matching, main REL including R_ARM_REL32 plus eager JUMP_SLOT relocation, an opt-in combined main+PLT rollback domain, and explicit GNU RELRO sealing.
@@ -38,12 +39,13 @@ ELF image
   -> relocation
   -> RELRO hardening
 
-GuestMemory -> CPU adapter -> Dynarmic
+runtime service dispatch -> GuestMemory + CPU adapter -> Dynarmic
 ```
 
 ## Repository map
 
 - `src/cpu/`: CPU abstraction and Dynarmic adapter.
+- `src/runtime/`: game-agnostic execution orchestration such as bounded host-service dispatch.
 - `src/memory/`: guest-memory contracts and address-space implementation.
 - `src/elf/*.h`: ELF layer contracts.
 - `src/elf/loading/`: load planning, placement, and mapping implementations.
@@ -51,7 +53,7 @@ GuestMemory -> CPU adapter -> Dynarmic
 - `src/elf/linking/`: dependency, symbol, and relocation implementations.
 - `src/elf/hardening/`: post-relocation hardening implementations.
 - `src/elf/internal/`: private ELF helpers.
-- `tests/cpu/`, `tests/memory/`, `tests/elf/`: subsystem tests; ELF synthetic and real-fixture tests are separated.
+- `tests/cpu/`, `tests/runtime/`, `tests/memory/`, `tests/elf/`: subsystem tests; ELF synthetic and real-fixture tests are separated.
 - `tools/android/`: Android diagnostics and runtime-validation harnesses.
 - `tools/fixtures/`: reproducible ARM32 fixture builders.
 - `cmake/tests/`: domain-specific test registration.
