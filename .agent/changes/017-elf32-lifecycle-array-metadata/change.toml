@@ -2,10 +2,11 @@ schema = 1
 id = "017-elf32-lifecycle-array-metadata"
 kind = "feature"
 size = "S2"
-status = "active"
+status = "done"
 workflow = "feature"
-control_revision = "2b7c8b9245a64560cc9e986d554d99233e34b8c5"
+control_revision = "f4e926e81ad91d13d02a006f4a18a00f66ae0bab"
 base_revision = "18cfd59214b4099118b49e38813b50a13291c65e"
+result_revision = "e380b96f4e5d2c81a471d051f568b7c2dbef2c1c"
 acceptance = [
   "DT_INIT_ARRAY/DT_INIT_ARRAYSZ and DT_FINI_ARRAY/DT_FINI_ARRAYSZ are retained as validated unique paired metadata",
   "array addresses receive one checked load-bias rebase; sizes must be divisible by the 4-byte ELF32 function-pointer width and declared guest ranges must be readable",
@@ -18,12 +19,12 @@ acceptance = [
 ]
 
 [convergence]
-requirements = "pending"
-specs = "pending"
-implementation = "pending"
-tests = "pending"
-documentation = "pending"
+requirements = "aligned"
+specs = "aligned"
+implementation = "aligned"
+tests = "aligned"
+documentation = "aligned"
 decisions = "not_applicable"
-tasks = "pending"
-evidence = "pending"
-repository = "pending"
+tasks = "aligned"
+evidence = "aligned"
+repository = "aligned"
