@@ -1,6 +1,6 @@
 # Compatibility contract
 
-Status: Proposed current contract for feature 026
+Status: Accepted current project contract
 Last reconciled: 2026-09-26
 
 ## L32-C001 — Platform compatibility is a separate layer

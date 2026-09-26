@@ -4,29 +4,23 @@ Repository integration is on `bleeding`. The current control-plane round is
 pinned to
 `millesant/.gpt@f4e926e81ad91d13d02a006f4a18a00f66ae0bab`.
 
-Features 011 through 025 are DONE. The latest accepted behavior-changing result
-is feature 025 at `c2fb94e450619378bb0b77880fb0454e53ce38b3`, which passed
+Features 011 through 026 are DONE. The latest behavior-changing result is
+feature 026 at `59fa3eba1d53c6679ef6086cd209198ca7ecb4ac`, which passed
 Linux A32 smoke and both required Android checks.
 
-`026-a32-android-log-write-service` is IMPLEMENTED with the compatibility
-adapter, bounded GuestMemory string handling, sink boundary, compatibility
-regression/CMake registration, API/AAPCS evidence, current compatibility spec,
-architecture docs, and durable change records prepared. Its exact-head Linux
-A32 smoke and both required Android checks are NOT RUN; closing those checks is
-the immediate next step before feature 026 may become accepted state.
+The supplied ARM32 FMOD library and VLC ARMv7 `libvlc.so` both import
+`__android_log_write`. Feature 026 now provides the verified bounded
+AAPCS32 host-service side of that call while deliberately leaving guest ELF
+symbol provisioning separate.
 
 ## Candidate runtime directions
 
-The supplied ARM32 FMOD library and VLC ARMv7 `libvlc.so` both import
-`__android_log_write`. Feature 026 models that three-register call without
-pulling `__android_log_print`/`__android_log_vprint` varargs into the same
-change.
-
-After feature 026 acceptance, current bounded candidates are:
+Current bounded candidates are:
 
 - build the smallest guest ELF `liblog.so` compatibility-shim/provider path
-  that exports `__android_log_write` and traps through the now-verified
-  service bridge, without adding print/vprint yet;
+  that exports `__android_log_write` and traps through feature 026, using the
+  existing exact-name provider/dependency/linker machinery and keeping
+  `__android_log_print`/`__android_log_vprint` varargs out of scope;
 - add Android namespace/search/path policy above the requester-aware provider
   chain/catalog boundary;
 - add persisted lifecycle state plus FINI/destructor/unload ordering;

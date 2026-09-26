@@ -1,6 +1,6 @@
 # A32 Android `__android_log_write` compatibility service
 
-Status: feature 026 implementation prepared; exact-head validation NOT RUN
+Status: feature 026 DONE; exact-head implementation CI PASSed at `59fa3eba1d53c6679ef6086cd209198ca7ecb4ac`
 
 ## Evidence boundary
 
@@ -69,10 +69,21 @@ Feature 026 does not provide a guest ELF `liblog.so`, export
 implement `__android_log_print`/`__android_log_vprint` and their varargs
 marshalling. Those are separate compatibility/linker layers.
 
-## Validation scope
+## Validation
 
 The dedicated compatibility regression stages an ARM
 `svc #0xa0; bx lr` stub, routes it through the feature-025 registry and
 feature-024 dispatcher, verifies r0-r2 argument handling plus signed return
 bits, and covers null tags, exact string limits, wrong service IDs, null text,
 unreadable pointers, and unterminated over-limit strings.
+
+Exact-head implementation revision
+`59fa3eba1d53c6679ef6086cd209198ca7ecb4ac` PASSed:
+
+- Linux A32 smoke check `108387154388`;
+- Android x86_64 address-space probe check `108387154358`;
+- Android arm64-v8a cross-build check `108387154270`.
+
+These checks validate the service bridge and registered regression; they do not
+establish a guest `liblog.so` shim, Android-device execution, or VLC/FMOD
+compatibility.
