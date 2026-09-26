@@ -1,6 +1,6 @@
 # ELF32 lifecycle arrays
 
-Status: feature 017 metadata/decoder boundary complete; feature 018 INIT_ARRAY planning implemented, exact-head verification pending
+Status: feature 018 INIT_ARRAY planning complete; exact-head implementation CI PASSed
 
 ## Boundary
 
@@ -92,3 +92,16 @@ constructor state is changed.
 Feature 018 deliberately stops before legacy `DT_INIT`, PREINIT_ARRAY,
 FINI_ARRAY/destructor planning, persisted constructor-called state, guest CPU
 invocation, dlopen lifecycle, or unload.
+
+
+## Feature 018 validation
+
+At result revision `002a938ad0e5bd657716e1cc978d65e0ade4869e`:
+
+- Linux A32 smoke check `108303835694` PASSed;
+- Android x86_64 address-space probe check `108303835697` PASSed;
+- Android arm64-v8a cross-build check `108303835668` PASSed.
+
+This establishes the read-only dependency-first planning contract only. Guest
+constructor invocation, persistent called-state, legacy DT_INIT/PREINIT,
+FINI_ARRAY/destructor ordering, dlopen lifecycle, and unload remain separate.
