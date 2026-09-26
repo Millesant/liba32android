@@ -321,13 +321,35 @@ int test_init_execution_failures_stop_progress() {
         return fail("misaligned ARM constructor was not rejected with provenance");
     }
 
+    // A completed constructor's guest side effects must remain visible when a
+    // later constructor exhausts its instruction budget; the executor is not a
+    // rollback transaction.
+    constexpr std::array<std::uint8_t, 20> write_code{
+        0x08, 0x00, 0x9F, 0xE5,
+        0x2A, 0x10, 0xA0, 0xE3,
+        0x00, 0x10, 0x80, 0xE5,
+        0x1E, 0xFF, 0x2F, 0xE1,
+        0x00, 0x12, 0x00, 0x00,
+    };
+    if (!memory.write(0x1160, write_code)) {
+        return fail("could not stage side-effecting constructor");
+    }
     const std::array exhausted_calls{
-        Elf32InitCall{.object_index = 1, .array_index = 0, .function = 0x1100},
+        Elf32InitCall{.object_index = 1, .array_index = 0, .function = 0x1160},
         Elf32InitCall{.object_index = 2, .array_index = 0, .function = 0x1120},
         Elf32InitCall{.object_index = 3, .array_index = 0, .function = 0x1100},
     };
     const auto exhausted =
         execute_elf32_init_calls(memory, exhausted_calls, valid);
+    std::array<std::uint8_t, 4> preserved_bytes{};
+    if (!memory.read(0x1200, preserved_bytes)) {
+        return fail("could not read preserved constructor side effect");
+    }
+    const std::uint32_t preserved =
+        static_cast<std::uint32_t>(preserved_bytes[0]) |
+        (static_cast<std::uint32_t>(preserved_bytes[1]) << 8U) |
+        (static_cast<std::uint32_t>(preserved_bytes[2]) << 16U) |
+        (static_cast<std::uint32_t>(preserved_bytes[3]) << 24U);
     if (exhausted.error !=
             Elf32InitExecutionError::InstructionLimitExceeded ||
         exhausted.calls_completed != 1 ||
@@ -337,8 +359,9 @@ int test_init_execution_failures_stop_progress() {
         *exhausted.failing_object != 2 ||
         !exhausted.cpu_result.has_value() ||
         exhausted.cpu_result->instructions_executed != 2 ||
-        exhausted.cpu_result->stop_pc_reached) {
-        return fail("constructor instruction exhaustion did not stop later calls");
+        exhausted.cpu_result->stop_pc_reached ||
+        preserved != 42U) {
+        return fail("constructor failure did not preserve completed side effects or stop later calls");
     }
 
     const std::array exception_call{
