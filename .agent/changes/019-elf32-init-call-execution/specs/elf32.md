@@ -6,8 +6,8 @@ existing finite instruction ceiling and exception/memory-fault reporting.
 
 A lifecycle executor consumes feature-018 INIT_ARRAY calls in order. It derives
 ARM/Thumb state from function bit 0, uses a caller-owned 8-byte-aligned stack
-top, sets an interworking LR to a caller-selected stop PC, and bounds each call
-independently. Completed constructor side effects persist if a later call
+top, sets an interworking LR to a caller-selected word-aligned stop PC, and
+bounds each call independently. Completed constructor side effects persist if a later call
 fails; no scratch mappings or persistent constructor-called state are owned by
 the executor.
 

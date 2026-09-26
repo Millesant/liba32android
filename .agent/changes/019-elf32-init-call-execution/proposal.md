@@ -17,7 +17,7 @@ that address.
 The lifecycle executor accepts a completed INIT_ARRAY call plan plus:
 
 - one caller-owned 8-byte-aligned guest stack top;
-- one normalized logical return-stop PC;
+- one word-aligned normalized logical return-stop PC;
 - one finite instruction ceiling per constructor.
 
 For each planned function, bit 0 selects Thumb versus ARM and is removed from

@@ -117,8 +117,9 @@ requirement from lifecycle execution. Existing callers that omit the stop PC
 retain fixed-instruction behavior.
 
 `execute_elf32_init_calls` consumes a feature-018 call plan without owning
-guest mappings. The caller provides an 8-byte-aligned guest stack top, a
-normalized return-stop PC, and a finite per-call instruction ceiling. For each
+guest mappings. The caller provides an 8-byte-aligned guest stack top, a word-aligned
+normalized return-stop PC shared safely by ARM and Thumb calls, and a finite
+per-call instruction ceiling. For each
 call the executor zeroes deterministic register state, derives ARM/Thumb from
 function bit 0, restores SP, sets interworking LR, and runs through the generic
 CPU seam.

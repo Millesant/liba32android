@@ -13,8 +13,9 @@ Exception and memory-fault termination remain higher priority failure signals.
 ## Constructor executor
 
 The lifecycle executor receives a span of `Elf32InitCall` and immutable
-options. The stack top must be 8-byte aligned, return PC must have bit 0 clear,
-and the per-call instruction ceiling must be nonzero.
+options. The stack top must be 8-byte aligned, the shared return PC must be word
+aligned so it is valid for both ARM and Thumb constructors, and the per-call
+instruction ceiling must be nonzero.
 
 For each call:
 
