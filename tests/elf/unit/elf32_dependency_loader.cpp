@@ -363,10 +363,13 @@ int test_persistent_link_map_root_reuse() {
 int test_persistent_link_map_dependency_reuse() {
     MappedGuestMemory memory;
     Elf32LinkMap link_map;
-    const auto shared = make_image(3, 0, false, true);
+    const auto shared = make_needed_image(
+        3, 0, std::vector<std::string>{"leaf.so"});
+    const auto leaf = make_image(3, 0, false, true);
     RecordingProvider provider;
     provider.responses = {
         success("shared-id", shared),
+        success("leaf-id", leaf),
         success("shared-id", shared),
     };
 
@@ -387,18 +390,21 @@ int test_persistent_link_map_dependency_reuse() {
         },
         provider, options(), Elf32LinkMapRootPolicy::Local);
 
-    if (!first || !second || link_map.graph.objects.size() != 3 ||
+    if (!first || !second || link_map.graph.objects.size() != 4 ||
         link_map.roots.size() != 2 ||
         link_map.roots[0].object_index != 0 ||
-        link_map.roots[1].object_index != 2 ||
+        link_map.roots[1].object_index != 3 ||
         link_map.graph.objects[1].identity != "shared-id" ||
-        link_map.graph.objects[2].dependencies.size() != 1 ||
-        link_map.graph.objects[2].dependencies[0].target_object != 1 ||
+        link_map.graph.objects[1].dependencies.size() != 1 ||
+        link_map.graph.objects[1].dependencies[0].target_object != 2 ||
+        link_map.graph.objects[2].identity != "leaf-id" ||
+        link_map.graph.objects[3].dependencies.size() != 1 ||
+        link_map.graph.objects[3].dependencies[0].target_object != 1 ||
         provider.requests !=
-            std::vector<std::string>{"shared-a.so", "shared-b.so"} ||
+            std::vector<std::string>{"shared-a.so", "leaf.so", "shared-b.so"} ||
         provider.requesters !=
-            std::vector<std::string>{"root-a", "root-b"}) {
-        return fail("persistent link map did not reuse dependency identity/requester context across roots");
+            std::vector<std::string>{"root-a", "shared-id", "root-b"}) {
+        return fail("persistent link map did not preserve root/nested requester context while reusing dependency identity");
     }
     return 0;
 }
