@@ -1,6 +1,6 @@
 # ELF32 lifecycle arrays
 
-Status: feature 018 INIT_ARRAY planning complete; exact-head implementation CI PASSed
+Status: feature 018 planning complete; feature 019 bounded INIT_ARRAY execution implemented, exact-head verification pending
 
 ## Boundary
 
@@ -105,3 +105,30 @@ At result revision `002a938ad0e5bd657716e1cc978d65e0ade4869e`:
 This establishes the read-only dependency-first planning contract only. Guest
 constructor invocation, persistent called-state, legacy DT_INIT/PREINIT,
 FINI_ARRAY/destructor ordering, dlopen lifecycle, and unload remain separate.
+
+
+## Feature 019 bounded constructor execution
+
+The CPU seam now accepts an optional normalized stop PC. Execution checks that
+PC before the first instruction and after each stepped instruction, stopping
+before code fetch at the target. This makes an unmapped logical return target a
+valid bounded-call terminator and removes the executable sentinel-loop
+requirement from lifecycle execution. Existing callers that omit the stop PC
+retain fixed-instruction behavior.
+
+`execute_elf32_init_calls` consumes a feature-018 call plan without owning
+guest mappings. The caller provides an 8-byte-aligned guest stack top, a
+normalized return-stop PC, and a finite per-call instruction ceiling. For each
+call the executor zeroes deterministic register state, derives ARM/Thumb from
+function bit 0, restores SP, sets interworking LR, and runs through the generic
+CPU seam.
+
+Calls that reach the stop PC complete in order. Constructor guest-memory writes
+are intentionally preserved for following calls. CPU exceptions, memory
+faults, invalid function/options, or an exhausted instruction ceiling stop the
+sequence and report completed-call count plus failing call/object provenance.
+No later call is claimed or attempted.
+
+The executor does not allocate a stack, map/protect/unmap memory, roll back
+constructor side effects, persist constructor-called state, or implement
+legacy INIT/PREINIT/destructor lifecycle.
