@@ -4,7 +4,7 @@ Repository integration is on `bleeding`. The current control-plane round is pinn
 
 `project-cleanup-v8` and its source/test, tooling, and documentation child changes are DONE. Features `011-elf32-combined-relocation-transaction` through `017-elf32-lifecycle-array-metadata` are DONE. Feature 017 result revision `e380b96f4e5d2c81a471d051f568b7c2dbef2c1c` passed exact-head Linux A32 smoke and both required Android checks.
 
-Feature `019-elf32-init-call-execution` is ACTIVE. It adds a generic CPU stop-PC termination condition and uses it to invoke feature-018 constructor calls with ARM/Thumb state derived from each raw function value, a caller-owned 8-byte-aligned guest stack top, and a per-call instruction ceiling. No scratch mapping, legacy INIT/PREINIT, persisted called-state, or destructor lifecycle is absorbed.
+Feature `019-elf32-init-call-execution` is ACTIVE and implemented in the current tree. Exact stop-PC A32 termination, ARM/Thumb constructor invocation, caller-owned aligned stack/return state, per-call bounds, ordered side effects, and stop-on-first-failure coverage are present. Exact-head CI verification/convergence is the remaining step before closure.
 
 ## Candidate runtime directions
 
