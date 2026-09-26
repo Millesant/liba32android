@@ -161,6 +161,22 @@ int test_requester_context_is_forwarded_exactly() {
         result.dependencies.ordered.size() != 2) {
         return fail("requester-aware provider context was not forwarded exactly");
     }
+
+    // A provider that only implements the original context-free resolve()
+    // method must keep working even when the caller supplies requester context.
+    RecordingProvider legacy;
+    legacy.responses = {
+        success("legacy-first", {3}),
+        success("legacy-second", {4}),
+    };
+    const auto legacy_result =
+        resolve_elf32_dependencies(strings, legacy, configured);
+    if (!legacy_result ||
+        legacy.requests !=
+            std::vector<std::string>{"first.so", "second.so"} ||
+        legacy.limits != std::vector<std::uint64_t>{4096, 4096}) {
+        return fail("legacy provider fallback changed under requester context");
+    }
     return 0;
 }
 
