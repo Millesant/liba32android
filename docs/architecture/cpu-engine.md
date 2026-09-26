@@ -95,6 +95,21 @@ The device smoke has now demonstrated on one real Android/AArch64 environment:
 
 Raw evidence and the Observed/Inferred/Not-demonstrated classifications live under `docs/research/evidence/android-runtime-smoke-termux-arm64-2026-09-16.*`, `docs/research/evidence/android-runtime-smoke-fastmem-fallback-termux-arm64-2026-09-16.*`, and `docs/research/evidence/android-runtime-smoke-crash-test-termux-arm64-2026-09-19.*`.
 
+## Exact stop-PC execution
+
+`ExecutionRequest::stop_pc` is an optional normalized logical guest PC. The
+Dynarmic adapter checks it before the first instruction and after every stepped
+instruction. When reached, execution stops before fetching from that address
+and `ExecutionResult::stop_pc_reached` records the terminal condition.
+
+This is additive: callers that omit `stop_pc` retain the existing fixed
+instruction-count semantics. The stop target need not be mapped, which lets
+bounded guest calls return through LR without staging executable sentinel code.
+Exceptions and memory faults remain explicit terminal states.
+
+Feature 019 uses this seam for INIT_ARRAY constructors; the CPU layer remains
+unaware of ELF or lifecycle policy.
+
 ## Correctness policy
 
 Dynarmic documents known accuracy tradeoffs and is not treated as a formal ARM reference implementation. Tiny regression binaries and, where practical, a slower reference path will be used to verify runtime behavior. Unsupported behavior must be surfaced rather than silently declared compatible.
