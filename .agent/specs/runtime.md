@@ -44,3 +44,18 @@ The engine-independent CPU result may report the exact A32 SVC immediate while r
 A game-agnostic runtime layer may execute A32 under one total finite guest-instruction budget while synchronously handling feature-023 SVC traps through a caller-owned service handler. The handler receives the exact SVC immediate plus mutable guest registers/CPSR and `memory::GuestMemory`, and returns Handled, Unhandled, or Failed. Successfully handled traps resume from the returned post-SVC logical PC/register/CPSR state while preserving the original stop-PC target. A separate finite service-call ceiling bounds successful handler invocations.
 
 Memory faults, ordinary non-SVC CPU exceptions, unhandled or failed services, service-limit exhaustion, and exhausting a requested stop-PC instruction budget are distinct outcomes. With no stop target, ordinary fixed-budget completion remains successful. Completed handler register/memory effects are not rolled back. The dispatcher performs no guest mapping/protection lifecycle and contains no service registry, ABI marshalling, syscall semantics, Android API behavior, or platform-specific policy.
+
+## L32-R011 — Exact host-service registry
+
+A game-agnostic registry may compose caller-owned `A32HostServiceHandler`
+objects by exact SVC immediate. The registry borrows a finite entry span and
+never owns, allocates, or reorders handlers. No matching entry returns
+`Unhandled`. Exactly one matching non-null child is invoked with the unchanged
+`GuestMemory`, SVC immediate, mutable registers, and CPSR, and its disposition
+is returned unchanged.
+
+A matching null handler, duplicate matching immediate, or direct self-entry
+returns `Failed` before any child handler is invoked. Invalid entries for
+unrelated immediates do not affect exact lookup. The registry performs no ABI
+argument decoding, platform/API semantics, symbol resolution, shim generation,
+syscall emulation, or namespace/search policy.

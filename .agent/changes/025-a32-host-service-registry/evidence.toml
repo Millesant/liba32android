@@ -1,0 +1,20 @@
+schema = 1
+change = "025-a32-host-service-registry"
+
+[[evidence]]
+id = "registry-regressions"
+kind = "test"
+status = "not_run"
+claim = "Runtime regressions cover exact registry lookup, invalid matching entries, child forwarding, and composition through feature 024."
+source = "tests/runtime/a32_service_registry.cpp"
+result = "Test source and CMake registration are prepared; no exact-head execution result has been observed yet."
+limitations = "Prepared tests are not passing evidence until CI actually executes them on the implementation revision."
+
+[[evidence]]
+id = "exact-head-ci"
+kind = "validation"
+status = "not_run"
+claim = "The exact-SVC registry passes the required Linux A32 smoke and Android validation matrix."
+source = "GitHub commit checks on the eventual feature-025 implementation revision"
+result = ""
+limitations = "Feature 025 remains implemented rather than verified/done until terminal exact-head checks are observed."

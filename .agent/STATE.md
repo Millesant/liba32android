@@ -4,6 +4,7 @@ Last updated: 2026-09-26
 Integration branch: `bleeding`
 Control-plane round: `millesant/.gpt@f4e926e81ad91d13d02a006f4a18a00f66ae0bab`
 Latest maintenance result: `project-cleanup-v9@567ab4931d3d0af69edb7680b0a266be7672df64`
+Active change: `025-a32-host-service-registry` — IMPLEMENTED, exact-head validation NOT RUN.
 
 ## Phase
 
@@ -16,15 +17,15 @@ dependency acquisition with exact-name catalogs, resumable A32 SVC state, and
 bounded game-agnostic host-service dispatch.
 
 Features `011-elf32-combined-relocation-transaction` through
-`024-a32-host-service-dispatch` are DONE. `project-cleanup-v8` is DONE.
-`project-cleanup-v9` is DONE. It reconciled canonical state/current docs,
-historical-spec orientation, and repository-registration evidence without
-changing accepted runtime semantics.
+`024-a32-host-service-dispatch` are DONE. Feature
+`025-a32-host-service-registry` now has implementation/tests/docs prepared but
+is not accepted until its exact-head Linux A32 smoke and both required Android
+checks pass. `project-cleanup-v8` and `project-cleanup-v9` are DONE.
 
 ## Repository organization
 
 - `src/cpu/`: engine-independent A32 execution contract plus pinned Dynarmic adapter.
-- `src/runtime/`: game-agnostic CPU/memory orchestration, including bounded host-service dispatch.
+- `src/runtime/`: game-agnostic CPU/memory orchestration, including bounded host-service dispatch and the feature-025 exact-SVC registry implementation awaiting exact-head validation.
 - `src/memory/`: logical 32-bit guest-memory contracts and mapped address space.
 - `src/elf/*.h`: ELF layer contracts; implementations are grouped under `loading/`, `metadata/`, `linking/`, `hardening/`, and `internal/`.
 - `tests/cpu/`, `tests/runtime/`, `tests/memory/`, and `tests/elf/`: subsystem regressions and real-fixture integration.
@@ -33,6 +34,8 @@ changing accepted runtime semantics.
 - `docs/architecture/` and `docs/development/`: current guidance; `docs/research/` and root `specs/` are evidence/history, not current contract authority.
 
 ## Implemented runtime
+
+Accepted behavior through feature 024:
 
 - Bounded ARM/Thumb execution with exact stop-PC termination, optional exact initial CPSR, exact SVC-immediate reporting, and resumable post-SVC state.
 - Bounded game-agnostic host-service dispatch with one total guest-instruction budget, a separate service-call ceiling, explicit service/fault errors, and preserved completed handler side effects.
@@ -45,6 +48,12 @@ changing accepted runtime semantics.
 - Transactional main `DT_REL` support for `R_ARM_NONE`, `R_ARM_RELATIVE`, `R_ARM_GLOB_DAT`, `R_ARM_ABS32`, and `R_ARM_REL32`, plus eager `R_ARM_JUMP_SLOT`.
 - Combined per-object main+PLT preflight/write/rollback and explicit post-relocation GNU RELRO hardening.
 - Reproducible ARMv7 fixtures and host-side integrated execution of the linked real fixture through load, dependency graph, relocation, BSS, RELRO, and A32 execution.
+
+Current unverified feature-025 implementation:
+
+- an exact-SVC `A32HostServiceRegistry` composes caller-owned handlers without allocation or platform policy;
+- unknown service IDs remain `Unhandled`; duplicate matching IDs, matching null handlers, and direct self-entries fail before child invocation;
+- direct registry coverage plus an ARM SVC -> registry -> feature-024 dispatch/resume integration test are registered but NOT RUN on this exact implementation revision yet.
 
 ## Deferred / partial
 
@@ -63,12 +72,15 @@ Still outside the accepted implementation:
 
 ## Validation and repository-truth evidence
 
-Latest behavior-changing result: feature 024 at
+Latest accepted behavior-changing result: feature 024 at
 `d4e7b480e28d13e8edc5dd1ccf28abbc3072a7a1`:
 
 - Linux A32 smoke check `108377362582` — PASS.
 - Android x86_64 address-space probe check `108377362552` — PASS.
 - Android arm64-v8a cross-build check `108377362391` — PASS.
+
+Feature 025 exact-head validation: NOT RUN. Its implementation revision is not
+accepted until the required matrix reports terminal success.
 
 Cleanup-v9 audit evidence:
 

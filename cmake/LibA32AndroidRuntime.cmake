@@ -1,6 +1,7 @@
 add_library(liba32android SHARED
     src/cpu/dynarmic_cpu.cpp
     src/runtime/a32_service_dispatch.cpp
+    src/runtime/a32_service_registry.cpp
     src/elf/loading/elf32_dynamic_placement.cpp
     src/elf/loading/elf32_load_plan.cpp
     src/elf/loading/elf32_loader.cpp
