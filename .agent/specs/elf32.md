@@ -17,7 +17,7 @@ Pre-mutation ELF validation/layout is shared through `elf32_load_plan`. Automati
 
 ## L32-E004 — Linker metadata and strings
 
-Validated linker metadata covers STRTAB/STRSZ, SYMTAB/SYMENT, main REL/RELSZ/RELENT, separate AArch32 PLT REL metadata, SONAME, ordered `DT_NEEDED` offsets, DT_SYMBOLIC/DF_SYMBOLIC requester binding, and raw `DT_FLAGS_1` with explicit `DF_1_GLOBAL` membership. Unknown FLAGS_1 bits are preserved. String materialization is explicitly bounded and preserves ordered/repeated dependency names.
+Validated linker metadata covers STRTAB/STRSZ, SYMTAB/SYMENT, main REL/RELSZ/RELENT, separate AArch32 PLT REL metadata, SONAME, ordered `DT_NEEDED` offsets, DT_SYMBOLIC/DF_SYMBOLIC requester binding, raw `DT_FLAGS_1` with explicit `DF_1_GLOBAL` membership, and paired `DT_INIT_ARRAY/DT_INIT_ARRAYSZ` plus `DT_FINI_ARRAY/DT_FINI_ARRAYSZ` descriptors. Lifecycle-array addresses are rebased once, sizes are integral ELF32 function-pointer widths, and declared guest ranges are readable. Unknown FLAGS_1 bits are preserved. String materialization is explicitly bounded and preserves ordered/repeated dependency names.
 
 ## L32-E005 — Dependency acquisition and graph loading
 
@@ -55,6 +55,10 @@ Validated guest-only DT_VERSYM, DT_VERDEF/DT_VERDEFNUM, and DT_VERNEED/DT_VERNEE
 
 The generated feature-014 two-DSO ARM32 fixture records a `LIBC` version requirement and a JUMP_SLOT import; exact-head Linux CI resolves and applies it successfully.
 
-## L32-E013 — Deferred linker scope
+## L32-E013 — Lifecycle array metadata
 
-Still outside the accepted implementation: Android namespace/search-path/pathname accessibility and platform-provider policy; LD_PRELOAD/RTLD selection semantics; protected-reference self-binding; lazy binding; broader ARM relocation families; RELA/RELR/Android packed relocations; TLS/IFUNC; constructors/destructors; `dlopen`/`dlsym`/unload; and guest execution of the real ARM32 fixture on Android. Persistent cross-root object lifetime and generic global-group membership are implemented by feature 016.
+Validated INIT_ARRAY/FINI_ARRAY descriptors feed a read-only caller-bounded decoder. It returns raw logical 32-bit function values in declaration order, preserves null and all-ones sentinels, rejects non-integral sizes, guest-range overflow, entry ceilings, and read failures explicitly, and never mutates guest memory. It does not filter sentinels or execute guest functions.
+
+## L32-E014 — Deferred linker/runtime scope
+
+Still outside the accepted implementation: Android namespace/search-path/pathname accessibility and platform-provider policy; LD_PRELOAD/RTLD selection semantics; protected-reference self-binding; lazy binding; broader ARM relocation families; RELA/RELR/Android packed relocations; TLS/IFUNC; legacy `DT_INIT/DT_FINI`, `DT_PREINIT_ARRAY`, dependency-order constructor/destructor planning and execution, recursion guards, `dlopen`/`dlsym`/unload; and guest execution of the real ARM32 fixture on Android. Persistent cross-root object lifetime and generic global-group membership are implemented by feature 016.

@@ -1,6 +1,6 @@
 # ELF32 linker metadata
 
-Status: current through feature 016; exact-head implementation CI PASSed
+Status: current through feature 017; lifecycle-array implementation exact-head CI PASSed
 
 ## Boundary
 
@@ -56,6 +56,7 @@ The current semantic set recognizes:
 - repeated `DT_NEEDED` offsets;
 - `DT_SYMBOLIC` plus `DF_SYMBOLIC` from `DT_FLAGS` as the requester-first binding marker;
 - raw `DT_FLAGS_1` bits plus explicit `DF_1_GLOBAL` membership for persistent-link-map policy;
+- paired `DT_INIT_ARRAY/DT_INIT_ARRAYSZ` and `DT_FINI_ARRAY/DT_FINI_ARRAYSZ` guest descriptors;
 - validated guest descriptors for GNU/SysV symbol-version metadata (`DT_VERSYM`, `DT_VERDEF`/`DT_VERDEFNUM`, and `DT_VERNEED`/`DT_VERNEEDNUM`), consumed downstream by bounded version-aware symbol lookup.
 
 Recognized singleton tags are unique. A duplicate is rejected even if the value matches. `DT_NEEDED` is intentionally repeatable and preserves dynamic-array order.
@@ -94,7 +95,7 @@ This layer does not yet:
 - decode or apply ARM relocations;
 - decode or apply PLT/JMPREL entries, implement `R_ARM_JUMP_SLOT`, or perform lazy binding;
 - perform symbol lookup itself or implement version-aware/process-wide interposition policy;
-- process RELRO, TLS, constructors/destructors, or Android packed relocations.
+- execute constructors/destructors, process TLS, or decode Android packed relocations.
 
 Bounded SONAME/NEEDED string consumption lives in `elf32_linker_strings`; bounded hash/dynsym indexing, exact per-object lookup, and graph-local BFS scope live in `elf32_symbol_lookup`; bounded main-`DT_REL` ARM relocation planning/application lives downstream in `elf32_relocation`. PLT REL metadata is now validated here, while PLT entry decoding/application, `R_ARM_JUMP_SLOT`, lazy binding, version-aware/global-group policy, RELRO, TLS, and broader runtime behavior remain separate downstream contracts.
 
@@ -108,6 +109,20 @@ existing singleton rule.
 
 Feature 016 result revision `0c374ff84990ee3d64c06a1037f846d90054e5e4`
 PASSed exact-head GitHub Actions CI run `36201652255` (#299).
+
+## Feature 017 lifecycle-array extension
+
+INIT_ARRAY and FINI_ARRAY declarations are unique paired metadata. Their
+addresses receive one checked load-bias rebase, sizes must be divisible by the
+4-byte ELF32 function-pointer width, and the declared guest ranges must be
+readable. Entry decoding lives in the separate read-only lifecycle layer so
+metadata validation never turns guest function values into host pointers or
+executes them.
+
+Feature 017 implementation revision
+`e380b96f4e5d2c81a471d051f568b7c2dbef2c1c` PASSed exact-head checks:
+Linux A32 smoke `108292909594`, Android x86_64 address-space probe
+`108292909697`, and Android arm64-v8a cross-build `108292909672`.
 
 ## Validation evidence
 

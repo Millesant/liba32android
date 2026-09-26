@@ -9,6 +9,7 @@ This directory separates current architecture/development guidance from research
 - [ELF32 loader](architecture/elf32-loader.md)
 - [ELF32 dynamic metadata](architecture/elf32-dynamic.md)
 - [Linker metadata](architecture/elf32-linker-metadata.md)
+- [Lifecycle arrays](architecture/elf32-lifecycle.md)
 - [Linker strings](architecture/elf32-linker-strings.md)
 - [Dependency resolution](architecture/elf32-dependency-resolution.md)
 - [Dependency loading](architecture/elf32-dependency-loading.md)
