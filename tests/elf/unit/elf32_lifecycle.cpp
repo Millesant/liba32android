@@ -272,6 +272,69 @@ int test_init_execution_arm_thumb_and_side_effects() {
     return 0;
 }
 
+int test_init_plan_executes_dependency_first_end_to_end() {
+    LinearGuestMemory memory(0x800, 0x1000);
+    Elf32DependencyGraph graph;
+    graph.objects.resize(2);
+    graph.objects[0].dependencies = {
+        Elf32DependencyEdge{.requested_name = "dep", .target_object = 1},
+    };
+
+    // Dependency constructor: *0x1300 = 1; bx lr.
+    constexpr std::array<std::uint8_t, 20> dep_code{
+        0x08, 0x00, 0x9F, 0xE5,
+        0x01, 0x10, 0xA0, 0xE3,
+        0x00, 0x10, 0x80, 0xE5,
+        0x1E, 0xFF, 0x2F, 0xE1,
+        0x00, 0x13, 0x00, 0x00,
+    };
+    // Root constructor: ++*0x1300; bx lr.
+    constexpr std::array<std::uint8_t, 24> root_code{
+        0x0C, 0x00, 0x9F, 0xE5,
+        0x00, 0x10, 0x90, 0xE5,
+        0x01, 0x10, 0x81, 0xE2,
+        0x00, 0x10, 0x80, 0xE5,
+        0x1E, 0xFF, 0x2F, 0xE1,
+        0x00, 0x13, 0x00, 0x00,
+    };
+    if (!memory.write(0x1100, dep_code) ||
+        !memory.write(0x1140, root_code) ||
+        !stage_init_array(memory, graph, 1, 0x1200, {0x1100U}) ||
+        !stage_init_array(memory, graph, 0, 0x1210, {0x1140U})) {
+        return fail("could not stage end-to-end INIT_ARRAY lifecycle fixture");
+    }
+
+    const auto plan = plan_elf32_init_array_calls(
+        memory, graph, 0,
+        Elf32InitPlanOptions{.max_objects = 2, .max_entries = 2});
+    if (!plan || plan.calls.size() != 2 ||
+        plan.calls[0].object_index != 1 ||
+        plan.calls[1].object_index != 0) {
+        return fail("end-to-end INIT_ARRAY plan was not dependency-first");
+    }
+
+    const auto executed = execute_elf32_init_calls(
+        memory, plan.calls,
+        Elf32InitExecutionOptions{
+            .stack_top = 0x17f8,
+            .return_pc = 0x2000,
+            .max_instructions_per_call = 8,
+        });
+    std::array<std::uint8_t, 4> bytes{};
+    if (!memory.read(0x1300, bytes)) {
+        return fail("could not read end-to-end constructor state");
+    }
+    const std::uint32_t value =
+        static_cast<std::uint32_t>(bytes[0]) |
+        (static_cast<std::uint32_t>(bytes[1]) << 8U) |
+        (static_cast<std::uint32_t>(bytes[2]) << 16U) |
+        (static_cast<std::uint32_t>(bytes[3]) << 24U);
+    if (!executed || executed.calls_completed != 2 || value != 2U) {
+        return fail("planned constructors did not execute dependency-first");
+    }
+    return 0;
+}
+
 int test_init_execution_failures_stop_progress() {
     LinearGuestMemory memory(0x500, 0x1000);
 
@@ -518,6 +581,10 @@ int main() {
         return status;
     }
     if (const int status = test_init_execution_arm_thumb_and_side_effects();
+        status != 0) {
+        return status;
+    }
+    if (const int status = test_init_plan_executes_dependency_first_end_to_end();
         status != 0) {
         return status;
     }
