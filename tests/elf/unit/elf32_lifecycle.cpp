@@ -374,6 +374,18 @@ int test_init_execution_failures_stop_progress() {
         return fail("unaligned INIT_ARRAY stack top was not rejected");
     }
 
+    const auto bad_return = execute_elf32_init_calls(
+        memory, one_return,
+        Elf32InitExecutionOptions{
+            .stack_top = 0x13f8,
+            .return_pc = 0x2002,
+            .max_instructions_per_call = 2,
+        });
+    if (bad_return.error != Elf32InitExecutionError::InvalidOptions ||
+        bad_return.calls_completed != 0) {
+        return fail("non-word-aligned INIT_ARRAY return PC was not rejected");
+    }
+
     const std::array bad_function{
         Elf32InitCall{.object_index = 7, .array_index = 4, .function = 0x1102},
     };

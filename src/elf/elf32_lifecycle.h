@@ -96,8 +96,9 @@ struct Elf32InitPlanResult {
 struct Elf32InitExecutionOptions {
     // Caller-owned writable stack top. The executor does not map or unmap it.
     std::uint32_t stack_top{};
-    // Normalized logical guest PC used only as a stop target; it need not be
-    // mapped because CPU execution stops before fetching it.
+    // Word-aligned normalized logical guest PC used only as a stop target; it
+    // need not be mapped because CPU execution stops before fetching it. Word
+    // alignment lets the same target safely serve ARM and Thumb constructors.
     std::uint32_t return_pc{};
     std::size_t max_instructions_per_call{};
 };

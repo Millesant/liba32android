@@ -237,7 +237,7 @@ Elf32InitExecutionResult execute_elf32_init_calls(
     const Elf32InitExecutionOptions& options) {
     if (options.stack_top == 0U ||
         (options.stack_top & 7U) != 0U ||
-        (options.return_pc & 1U) != 0U ||
+        (options.return_pc & 3U) != 0U ||
         options.max_instructions_per_call == 0U) {
         Elf32InitExecutionResult result;
         result.error = Elf32InitExecutionError::InvalidOptions;
