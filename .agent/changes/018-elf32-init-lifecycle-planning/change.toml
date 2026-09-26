@@ -2,10 +2,11 @@ schema = 1
 id = "018-elf32-init-lifecycle-planning"
 kind = "feature"
 size = "S2"
-status = "active"
+status = "done"
 workflow = "feature"
 control_revision = "f4e926e81ad91d13d02a006f4a18a00f66ae0bab"
 base_revision = "dfb6c22e30245df71c245cfe19a0ceabfb6e6d55"
+result_revision = "002a938ad0e5bd657716e1cc978d65e0ade4869e"
 acceptance = [
   "a root-scoped read-only INIT_ARRAY planner walks dependency edges before the requester object in deterministic edge order",
   "cycles and shared dependencies are suppressed so each reachable object contributes constructors at most once",
@@ -18,12 +19,12 @@ acceptance = [
 ]
 
 [convergence]
-requirements = "pending"
-specs = "pending"
-implementation = "pending"
-tests = "pending"
-documentation = "pending"
+requirements = "aligned"
+specs = "aligned"
+implementation = "aligned"
+tests = "aligned"
+documentation = "aligned"
 decisions = "not_applicable"
-tasks = "pending"
-evidence = "pending"
-repository = "pending"
+tasks = "aligned"
+evidence = "aligned"
+repository = "aligned"
