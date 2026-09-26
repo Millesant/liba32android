@@ -36,12 +36,26 @@ public:
     [[nodiscard]] virtual Elf32DependencyProviderResult resolve(
         std::string_view requested_name,
         std::uint64_t max_image_bytes) = 0;
+
+    // Additive requester-aware seam. Existing providers need not override it:
+    // the default preserves the context-free resolve() behavior exactly.
+    // requester_identity is borrowed only for this synchronous call.
+    [[nodiscard]] virtual Elf32DependencyProviderResult resolve_for(
+        std::string_view requester_identity,
+        std::string_view requested_name,
+        std::uint64_t max_image_bytes) {
+        static_cast<void>(requester_identity);
+        return resolve(requested_name, max_image_bytes);
+    }
 };
 
 struct Elf32DependencyResolveOptions {
     std::uint32_t max_dependencies{};
     std::uint64_t max_image_bytes{};
     std::uint64_t max_total_image_bytes{};
+    // Optional opaque identity of the object making these DT_NEEDED requests.
+    // Borrowed for the duration of resolve_elf32_dependencies() only.
+    std::string_view requester_identity{};
 };
 
 struct Elf32ResolvedDependency {

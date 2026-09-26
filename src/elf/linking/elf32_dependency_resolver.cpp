@@ -58,7 +58,9 @@ Elf32DependencyResolveResult resolve_elf32_dependencies(
         const std::uint64_t request_limit =
             std::min(options.max_image_bytes, remaining_total);
         Elf32DependencyProviderResult provider_result =
-            provider.resolve(requested_name, request_limit);
+            provider.resolve_for(options.requester_identity,
+                                 requested_name,
+                                 request_limit);
         if (!provider_result) {
             return failure(translate_provider_error(provider_result.error));
         }

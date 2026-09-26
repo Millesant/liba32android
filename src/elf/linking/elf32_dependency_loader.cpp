@@ -233,6 +233,7 @@ struct GraphLoadContext {
                 .max_dependencies = static_cast<std::uint32_t>(direct_size),
                 .max_image_bytes = options.max_image_bytes,
                 .max_total_image_bytes = remaining_total,
+                .requester_identity = graph.objects[index].identity,
             });
         if (!resolved) {
             auto result =
