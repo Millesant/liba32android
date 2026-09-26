@@ -1,3 +1,4 @@
+#include <array>
 #include <cstdint>
 #include <iostream>
 #include <string>
@@ -10,6 +11,7 @@
 namespace {
 
 using liba32android::elf::Elf32DependencyProvider;
+using liba32android::elf::Elf32DependencyProviderChain;
 using liba32android::elf::Elf32DependencyProviderError;
 using liba32android::elf::Elf32DependencyProviderResult;
 using liba32android::elf::Elf32DependencyResolveError;
@@ -176,6 +178,131 @@ int test_requester_context_is_forwarded_exactly() {
             std::vector<std::string>{"first.so", "second.so"} ||
         legacy.limits != std::vector<std::uint64_t>{4096, 4096}) {
         return fail("legacy provider fallback changed under requester context");
+    }
+    return 0;
+}
+
+int test_provider_chain_order_fallback_and_failures() {
+    const std::string requester{"requester\0id", 12};
+    const std::string request{"lib\0x.so", 8};
+
+    {
+        RequesterRecordingProvider local;
+        RequesterRecordingProvider platform;
+        Elf32DependencyProviderResult missing;
+        missing.error = Elf32DependencyProviderError::NotFound;
+        local.responses = {missing};
+        platform.responses = {success("platform-id", {1, 2, 3})};
+        std::array<Elf32DependencyProvider*, 2> providers{&local, &platform};
+        Elf32DependencyProviderChain chain{
+            std::span<Elf32DependencyProvider* const>{providers}};
+
+        const auto result = chain.resolve_for(
+            std::string_view{requester.data(), requester.size()},
+            std::string_view{request.data(), request.size()},
+            77);
+        if (!result || result.source.identity != "platform-id" ||
+            local.requesters != std::vector<std::string>{requester} ||
+            platform.requesters != std::vector<std::string>{requester} ||
+            local.requests != std::vector<std::string>{request} ||
+            platform.requests != std::vector<std::string>{request} ||
+            local.limits != std::vector<std::uint64_t>{77} ||
+            platform.limits != std::vector<std::uint64_t>{77}) {
+            return fail("provider chain did not preserve NotFound fallback/order/context");
+        }
+    }
+
+    {
+        RequesterRecordingProvider broken;
+        RequesterRecordingProvider unused;
+        Elf32DependencyProviderResult failed;
+        failed.error = Elf32DependencyProviderError::Failed;
+        broken.responses = {failed};
+        unused.responses = {success("unused", {9})};
+        std::array<Elf32DependencyProvider*, 2> providers{&broken, &unused};
+        Elf32DependencyProviderChain chain{
+            std::span<Elf32DependencyProvider* const>{providers}};
+
+        const auto result = chain.resolve_for("root", "x.so", 55);
+        if (result.error != Elf32DependencyProviderError::Failed ||
+            broken.requests != std::vector<std::string>{"x.so"} ||
+            !unused.requests.empty()) {
+            return fail("provider chain did not short-circuit hard failure");
+        }
+    }
+
+    {
+        RequesterRecordingProvider first;
+        RequesterRecordingProvider unused;
+        first.responses = {success("first", {4})};
+        unused.responses = {success("unused", {5})};
+        std::array<Elf32DependencyProvider*, 2> providers{&first, &unused};
+        Elf32DependencyProviderChain chain{
+            std::span<Elf32DependencyProvider* const>{providers}};
+
+        const auto result = chain.resolve_for("root", "x.so", 44);
+        if (!result || result.source.identity != "first" ||
+            first.requests != std::vector<std::string>{"x.so"} ||
+            !unused.requests.empty()) {
+            return fail("provider chain did not stop at first success");
+        }
+    }
+
+    {
+        std::array<Elf32DependencyProvider*, 0> providers{};
+        Elf32DependencyProviderChain chain{
+            std::span<Elf32DependencyProvider* const>{providers}};
+        const auto result = chain.resolve_for("root", "x.so", 1);
+        if (result.error != Elf32DependencyProviderError::NotFound) {
+            return fail("empty provider chain did not report NotFound");
+        }
+    }
+
+    {
+        std::array<Elf32DependencyProvider*, 1> providers{nullptr};
+        Elf32DependencyProviderChain chain{
+            std::span<Elf32DependencyProvider* const>{providers}};
+        const auto result = chain.resolve_for("root", "x.so", 1);
+        if (result.error != Elf32DependencyProviderError::Failed) {
+            return fail("null provider-chain entry was silently skipped");
+        }
+    }
+
+    return 0;
+}
+
+int test_provider_chain_legacy_fallback_and_resolver_validation() {
+    RecordingProvider legacy;
+    legacy.responses = {success("legacy", {1, 2})};
+    std::array<Elf32DependencyProvider*, 1> providers{&legacy};
+    Elf32DependencyProviderChain chain{
+        std::span<Elf32DependencyProvider* const>{providers}};
+
+    Elf32LinkerStrings strings;
+    strings.needed = {"legacy.so"};
+    auto configured = options();
+    configured.requester_identity = "opaque-root";
+
+    const auto result =
+        resolve_elf32_dependencies(strings, chain, configured);
+    if (!result ||
+        legacy.requests != std::vector<std::string>{"legacy.so"} ||
+        legacy.limits != std::vector<std::uint64_t>{4096} ||
+        result.dependencies.ordered.size() != 1 ||
+        result.dependencies.ordered[0].identity != "legacy") {
+        return fail("provider chain broke legacy child fallback");
+    }
+
+    RecordingProvider invalid;
+    invalid.responses = {success("", {7})};
+    std::array<Elf32DependencyProvider*, 1> invalid_providers{&invalid};
+    Elf32DependencyProviderChain invalid_chain{
+        std::span<Elf32DependencyProvider* const>{invalid_providers}};
+    const auto invalid_result =
+        resolve_elf32_dependencies(strings, invalid_chain, configured);
+    if (invalid_result.error !=
+        Elf32DependencyResolveError::EmptyProviderIdentity) {
+        return fail("provider chain bypassed resolver result validation");
     }
     return 0;
 }
@@ -443,6 +570,8 @@ int test_later_failure_returns_no_partial_aggregate() {
 int main() {
     if (const int status = test_ordered_success_and_owned_results(); status != 0) return status;
     if (const int status = test_requester_context_is_forwarded_exactly(); status != 0) return status;
+    if (const int status = test_provider_chain_order_fallback_and_failures(); status != 0) return status;
+    if (const int status = test_provider_chain_legacy_fallback_and_resolver_validation(); status != 0) return status;
     if (const int status = test_repeated_occurrences_are_not_deduplicated(); status != 0) return status;
     if (const int status = test_empty_set_and_count_precheck(); status != 0) return status;
     if (const int status = test_empty_name_rejected_before_its_provider_call(); status != 0) return status;

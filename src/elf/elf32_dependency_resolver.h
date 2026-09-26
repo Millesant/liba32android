@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -47,6 +48,31 @@ public:
         static_cast<void>(requester_identity);
         return resolve(requested_name, max_image_bytes);
     }
+};
+
+class Elf32DependencyProviderChain final : public Elf32DependencyProvider {
+public:
+    // The provider list and provider objects are caller-owned and must outlive
+    // this chain. The list is finite and its order is lookup order.
+    explicit Elf32DependencyProviderChain(
+        std::span<Elf32DependencyProvider* const> providers) noexcept
+        : providers_(providers) {}
+
+    [[nodiscard]] Elf32DependencyProviderResult resolve(
+        std::string_view requested_name,
+        std::uint64_t max_image_bytes) override;
+
+    [[nodiscard]] Elf32DependencyProviderResult resolve_for(
+        std::string_view requester_identity,
+        std::string_view requested_name,
+        std::uint64_t max_image_bytes) override;
+
+    [[nodiscard]] std::size_t size() const noexcept {
+        return providers_.size();
+    }
+
+private:
+    std::span<Elf32DependencyProvider* const> providers_;
 };
 
 struct Elf32DependencyResolveOptions {

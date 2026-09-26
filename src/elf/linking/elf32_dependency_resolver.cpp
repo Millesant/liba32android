@@ -29,6 +29,36 @@ namespace {
 
 }  // namespace
 
+Elf32DependencyProviderResult Elf32DependencyProviderChain::resolve(
+    std::string_view requested_name,
+    std::uint64_t max_image_bytes) {
+    return resolve_for({}, requested_name, max_image_bytes);
+}
+
+Elf32DependencyProviderResult Elf32DependencyProviderChain::resolve_for(
+    std::string_view requester_identity,
+    std::string_view requested_name,
+    std::uint64_t max_image_bytes) {
+    for (Elf32DependencyProvider* provider : providers_) {
+        if (provider == nullptr) {
+            Elf32DependencyProviderResult result;
+            result.error = Elf32DependencyProviderError::Failed;
+            return result;
+        }
+
+        auto result = provider->resolve_for(
+            requester_identity, requested_name, max_image_bytes);
+        if (result.error == Elf32DependencyProviderError::NotFound) {
+            continue;
+        }
+        return result;
+    }
+
+    Elf32DependencyProviderResult result;
+    result.error = Elf32DependencyProviderError::NotFound;
+    return result;
+}
+
 Elf32DependencyResolveResult resolve_elf32_dependencies(
     const Elf32LinkerStrings& strings,
     Elf32DependencyProvider& provider,
