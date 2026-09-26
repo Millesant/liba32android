@@ -32,7 +32,23 @@ namespace {
 Elf32DependencyProviderResult Elf32DependencyProviderChain::resolve(
     std::string_view requested_name,
     std::uint64_t max_image_bytes) {
-    return resolve_for({}, requested_name, max_image_bytes);
+    for (Elf32DependencyProvider* provider : providers_) {
+        if (provider == nullptr) {
+            Elf32DependencyProviderResult result;
+            result.error = Elf32DependencyProviderError::Failed;
+            return result;
+        }
+
+        auto result = provider->resolve(requested_name, max_image_bytes);
+        if (result.error == Elf32DependencyProviderError::NotFound) {
+            continue;
+        }
+        return result;
+    }
+
+    Elf32DependencyProviderResult result;
+    result.error = Elf32DependencyProviderError::NotFound;
+    return result;
 }
 
 Elf32DependencyProviderResult Elf32DependencyProviderChain::resolve_for(

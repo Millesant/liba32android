@@ -249,6 +249,19 @@ int test_provider_chain_order_fallback_and_failures() {
     }
 
     {
+        RequesterRecordingProvider split;
+        split.responses = {success("requester-only", {6})};
+        std::array<Elf32DependencyProvider*, 1> providers{&split};
+        Elf32DependencyProviderChain chain{
+            std::span<Elf32DependencyProvider* const>{providers}};
+        const auto result = chain.resolve("x.so", 33);
+        if (result.error != Elf32DependencyProviderError::Failed ||
+            split.legacy_calls != 1 || !split.requesters.empty()) {
+            return fail("context-free provider-chain call did not preserve child resolve semantics");
+        }
+    }
+
+    {
         std::array<Elf32DependencyProvider*, 0> providers{};
         Elf32DependencyProviderChain chain{
             std::span<Elf32DependencyProvider* const>{providers}};

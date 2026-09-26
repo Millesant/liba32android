@@ -90,10 +90,12 @@ Lookup rules are strict:
 - an empty chain returns `NotFound`;
 - a null provider entry returns `Failed` instead of being skipped.
 
-Both context-free and requester-aware calls are supported. Requester identity,
-requested-name bytes, and the resolver-computed image ceiling are forwarded
-unchanged to every attempted child. Legacy child providers continue through
-feature 020's default requester-aware fallback. The chain does not validate or
+Both context-free and requester-aware calls are supported. Direct
+context-free chain calls invoke each child's `resolve`; requester-aware calls
+invoke each child's `resolve_for`. Requester identity, requested-name bytes,
+and the resolver-computed image ceiling are forwarded unchanged to every
+attempted child. Legacy child providers continue through feature 020's default
+requester-aware fallback. The chain does not validate or
 rewrite successful child results; the existing resolver performs identity,
 image, and byte-ceiling validation.
 

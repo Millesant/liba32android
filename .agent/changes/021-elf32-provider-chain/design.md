@@ -8,11 +8,11 @@ borrows a `std::span<Elf32DependencyProvider* const>`.
 The span is the explicit finite provider set and order. Provider objects and
 the span backing storage must outlive the chain.
 
-Both `resolve` and `resolve_for` are implemented. Context-free resolution is
-the same ordered algorithm with an empty requester identity. Requester-aware
-resolution forwards the exact borrowed requester bytes to each child
-`resolve_for`, allowing legacy providers to continue through feature 020's
-default fallback.
+Both `resolve` and `resolve_for` are implemented. Context-free resolution
+calls each child's context-free `resolve`, preserving that API's semantics.
+Requester-aware resolution forwards the exact borrowed requester bytes to each
+child `resolve_for`, allowing legacy providers to continue through feature
+020's default fallback.
 
 ## Result rules
 
