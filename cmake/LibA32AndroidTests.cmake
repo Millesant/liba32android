@@ -10,6 +10,7 @@ if(LIBA32ANDROID_BUILD_TESTS)
     endfunction()
 
     include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests/LibA32AndroidCpuTests.cmake)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests/LibA32AndroidRuntimeTests.cmake)
     include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests/LibA32AndroidMemoryTests.cmake)
     include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests/LibA32AndroidElfTests.cmake)
 endif()
