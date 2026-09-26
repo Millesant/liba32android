@@ -1,10 +1,10 @@
 # ARM32 guest `liblog.so` write shim/provider path
 
-Status: feature 027 implementation prepared; exact-head validation NOT RUN
+Status: feature 027 DONE; exact-head implementation validation PASSed at `37624f389bb34197669a763c32631a1174d099a6`
 
 ## Goal
 
-Connect the already-verified feature-026 host service to the existing ELF
+Connect the verified feature-026 host service to the existing ELF
 dependency/symbol/relocation machinery with the smallest real ARM32 guest
 compatibility library.
 
@@ -66,6 +66,22 @@ The feature-027 integration regression:
 This is the first proof that the ELF linker side and compatibility-service side
 are connected by a real ARM32 guest library rather than only a synthetic SVC
 program.
+
+## Validation
+
+Exact implementation revision
+`37624f389bb34197669a763c32631a1174d099a6` PASSed:
+
+- ARM32 liblog shim integration check `108389674586`;
+- Linux A32 smoke check `108389675056`;
+- Android x86_64 address-space probe check `108389675036`;
+- Android arm64-v8a cross-build check `108389674910`.
+
+The dedicated shim check built the pair twice and byte-compared both outputs,
+verified SONAME/DT_NEEDED/export/JUMP_SLOT metadata, then executed the generated
+consumer through the loaded shim and feature-026 service. The integration
+reported two graph objects, one relocation, service ID `0xa0`, one service
+call, priority 4, and PASS.
 
 ## Deliberate exclusions
 

@@ -4,22 +4,30 @@ Repository integration is on `bleeding`. The current control-plane round is
 pinned to
 `millesant/.gpt@f4e926e81ad91d13d02a006f4a18a00f66ae0bab`.
 
-Features 011 through 026 are DONE. The latest accepted behavior-changing result
-is feature 026 at `59fa3eba1d53c6679ef6086cd209198ca7ecb4ac`.
+Features 011 through 027 are DONE. The latest behavior-changing result is
+feature 027 at `37624f389bb34197669a763c32631a1174d099a6`, with the
+dedicated ARM32 liblog shim integration, Linux A32 smoke, and both Android
+checks PASSed.
 
-`027-a32-liblog-write-shim-provider` is IMPLEMENTED. It adds the reproducible
-ARM32 `liblog.so` write shim, shared private SVC definition, exact-name catalog
-helper, real consumer/shim integration regression, CI fixture generation, and
-current specs/docs. Exact-head Linux A32 smoke plus both Android checks are NOT
-RUN and are the immediate acceptance gate.
+The runtime can now load a real consumer that needs `liblog.so`, acquire the
+generated shim through the exact-name catalog, relocate
+`__android_log_write`, execute through the guest SVC and feature-026 service,
+and return successfully.
 
-After feature 027 acceptance, the nearest bounded directions are:
+## Candidate runtime directions
 
-- decide whether to package/install the generated `liblog.so` shim through a
-  concrete platform catalog or first add Android namespace/search policy around
-  the existing requester-aware provider chain;
-- add `__android_log_print`/`__android_log_vprint` only with an explicit
-  bounded varargs/AAPCS stack-marshalling design;
+The next dependency boundary is no longer the log-write symbol itself; it is how
+platform compatibility libraries are selected and made accessible to requesters.
+
+Current bounded candidates are:
+
+- introduce the smallest explicit platform-library catalog/selection policy
+  above the existing requester-aware provider chain, starting with the generated
+  `liblog.so` shim and preserving exact requester context;
+- then add Android namespace/accessibility/search semantics only where concrete
+  application/platform evidence requires them;
+- add `__android_log_print`/`__android_log_vprint` only with a bounded
+  varargs/AAPCS stack-marshalling design;
 - add persisted lifecycle/destructor/unload semantics;
 - add broader relocation/TLS/IFUNC only when target evidence requires them;
 - obtain real Android-device execution evidence when an environment is available.
