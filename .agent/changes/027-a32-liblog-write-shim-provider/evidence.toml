@@ -1,0 +1,29 @@
+schema = 1
+change = "027-a32-liblog-write-shim-provider"
+
+[[evidence]]
+id = "shim-fixture-contract"
+kind = "test"
+status = "not_run"
+claim = "The pinned-NDK fixture deterministically produces liblog.so plus a real consumer with the expected SONAME, DT_NEEDED, export, and JUMP_SLOT import."
+source = "tools/fixtures/build_arm32_android_log_shim_fixture.sh and tests/compat/fixtures/"
+result = "Sources, builder, and CI inspection are prepared; no exact-head execution result has been observed yet."
+limitations = "Prepared fixture logic is not passing evidence until CI executes it."
+
+[[evidence]]
+id = "shim-end-to-end"
+kind = "test"
+status = "not_run"
+claim = "A real ARM32 consumer loads liblog.so from the exact-name catalog, relocates __android_log_write, executes through the shim SVC and feature-026 service, and returns to the requested stop PC."
+source = "tests/compat/a32_android_log_shim.cpp"
+result = "Integration source and CTest registration are prepared; no exact-head execution result has been observed yet."
+limitations = "The test does not add automatic Android namespace/search/provider installation or broader liblog APIs."
+
+[[evidence]]
+id = "exact-head-ci"
+kind = "validation"
+status = "not_run"
+claim = "Feature 027 passes dedicated shim integration, Linux A32 smoke, and both required Android checks."
+source = "GitHub commit checks on the eventual feature-027 implementation revision"
+result = ""
+limitations = "Feature 027 remains implemented rather than verified/done until terminal exact-head checks are observed."
