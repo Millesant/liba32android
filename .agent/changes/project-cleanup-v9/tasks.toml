@@ -21,6 +21,6 @@ acceptance = "Strengthen historical-spec orientation without rewriting historica
 
 [[tasks]]
 id = "T004"
-status = "active"
+status = "done"
 depends_on = ["T002", "T003"]
 acceptance = "Record bounded audit evidence, verify exact-head CI, and close repository convergence."

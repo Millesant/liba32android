@@ -8,12 +8,13 @@ Features 011 through 024 are DONE. The latest behavior-changing result is
 feature 024 at `d4e7b480e28d13e8edc5dd1ccf28abbc3072a7a1`, which passed
 Linux A32 smoke and both required Android checks.
 
-`project-cleanup-v9` is ACTIVE. It is reconciling canonical state/current docs
-with the verified tree, distinguishing layer-local non-goals from repository
-gaps, and documenting historical-spec status snapshots. No runtime behavior
-change is intended.
+`project-cleanup-v9` is DONE at
+`567ab4931d3d0af69edb7680b0a266be7672df64`; Linux A32 smoke and both required
+Android checks passed. Canonical state/current architecture docs now distinguish
+implemented downstream behavior, layer-local non-goals, genuine deferred gaps,
+and historical numbered-spec snapshots.
 
-## Candidate runtime directions after cleanup
+## Candidate runtime directions
 
 The supplied VLC ARMv7/FMOD evidence shows the observed relocation set is
 already inside the implemented REL/JUMP_SLOT subset. Provider composition,

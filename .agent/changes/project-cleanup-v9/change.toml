@@ -2,10 +2,11 @@ schema = 1
 id = "project-cleanup-v9"
 kind = "maintenance"
 size = "S2"
-status = "active"
+status = "done"
 workflow = "feature"
 control_revision = "f4e926e81ad91d13d02a006f4a18a00f66ae0bab"
 base_revision = "f45da9d530524a2701b053e84c36f5860e607582"
+result_revision = "567ab4931d3d0af69edb7680b0a266be7672df64"
 acceptance = [
   "canonical STATE/NEXT reflect the verified feature-024 closure, current control revision, runtime/service/provider capabilities, and only genuine deferred work",
   "current architecture docs no longer describe already-implemented downstream linker/loader/runtime layers as merely future work",
@@ -20,10 +21,10 @@ acceptance = [
 [convergence]
 requirements = "not_applicable"
 specs = "not_applicable"
-implementation = "pending"
-tests = "pending"
-documentation = "pending"
+implementation = "aligned"
+tests = "aligned"
+documentation = "aligned"
 decisions = "not_applicable"
-tasks = "pending"
-evidence = "pending"
-repository = "pending"
+tasks = "aligned"
+evidence = "aligned"
+repository = "aligned"

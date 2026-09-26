@@ -85,3 +85,23 @@ with behavior that was already implemented in downstream layers. Cleanup v9
 rewrites those sections as explicit layer-local ownership boundaries and names
 which downstream capabilities are already implemented versus genuinely
 deferred.
+
+
+## Cleanup result
+
+Cleanup implementation/result revision:
+`567ab4931d3d0af69edb7680b0a266be7672df64`
+
+The cleanup range from
+`f45da9d530524a2701b053e84c36f5860e607582` to the result revision changes
+only `.agent/`, `docs/`, and `specs/README.md`; it contains no
+`src/`, `tests/`, `cmake/`, or `tools/` changes.
+
+Exact-head required checks:
+
+- Linux A32 smoke `108379917871` — PASS.
+- Android x86_64 address-space probe `108379918028` — PASS.
+- Android arm64-v8a cross-build `108379917957` — PASS.
+
+A CI-workflow path audit also found seven repository path references in the
+current workflow and zero references to missing paths.

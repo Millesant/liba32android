@@ -3,7 +3,7 @@
 Last updated: 2026-09-26
 Integration branch: `bleeding`
 Control-plane round: `millesant/.gpt@f4e926e81ad91d13d02a006f4a18a00f66ae0bab`
-Active maintenance change: `project-cleanup-v9`
+Latest maintenance result: `project-cleanup-v9@567ab4931d3d0af69edb7680b0a266be7672df64`
 
 ## Phase
 
@@ -17,8 +17,9 @@ bounded game-agnostic host-service dispatch.
 
 Features `011-elf32-combined-relocation-transaction` through
 `024-a32-host-service-dispatch` are DONE. `project-cleanup-v8` is DONE.
-`project-cleanup-v9` is ACTIVE and is documentation/state/repository-truth
-maintenance only; it does not change accepted runtime semantics.
+`project-cleanup-v9` is DONE. It reconciled canonical state/current docs,
+historical-spec orientation, and repository-registration evidence without
+changing accepted runtime semantics.
 
 ## Repository organization
 
@@ -87,7 +88,16 @@ Per-feature exact-head evidence lives in completed
 `.agent/changes/<change-id>/evidence.toml`, current architecture docs, and
 `docs/research/evidence/`; it is not duplicated feature-by-feature here.
 
-Cleanup-v9 exact-head CI is pending.
+Cleanup-v9 exact-head validation at
+`567ab4931d3d0af69edb7680b0a266be7672df64`:
+
+- Linux A32 smoke check `108379917871` — PASS.
+- Android x86_64 address-space probe check `108379918028` — PASS.
+- Android arm64-v8a cross-build check `108379917957` — PASS.
+
+The cleanup diff contains no `src/`, `tests/`, `cmake/`, or `tools/`
+changes; the green matrix therefore validates the reconciled repository state
+without claiming new runtime behavior.
 
 ## Current blockers / external evidence gaps
 
