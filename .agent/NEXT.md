@@ -4,7 +4,7 @@ Repository integration is on `bleeding`. The current control-plane round is pinn
 
 `project-cleanup-v8` and its source/test, tooling, and documentation child changes are DONE. Features `011-elf32-combined-relocation-transaction` through `019-elf32-init-call-execution` are DONE. Feature 019 result revision `28a4f92f78b8ff156ee9dd3083d1218af8b7b125` passed exact-head Linux A32 smoke and both required Android checks.
 
-Features 020 and 021 are DONE. Feature 021 result revision `4324883faef008810bcf77c390eecd92c16718cd` passed exact-head Linux A32 smoke and both required Android checks. Feature `022-elf32-dependency-catalog-provider` is ACTIVE: add an exact-byte-name in-memory catalog provider that returns owned dependency sources from caller-owned entries and composes directly with the verified provider chain.
+Features 020 and 021 are DONE. Feature 021 result revision `4324883faef008810bcf77c390eecd92c16718cd` passed exact-head Linux A32 smoke and both required Android checks. Feature `022-elf32-dependency-catalog-provider` is ACTIVE and implemented in the current tree. Exact/raw-byte lookup, owned result copying, miss/duplicate/malformed/oversize semantics, requester fallback, and application-to-platform catalog-chain coverage are present. Exact-head CI verification/convergence remains.
 
 ## Candidate runtime directions
 

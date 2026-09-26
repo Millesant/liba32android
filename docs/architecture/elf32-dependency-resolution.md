@@ -1,6 +1,6 @@
 # ELF32 dependency resolution
 
-Status: feature 021 ordered provider chain complete; exact-head implementation CI PASSed
+Status: feature 021 provider chain verified; feature 022 exact-name catalog provider implemented, exact-head verification pending
 
 ## Boundary
 
@@ -99,6 +99,30 @@ requester-aware fallback. The chain does not validate or
 rewrite successful child results; the existing resolver performs identity,
 image, and byte-ceiling validation.
 
+### Exact-name dependency catalogs
+
+`Elf32DependencyCatalogProvider` borrows a finite span of
+`Elf32DependencyCatalogEntry` records. Each entry borrows three byte ranges:
+the exact requested name, opaque provider identity, and ELF image. The entry
+array and all backing storage must outlive the provider.
+
+Lookup is exact byte equality. The provider does not normalize paths, compare
+basenames, validate UTF-8, or inspect requester identity. No match returns
+`NotFound`. More than one exact-name match returns `Failed` so ambiguous
+catalogs never silently select one entry. A unique selected entry must have a
+non-empty identity/image and fit the supplied image ceiling before any owned
+copy is published.
+
+On success the provider copies identity and image bytes into the normal owned
+provider result. The result is therefore independent of subsequent catalog
+backing-storage changes. Unrelated malformed entries do not poison a lookup
+for another exact name.
+
+The catalog uses feature 020's default requester-aware fallback and composes
+through the feature-021 chain. This permits separate application-local and
+platform catalogs while leaving filesystem/archive/namespace policy outside
+the generic ELF layer.
+
 ## Ordering and duplicate semantics
 
 `DT_NEEDED` occurrences remain ordered and occurrence-preserving.
@@ -157,6 +181,14 @@ This dependency-resolution layer deliberately does not call either placement or 
 The higher `elf32_dependency_loader` layer consumes this resolver's host-owned results. For every object it passes that graph object's exact owned identity as requester context before acquiring its direct dependencies. Within one graph-loading call it then uses provider result identity as the object key, preserves ordered/repeated dependency edges, terminates cycles by reusing already known identities, automatically places/loads first-seen `ET_DYN` dependencies, runs each new object's dynamic → metadata → string pipeline, and rolls back graph-owned mappings on aggregate failure. The same requester propagation applies to persistent link-map appends.
 
 The resolver itself still does none of that work. This preserves the acquisition boundary and the project invariant that guest virtual addresses are logical 32-bit values independent of host-pointer identity. Persistent link-map lifetime is implemented downstream, while Android namespace/search policy remains external even though feature 020 now supplies the requester-context seam it requires. Symbols, relocations, and execution remain separate concerns.
+
+## Feature 022 implementation coverage
+
+Focused resolver tests cover raw/embedded-NUL exact-name matching, owned result
+copies independent of catalog backing storage, NotFound misses, duplicate-name
+ambiguity, malformed/oversized selected entries, requester fallback, and
+application-local to platform catalog composition through the provider chain.
+Exact-head CI verification is pending.
 
 ## Feature 021 validation
 
