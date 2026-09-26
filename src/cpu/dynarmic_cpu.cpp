@@ -195,9 +195,19 @@ ExecutionResult execute(memory::GuestMemory& memory, const ExecutionRequest& req
     jit.SetCpsr(cpsr);
 
     std::size_t executed = 0;
-    while (executed < request.instruction_count && !environment.exception_raised() && !environment.memory_fault()) {
+    bool stop_pc_reached =
+        request.stop_pc.has_value() && jit.Regs()[15] == *request.stop_pc;
+    while (executed < request.instruction_count &&
+           !stop_pc_reached &&
+           !environment.exception_raised() &&
+           !environment.memory_fault()) {
         static_cast<void>(jit.Step());
         ++executed;
+        stop_pc_reached =
+            !environment.exception_raised() &&
+            !environment.memory_fault() &&
+            request.stop_pc.has_value() &&
+            jit.Regs()[15] == *request.stop_pc;
     }
 
     return ExecutionResult{
@@ -206,6 +216,7 @@ ExecutionResult execute(memory::GuestMemory& memory, const ExecutionRequest& req
         .instructions_executed = executed,
         .exception_raised = environment.exception_raised(),
         .memory_fault = environment.memory_fault(),
+        .stop_pc_reached = stop_pc_reached,
         .fastmem_enabled = fastmem.has_value(),
         .code_read_callbacks = environment.code_read_callbacks(),
         .data_read_callbacks = environment.data_read_callbacks(),

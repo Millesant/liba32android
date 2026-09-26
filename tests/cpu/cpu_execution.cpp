@@ -105,6 +105,57 @@ int run_call() {
         std::cerr << "call test failed: r0=" << result.regs[0] << " lr=" << result.regs[14] << '\n';
         return 1;
     }
+
+    // bx lr must be able to return to an unmapped logical stop PC without
+    // fetching from that address.
+    constexpr std::array<std::uint8_t, 4> return_code{
+        0x1E, 0xFF, 0x2F, 0xE1,
+    };
+    LinearGuestMemory return_memory{kMemorySize};
+    if (!load_code(return_memory, return_code)) return 1;
+    ExecutionRequest return_request{};
+    return_request.regs[14] = static_cast<std::uint32_t>(kMemorySize);
+    return_request.instruction_count = 2;
+    return_request.stop_pc = static_cast<std::uint32_t>(kMemorySize);
+    const auto returned =
+        liba32android::cpu::execute(return_memory, return_request);
+    if (!execution_ok(returned, 1) || !returned.stop_pc_reached ||
+        returned.regs[15] != kMemorySize) {
+        std::cerr << "ARM stop-PC return failed: executed="
+                  << returned.instructions_executed
+                  << " pc=" << returned.regs[15]
+                  << " stop=" << returned.stop_pc_reached << '\n';
+        return 1;
+    }
+
+    // Initial stop must win before an instruction fetch.
+    ExecutionRequest initial_stop{};
+    initial_stop.entry_pc = static_cast<std::uint32_t>(kMemorySize);
+    initial_stop.instruction_count = 1;
+    initial_stop.stop_pc = static_cast<std::uint32_t>(kMemorySize);
+    const auto initially_stopped =
+        liba32android::cpu::execute(return_memory, initial_stop);
+    if (!execution_ok(initially_stopped, 0) ||
+        !initially_stopped.stop_pc_reached ||
+        initially_stopped.code_read_callbacks != 0) {
+        std::cerr << "initial stop-PC did not stop before fetch\n";
+        return 1;
+    }
+
+    // An unreachable stop PC keeps the existing fixed-budget behavior.
+    constexpr std::array<std::uint8_t, 4> loop_code{
+        0xFE, 0xFF, 0xFF, 0xEA,
+    };
+    LinearGuestMemory loop_memory{kMemorySize};
+    if (!load_code(loop_memory, loop_code)) return 1;
+    ExecutionRequest budgeted{};
+    budgeted.instruction_count = 2;
+    budgeted.stop_pc = static_cast<std::uint32_t>(kMemorySize);
+    const auto exhausted = liba32android::cpu::execute(loop_memory, budgeted);
+    if (!execution_ok(exhausted, 2) || exhausted.stop_pc_reached) {
+        std::cerr << "unreached stop-PC changed instruction-budget behavior\n";
+        return 1;
+    }
     return 0;
 }
 
@@ -201,6 +252,26 @@ int run_thumb_call() {
     if (!execution_ok(result, 2) || result.regs[0] != 42 || result.regs[14] != 5) {
         std::cerr << "Thumb call test failed: r0=" << result.regs[0]
                   << " lr=" << result.regs[14] << '\n';
+        return 1;
+    }
+
+    // Thumb BX LR clears the interworking bit in PC; exact stop matching uses
+    // the normalized target and must not fetch the unmapped address.
+    constexpr std::array<std::uint8_t, 2> return_code{0x70, 0x47};
+    LinearGuestMemory return_memory{kMemorySize};
+    if (!load_code(return_memory, return_code)) return 1;
+    auto return_request = thumb_request(2);
+    return_request.regs[14] =
+        static_cast<std::uint32_t>(kMemorySize) | 1U;
+    return_request.stop_pc = static_cast<std::uint32_t>(kMemorySize);
+    const auto returned =
+        liba32android::cpu::execute(return_memory, return_request);
+    if (!execution_ok(returned, 1) || !returned.stop_pc_reached ||
+        returned.regs[15] != kMemorySize) {
+        std::cerr << "Thumb stop-PC return failed: executed="
+                  << returned.instructions_executed
+                  << " pc=" << returned.regs[15]
+                  << " stop=" << returned.stop_pc_reached << '\n';
         return 1;
     }
     return 0;

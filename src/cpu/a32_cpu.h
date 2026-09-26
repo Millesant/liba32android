@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 namespace liba32android::memory {
 class GuestMemory;
@@ -20,6 +21,9 @@ struct ExecutionRequest {
     std::uint32_t entry_pc{};
     std::array<std::uint32_t, 16> regs{};
     std::size_t instruction_count{1};
+    // Optional normalized logical guest PC. When reached, execution stops
+    // before fetching/executing an instruction at this address.
+    std::optional<std::uint32_t> stop_pc;
 };
 
 struct ExecutionResult {
@@ -28,6 +32,7 @@ struct ExecutionResult {
     std::size_t instructions_executed{};
     bool exception_raised{};
     bool memory_fault{};
+    bool stop_pc_reached{};
 
     // Internal diagnostics used to prove which CPU/memory path was configured
     // and whether a fastmem fault fell back to callbacks. These fields are not
