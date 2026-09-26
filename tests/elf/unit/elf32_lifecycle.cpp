@@ -293,7 +293,7 @@ int test_init_execution_failures_stop_progress() {
     const Elf32InitExecutionOptions valid{
         .stack_top = 0x13f8,
         .return_pc = 0x2000,
-        .max_instructions_per_call = 2,
+        .max_instructions_per_call = 4,
     };
 
     const std::array one_return{
@@ -358,7 +358,7 @@ int test_init_execution_failures_stop_progress() {
         !exhausted.failing_object.has_value() ||
         *exhausted.failing_object != 2 ||
         !exhausted.cpu_result.has_value() ||
-        exhausted.cpu_result->instructions_executed != 2 ||
+        exhausted.cpu_result->instructions_executed != 4 ||
         exhausted.cpu_result->stop_pc_reached ||
         preserved != 42U) {
         return fail("constructor failure did not preserve completed side effects or stop later calls");
