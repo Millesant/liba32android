@@ -2,10 +2,11 @@ schema = 1
 id = "023-a32-svc-resume-state"
 kind = "feature"
 size = "S1"
-status = "active"
+status = "done"
 workflow = "feature"
 control_revision = "f4e926e81ad91d13d02a006f4a18a00f66ae0bab"
 base_revision = "9284a4580fc657d7d0e5bab73277d36a953f9b28"
+result_revision = "4b6234232cef70655272b0877f6c8ae971236a77"
 acceptance = [
   "ExecutionResult distinguishes an A32 SVC callback by reporting its exact immediate value without exposing Dynarmic types",
   "existing generic exception reporting remains source-compatible so callers that only check exception_raised do not silently change behavior",
@@ -19,12 +20,12 @@ acceptance = [
 ]
 
 [convergence]
-requirements = "pending"
-specs = "pending"
-implementation = "pending"
-tests = "pending"
-documentation = "pending"
+requirements = "aligned"
+specs = "aligned"
+implementation = "aligned"
+tests = "aligned"
+documentation = "aligned"
 decisions = "not_applicable"
-tasks = "pending"
-evidence = "pending"
-repository = "pending"
+tasks = "aligned"
+evidence = "aligned"
+repository = "aligned"

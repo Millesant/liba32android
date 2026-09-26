@@ -1,6 +1,6 @@
 # CPU engine architecture
 
-Status: current through feature 023 resumable SVC state; exact-head verification pending
+Status: current through feature 023 resumable SVC state; exact-head implementation CI PASSed
 
 ## Boundary
 
@@ -138,6 +138,19 @@ restores Thumb state.
 
 This layer still does not dispatch host services, decode AAPCS arguments,
 implement syscalls, or know about ELF/platform shims.
+
+## Feature 023 validation
+
+Result revision `4b6234232cef70655272b0877f6c8ae971236a77`
+PASSed Linux A32 smoke check `108375486343`, Android x86_64
+address-space probe check `108375486470`, and Android arm64-v8a cross-build
+check `108375486484`.
+
+The Linux CPU suite proves exact ARM and Thumb SVC immediates, post-SVC
+continuation PC/state, and successful execution after reconstructing a request
+from returned registers/CPSR. The Thumb resume deliberately leaves the request's
+instruction-set selector at its default, proving the returned CPSR T bit drives
+the resumed state.
 
 ## Correctness policy
 
