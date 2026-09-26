@@ -1,6 +1,6 @@
 # ELF32 dependency resolution
 
-Status: current through feature 020 requester context; exact-head implementation CI PASSed
+Status: feature 020 requester context verified; feature 021 ordered provider chain implemented, exact-head verification pending
 
 ## Boundary
 
@@ -47,6 +47,11 @@ owned loaded-object dependency graph
 
 The generic ELF core therefore remains independent from Android filesystem layout, APK packaging, namespace/search-path policy, and application profiles.
 
+Feature 021 adds an optional generic `Elf32DependencyProviderChain` between the
+resolver and concrete providers. The caller supplies a finite ordered borrowed
+provider span; this is sufficient to place an application-local provider before
+a platform provider without teaching the resolver either provider's policy.
+
 ## Provider contract
 
 The original `Elf32DependencyProvider::resolve` receives the exact requested
@@ -70,6 +75,27 @@ On success the provider supplies:
 - a non-empty owned dependency image.
 
 Provider identity is not interpreted as a path, SONAME, or link-map identity in this layer.
+
+### Ordered provider chains
+
+`Elf32DependencyProviderChain` borrows an ordered
+`std::span<Elf32DependencyProvider* const>`. Provider objects and the span
+backing storage must outlive the chain.
+
+Lookup rules are strict:
+
+- `NotFound` continues to the next provider;
+- `Failed` returns immediately;
+- the first success returns immediately;
+- an empty chain returns `NotFound`;
+- a null provider entry returns `Failed` instead of being skipped.
+
+Both context-free and requester-aware calls are supported. Requester identity,
+requested-name bytes, and the resolver-computed image ceiling are forwarded
+unchanged to every attempted child. Legacy child providers continue through
+feature 020's default requester-aware fallback. The chain does not validate or
+rewrite successful child results; the existing resolver performs identity,
+image, and byte-ceiling validation.
 
 ## Ordering and duplicate semantics
 
@@ -129,6 +155,13 @@ This dependency-resolution layer deliberately does not call either placement or 
 The higher `elf32_dependency_loader` layer consumes this resolver's host-owned results. For every object it passes that graph object's exact owned identity as requester context before acquiring its direct dependencies. Within one graph-loading call it then uses provider result identity as the object key, preserves ordered/repeated dependency edges, terminates cycles by reusing already known identities, automatically places/loads first-seen `ET_DYN` dependencies, runs each new object's dynamic → metadata → string pipeline, and rolls back graph-owned mappings on aggregate failure. The same requester propagation applies to persistent link-map appends.
 
 The resolver itself still does none of that work. This preserves the acquisition boundary and the project invariant that guest virtual addresses are logical 32-bit values independent of host-pointer identity. Persistent link-map lifetime is implemented downstream, while Android namespace/search policy remains external even though feature 020 now supplies the requester-context seam it requires. Symbols, relocations, and execution remain separate concerns.
+
+## Feature 021 implementation coverage
+
+Focused resolver tests cover NotFound fallback, success/hard-failure
+short-circuit, exact requester/request/limit forwarding, empty/null chains,
+legacy child-provider compatibility, and preservation of resolver validation.
+Exact-head CI verification is pending.
 
 ## Validation evidence
 

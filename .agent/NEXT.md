@@ -4,7 +4,7 @@ Repository integration is on `bleeding`. The current control-plane round is pinn
 
 `project-cleanup-v8` and its source/test, tooling, and documentation child changes are DONE. Features `011-elf32-combined-relocation-transaction` through `019-elf32-init-call-execution` are DONE. Feature 019 result revision `28a4f92f78b8ff156ee9dd3083d1218af8b7b125` passed exact-head Linux A32 smoke and both required Android checks.
 
-Feature 020 is DONE. Result revision `2509dce17e8d1b993325ed810d37a29e1b46df45` passed exact-head Linux A32 smoke and both required Android checks. Feature `021-elf32-provider-chain` is ACTIVE: add a bounded caller-owned ordered provider chain with NotFound-only fallback, hard-failure short-circuit, and exact requester/name/limit forwarding.
+Feature 020 is DONE. Result revision `2509dce17e8d1b993325ed810d37a29e1b46df45` passed exact-head Linux A32 smoke and both required Android checks. Feature `021-elf32-provider-chain` is ACTIVE and implemented in the current tree. Ordered NotFound-only fallback, hard-failure/success short-circuit, exact requester/request/limit forwarding, empty/null handling, legacy child fallback, and resolver-validation coverage are present. Exact-head CI verification/convergence remains.
 
 ## Candidate runtime directions
 
