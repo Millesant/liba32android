@@ -75,6 +75,41 @@ Elf32DependencyProviderResult Elf32DependencyProviderChain::resolve_for(
     return result;
 }
 
+Elf32DependencyProviderResult Elf32DependencyCatalogProvider::resolve(
+    std::string_view requested_name,
+    std::uint64_t max_image_bytes) {
+    const Elf32DependencyCatalogEntry* match = nullptr;
+    for (const auto& entry : entries_) {
+        if (entry.requested_name != requested_name) {
+            continue;
+        }
+        if (match != nullptr) {
+            Elf32DependencyProviderResult result;
+            result.error = Elf32DependencyProviderError::Failed;
+            return result;
+        }
+        match = &entry;
+    }
+
+    if (match == nullptr) {
+        Elf32DependencyProviderResult result;
+        result.error = Elf32DependencyProviderError::NotFound;
+        return result;
+    }
+
+    if (match->identity.empty() || match->image.empty() ||
+        static_cast<std::uint64_t>(match->image.size()) > max_image_bytes) {
+        Elf32DependencyProviderResult result;
+        result.error = Elf32DependencyProviderError::Failed;
+        return result;
+    }
+
+    Elf32DependencyProviderResult result;
+    result.source.identity.assign(match->identity.data(), match->identity.size());
+    result.source.image.assign(match->image.begin(), match->image.end());
+    return result;
+}
+
 Elf32DependencyResolveResult resolve_elf32_dependencies(
     const Elf32LinkerStrings& strings,
     Elf32DependencyProvider& provider,

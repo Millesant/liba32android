@@ -10,6 +10,8 @@
 
 namespace {
 
+using liba32android::elf::Elf32DependencyCatalogEntry;
+using liba32android::elf::Elf32DependencyCatalogProvider;
 using liba32android::elf::Elf32DependencyProvider;
 using liba32android::elf::Elf32DependencyProviderChain;
 using liba32android::elf::Elf32DependencyProviderError;
@@ -320,6 +322,157 @@ int test_provider_chain_legacy_fallback_and_resolver_validation() {
     return 0;
 }
 
+int test_catalog_provider_exact_bytes_and_owned_results() {
+    std::string raw_name{
+        'l', 'i', 'b', static_cast<char>(0xff), '\0', 'x',
+    };
+    std::string identity{"id\0raw", 6};
+    std::vector<std::uint8_t> image{0x7f, 0xff, 0x80, 0x01};
+    std::array<std::uint8_t, 0> empty_image{};
+
+    const std::array entries{
+        Elf32DependencyCatalogEntry{
+            .requested_name = "unrelated-bad.so",
+            .identity = "ignored",
+            .image = std::span<const std::uint8_t>{empty_image},
+        },
+        Elf32DependencyCatalogEntry{
+            .requested_name =
+                std::string_view{raw_name.data(), raw_name.size()},
+            .identity = std::string_view{identity.data(), identity.size()},
+            .image =
+                std::span<const std::uint8_t>{image.data(), image.size()},
+        },
+    };
+    Elf32DependencyCatalogProvider catalog{
+        std::span<const Elf32DependencyCatalogEntry>{entries}};
+
+    const auto result = catalog.resolve_for(
+        "requester-is-ignored",
+        std::string_view{raw_name.data(), raw_name.size()},
+        image.size());
+    if (!result ||
+        result.source.identity != std::string{"id\0raw", 6} ||
+        result.source.image !=
+            std::vector<std::uint8_t>{0x7f, 0xff, 0x80, 0x01}) {
+        return fail("catalog provider did not preserve exact raw bytes");
+    }
+
+    identity[0] = 'X';
+    image[0] = 0;
+    if (result.source.identity != std::string{"id\0raw", 6} ||
+        result.source.image[0] != 0x7f) {
+        return fail("catalog provider result depended on backing storage");
+    }
+
+    const auto miss = catalog.resolve("libx.so", 16);
+    if (miss.error != Elf32DependencyProviderError::NotFound) {
+        return fail("catalog provider normalized or basename-matched a miss");
+    }
+    return 0;
+}
+
+int test_catalog_provider_rejects_ambiguous_malformed_and_oversize_entries() {
+    const std::array<std::uint8_t, 1> one{1};
+    const std::array<std::uint8_t, 3> three{1, 2, 3};
+    const std::array<std::uint8_t, 0> empty{};
+
+    {
+        const std::array entries{
+            Elf32DependencyCatalogEntry{
+                .requested_name = "dup.so",
+                .identity = "first",
+                .image = std::span<const std::uint8_t>{one},
+            },
+            Elf32DependencyCatalogEntry{
+                .requested_name = "dup.so",
+                .identity = "second",
+                .image = std::span<const std::uint8_t>{one},
+            },
+        };
+        Elf32DependencyCatalogProvider catalog{
+            std::span<const Elf32DependencyCatalogEntry>{entries}};
+        if (catalog.resolve("dup.so", 8).error !=
+            Elf32DependencyProviderError::Failed) {
+            return fail("catalog provider did not reject duplicate exact names");
+        }
+    }
+
+    {
+        const std::array entries{
+            Elf32DependencyCatalogEntry{
+                .requested_name = "empty-id.so",
+                .identity = "",
+                .image = std::span<const std::uint8_t>{one},
+            },
+            Elf32DependencyCatalogEntry{
+                .requested_name = "empty-image.so",
+                .identity = "empty-image",
+                .image = std::span<const std::uint8_t>{empty},
+            },
+            Elf32DependencyCatalogEntry{
+                .requested_name = "large.so",
+                .identity = "large",
+                .image = std::span<const std::uint8_t>{three},
+            },
+        };
+        Elf32DependencyCatalogProvider catalog{
+            std::span<const Elf32DependencyCatalogEntry>{entries}};
+        if (catalog.resolve("empty-id.so", 8).error !=
+                Elf32DependencyProviderError::Failed ||
+            catalog.resolve("empty-image.so", 8).error !=
+                Elf32DependencyProviderError::Failed ||
+            catalog.resolve("large.so", 2).error !=
+                Elf32DependencyProviderError::Failed) {
+            return fail("catalog provider accepted malformed/oversized selected entry");
+        }
+    }
+    return 0;
+}
+
+int test_catalogs_compose_application_then_platform() {
+    const std::array<std::uint8_t, 2> app_image{1, 2};
+    const std::array<std::uint8_t, 3> platform_image{3, 4, 5};
+    const std::array app_entries{
+        Elf32DependencyCatalogEntry{
+            .requested_name = "libvlc.so",
+            .identity = "apk:libvlc.so",
+            .image = std::span<const std::uint8_t>{app_image},
+        },
+    };
+    const std::array platform_entries{
+        Elf32DependencyCatalogEntry{
+            .requested_name = "libc.so",
+            .identity = "platform:libc.so",
+            .image = std::span<const std::uint8_t>{platform_image},
+        },
+    };
+    Elf32DependencyCatalogProvider app{
+        std::span<const Elf32DependencyCatalogEntry>{app_entries}};
+    Elf32DependencyCatalogProvider platform{
+        std::span<const Elf32DependencyCatalogEntry>{platform_entries}};
+    std::array<Elf32DependencyProvider*, 2> providers{&app, &platform};
+    Elf32DependencyProviderChain chain{
+        std::span<Elf32DependencyProvider* const>{providers}};
+
+    Elf32LinkerStrings strings;
+    strings.needed = {"libvlc.so", "libc.so"};
+    auto configured = options();
+    configured.requester_identity = "apk:libroot.so";
+    const auto result =
+        resolve_elf32_dependencies(strings, chain, configured);
+    if (!result || result.dependencies.ordered.size() != 2 ||
+        result.dependencies.ordered[0].identity != "apk:libvlc.so" ||
+        result.dependencies.ordered[0].image !=
+            std::vector<std::uint8_t>{1, 2} ||
+        result.dependencies.ordered[1].identity != "platform:libc.so" ||
+        result.dependencies.ordered[1].image !=
+            std::vector<std::uint8_t>{3, 4, 5}) {
+        return fail("application/platform catalogs did not compose through provider chain");
+    }
+    return 0;
+}
+
 int test_repeated_occurrences_are_not_deduplicated() {
     Elf32LinkerStrings strings;
     strings.needed = {"libsame.so", "libsame.so"};
@@ -585,6 +738,9 @@ int main() {
     if (const int status = test_requester_context_is_forwarded_exactly(); status != 0) return status;
     if (const int status = test_provider_chain_order_fallback_and_failures(); status != 0) return status;
     if (const int status = test_provider_chain_legacy_fallback_and_resolver_validation(); status != 0) return status;
+    if (const int status = test_catalog_provider_exact_bytes_and_owned_results(); status != 0) return status;
+    if (const int status = test_catalog_provider_rejects_ambiguous_malformed_and_oversize_entries(); status != 0) return status;
+    if (const int status = test_catalogs_compose_application_then_platform(); status != 0) return status;
     if (const int status = test_repeated_occurrences_are_not_deduplicated(); status != 0) return status;
     if (const int status = test_empty_set_and_count_precheck(); status != 0) return status;
     if (const int status = test_empty_name_rejected_before_its_provider_call(); status != 0) return status;

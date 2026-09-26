@@ -75,6 +75,33 @@ private:
     std::span<Elf32DependencyProvider* const> providers_;
 };
 
+struct Elf32DependencyCatalogEntry {
+    // All views are caller-owned and must outlive the catalog provider.
+    std::string_view requested_name;
+    std::string_view identity;
+    std::span<const std::uint8_t> image;
+};
+
+class Elf32DependencyCatalogProvider final : public Elf32DependencyProvider {
+public:
+    explicit Elf32DependencyCatalogProvider(
+        std::span<const Elf32DependencyCatalogEntry> entries) noexcept
+        : entries_(entries) {}
+
+    // Exact byte-name lookup only. The base resolve_for() fallback makes this
+    // requester-compatible without interpreting requester identity.
+    [[nodiscard]] Elf32DependencyProviderResult resolve(
+        std::string_view requested_name,
+        std::uint64_t max_image_bytes) override;
+
+    [[nodiscard]] std::size_t size() const noexcept {
+        return entries_.size();
+    }
+
+private:
+    std::span<const Elf32DependencyCatalogEntry> entries_;
+};
+
 struct Elf32DependencyResolveOptions {
     std::uint32_t max_dependencies{};
     std::uint64_t max_image_bytes{};
