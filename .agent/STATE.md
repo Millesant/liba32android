@@ -24,6 +24,7 @@ Persisted inspection at `5b1cf991272632ed44d6276d6ec5e982ef732f28` confirmed 30 
 ## Implemented runtime
 
 - A32 ARM/Thumb execution is isolated behind `src/cpu/` with pinned Dynarmic.
+- Feature 023 adds exact SVC-immediate reporting plus optional initial-CPSR seeding to the engine-independent CPU seam. SVC still raises the existing generic exception flag, while returned registers/PC/CPSR can be fed into a follow-up bounded request to resume ARM or Thumb execution after the trap. Focused resume tests are implemented; exact-head verification is pending.
 - `memory::GuestMemory` is the engine-independent memory seam.
 - `LinearGuestMemory` provides deterministic correctness behavior.
 - `MappedGuestMemory` provides logical 32-bit guest mappings, map/protect/unmap lifecycle, high-base 4 GiB reservation support, Dynarmic fastmem, and callback fallback.

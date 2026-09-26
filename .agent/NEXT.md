@@ -4,7 +4,7 @@ Repository integration is on `bleeding`. The current control-plane round is pinn
 
 `project-cleanup-v8` and its source/test, tooling, and documentation child changes are DONE. Features `011-elf32-combined-relocation-transaction` through `019-elf32-init-call-execution` are DONE. Feature 019 result revision `28a4f92f78b8ff156ee9dd3083d1218af8b7b125` passed exact-head Linux A32 smoke and both required Android checks.
 
-Features 020 through 022 are DONE. Feature 022 result revision `4b91211abd005584992c4ddd75435c31a4ce0f2c` passed exact-head Linux A32 smoke and both required Android checks. Feature `023-a32-svc-resume-state` is ACTIVE: make SVC a distinguishable reported trap and allow a caller to resume from returned register/CPSR state without exposing Dynarmic types.
+Features 020 through 022 are DONE. Feature 022 result revision `4b91211abd005584992c4ddd75435c31a4ce0f2c` passed exact-head Linux A32 smoke and both required Android checks. Feature `023-a32-svc-resume-state` is ACTIVE and implemented in the current tree. Exact ARM/Thumb SVC immediates, backward-compatible exception reporting, optional exact initial CPSR, post-SVC PC/register state, and continuation from returned state are covered. Exact-head CI verification/convergence remains.
 
 ## Candidate runtime directions
 

@@ -1,6 +1,6 @@
 # CPU engine architecture
 
-Status: Accepted through the completed M2 mapped-memory/fastmem seam
+Status: current through feature 023 resumable SVC state; exact-head verification pending
 
 ## Boundary
 
@@ -114,6 +114,30 @@ Feature 019 result revision `28a4f92f78b8ff156ee9dd3083d1218af8b7b125`
 PASSed exact-head Linux A32 smoke and both required Android checks. The CPU
 regressions specifically prove ARM/Thumb return to an unmapped stop PC,
 initial stop-before-fetch, and stop arrival on the final permitted instruction.
+
+## Resumable SVC state
+
+Feature 023 extends the generic CPU seam with two additive pieces of state.
+
+`ExecutionResult::svc_immediate` reports the exact immediate supplied by
+Dynarmic's A32 SVC callback. SVC continues to set `exception_raised=true`, so
+existing callers that only treat SVC as a generic exception retain their
+behavior. Ordinary exceptions leave `svc_immediate` empty.
+
+`ExecutionRequest::initial_cpsr` optionally seeds an exact caller-owned CPSR
+snapshot. When absent, the adapter retains the existing ARMv7 user-mode
+initialization derived from `instruction_set`. When present, the snapshot is
+used directly, allowing callers to feed back a previous execution result.
+
+After an SVC, returned general registers, `regs[15]`, and CPSR describe the
+post-instruction continuation point. Focused ARM and Thumb coverage traps on
+nonzero immediates, reconstructs a follow-up request from that returned state,
+and executes the next guest instruction. The Thumb resume deliberately leaves
+`instruction_set` at its default ARM value, proving the returned CPSR T bit
+restores Thumb state.
+
+This layer still does not dispatch host services, decode AAPCS arguments,
+implement syscalls, or know about ELF/platform shims.
 
 ## Correctness policy
 

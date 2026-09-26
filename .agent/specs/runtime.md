@@ -34,3 +34,7 @@ The runtime target produces exactly `liba32android.so`. Android cross-build vali
 ## L32-R008 — Evidence scope
 
 A passing cross-build, emulator sample, or device sample proves only the stated revision/environment. Broader Android compatibility claims require broader evidence.
+
+## L32-R009 — Resumable A32 SVC state
+
+The engine-independent CPU result may report the exact A32 SVC immediate while retaining the existing generic exception flag for source-compatible callers. Execution requests may optionally seed a full returned CPSR snapshot; when absent, the adapter retains the existing Arm/Thumb user-mode initialization. Returned general registers, logical PC, and CPSR after an SVC are valid input to a follow-up bounded execution request so guest execution can continue after the trap without exposing Dynarmic types. Host-service dispatch, ABI marshalling, compatibility shims, syscall emulation, and Android API behavior remain separate layers.
