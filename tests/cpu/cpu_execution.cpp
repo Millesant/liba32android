@@ -115,7 +115,9 @@ int run_call() {
     if (!load_code(return_memory, return_code)) return 1;
     ExecutionRequest return_request{};
     return_request.regs[14] = static_cast<std::uint32_t>(kMemorySize);
-    return_request.instruction_count = 2;
+    // Reaching the stop PC on the final permitted instruction must still
+    // report a successful stop rather than budget exhaustion.
+    return_request.instruction_count = 1;
     return_request.stop_pc = static_cast<std::uint32_t>(kMemorySize);
     const auto returned =
         liba32android::cpu::execute(return_memory, return_request);
@@ -260,7 +262,7 @@ int run_thumb_call() {
     constexpr std::array<std::uint8_t, 2> return_code{0x70, 0x47};
     LinearGuestMemory return_memory{kMemorySize};
     if (!load_code(return_memory, return_code)) return 1;
-    auto return_request = thumb_request(2);
+    auto return_request = thumb_request(1);
     return_request.regs[14] =
         static_cast<std::uint32_t>(kMemorySize) | 1U;
     return_request.stop_pc = static_cast<std::uint32_t>(kMemorySize);
