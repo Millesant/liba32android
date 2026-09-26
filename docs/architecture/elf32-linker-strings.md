@@ -1,6 +1,6 @@
 # ELF32 linker strings
 
-Status: M4 bounded string-consumption layer implemented through T003
+Status: bounded linker-string layer complete; historical feature 002 exact-head gate PASSed at CI #106
 
 ## Boundary
 
@@ -34,7 +34,7 @@ elf32_linker_strings
 elf32_dependency_resolver
     |
     v
-caller/platform dependency provider / future graph+mapping layers
+requester-aware provider chain/catalogs -> dependency loader/link map
 ```
 
 Guest addresses remain logical 32-bit values and all guest bytes are accessed through `GuestMemory`.
@@ -89,21 +89,22 @@ The current error categories distinguish:
 
 Malformed input fails deterministically without guest mutation.
 
-## Deliberate limits
+## Deliberate layer-local limits
+
+These are `elf32_linker_strings` ownership boundaries, not a repository-wide list of missing functionality. Several downstream capabilities are implemented; genuinely deferred policy is identified explicitly.
 
 This layer does **not**:
 
-- open or load `DT_NEEDED` libraries;
-- define search paths, namespaces, link maps, or dependency deduplication;
-- canonicalize path/name bytes;
+- open or load `DT_NEEDED` libraries itself (bounded acquisition/loading is implemented downstream);
+- define Android search paths/namespaces or canonicalize path/name bytes (still deferred policy);
+- own link-map/deduplication semantics (implemented downstream by the persistent dependency loader/link map);
 - reject empty names itself; `elf32_dependency_resolver` applies that dependency-request policy;
-- interpret SysV/GNU hash tables;
-- consume dynamic symbol entries for lookup;
-- implement symbol lookup/interposition/versioning;
-- decode/apply ARM relocations or PLT/JMPREL;
-- process RELRO, TLS, constructors/destructors, or Android packed relocations.
+- interpret SysV/GNU hash tables or dynamic symbol entries (implemented downstream by bounded symbol lookup);
+- perform symbol lookup/interposition/versioning itself (implemented downstream for the accepted bounded scope);
+- decode/apply ARM relocations or PLT/JMPREL itself (implemented downstream for the accepted REL/JUMP_SLOT set);
+- process RELRO or lifecycle execution itself (implemented downstream); TLS, destructor/unload lifecycle, and Android packed relocations remain deferred.
 
-Provider-backed bounded dependency acquisition now lives in `elf32_dependency_resolver`; search paths/namespaces, graph/link-map semantics, guest mapping, symbols, and relocations remain separate later slices.
+Provider-backed bounded acquisition, requester-aware provider chaining/catalogs, recursive/persistent dependency loading, guest mapping, bounded symbol resolution, relocation, RELRO, and INIT_ARRAY execution now live in separate downstream layers. Android filesystem/namespace/search policy and unsupported TLS/packed/destructor semantics remain genuine gaps.
 
 ## Validation evidence
 
@@ -127,4 +128,4 @@ Synthetic coverage includes:
 
 The pinned NDK-generated ARM32 fixture is loaded through the complete current linker metadata path, then consumed with an explicit 64-byte string ceiling. The integration case requires SONAME exactly `liba32android_loader_fixture.so` and zero NEEDED names.
 
-GitHub Actions run `35402559596` (#102) passed the T003 implementation head. The Linux job executed `elf32_real_linker_strings` and reported 24/24 CTest cases passing; the Android `arm64-v8a` cross-build also passed. A final exact-head run is still required after documentation/state convergence before this feature is complete.
+GitHub Actions run `35402559596` (#102) passed the T003 implementation head. The Linux job executed `elf32_real_linker_strings` and reported 24/24 CTest cases passing; the Android `arm64-v8a` cross-build also passed. Historical feature task T005 then completed the exact-head gate at CI #106; linker-string work is complete. Later dependency/provider/link-map features are tracked by their own current docs and `.agent/changes/` evidence.

@@ -19,7 +19,7 @@ The current tree is organized by ownership:
 - Android diagnostics live under `tools/android/`; reproducible fixture builders live under `tools/fixtures/`.
 - Documentation has a navigation index plus development layout/build guidance; README and agent orientation are compact current-state entry points.
 
-Persisted inspection at `5b1cf991272632ed44d6276d6ec5e982ef732f28` confirmed 30 test executable identities and 49 CTest names were preserved exactly.
+Repository-truth audit during `project-cleanup-v9` confirmed 17 source `.cpp` files and 35 test `.cpp` files are all referenced by current CMake registration. The current registration exposes 35 test executable identities and 55 unique CTest names with no duplicate registrations. The earlier v8 30/49 counts are historical and should not be read as current totals.
 
 ## Implemented runtime
 

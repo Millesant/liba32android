@@ -55,8 +55,23 @@ A complete non-truncated Git tree / CMake registration comparison found:
 - test `.cpp` files under `tests/`: 35
 - unreferenced source `.cpp` files: 0
 - unreferenced test `.cpp` files: 0
+- current test executable identities registered by CMake: 35
+- current unique CTest names: 55
+- duplicate test executable names: 0
+- duplicate CTest names: 0
 
 This does not prove semantic completeness. Genuine unsupported/deferred
 semantics remain explicitly tracked in `.agent/STATE.md`; the purpose of this
 audit is to remove accidental ambiguity between those accepted gaps and stale
 documentation.
+
+
+## Additional stale-current-doc finding
+
+A second architecture pass found
+`docs/architecture/elf32-linker-strings.md` still describing graph/mapping as
+future work and claiming a final exact-head gate remained outstanding. The
+historical feature-002 task record shows T005 DONE at CI #106, and downstream
+dependency loading/link-map/provider work is implemented. Cleanup v9 updates
+that current architecture page while leaving the historical numbered spec body
+unchanged.
