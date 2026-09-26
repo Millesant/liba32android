@@ -13,6 +13,7 @@
 
 #include "compat/a32_android_log_shim.h"
 #include "compat/a32_android_log_write.h"
+#include "compat/a32_android_platform_provider.h"
 #include "cpu/a32_cpu.h"
 #include "elf/elf32_dependency_loader.h"
 #include "elf/elf32_relocation.h"
@@ -26,16 +27,20 @@ namespace {
 using liba32android::compat::A32AndroidLogSink;
 using liba32android::compat::A32AndroidLogWriteOptions;
 using liba32android::compat::A32AndroidLogWriteService;
+using liba32android::compat::A32AndroidPlatformAccessDecision;
+using liba32android::compat::A32AndroidPlatformAccessPolicy;
+using liba32android::compat::A32AndroidPlatformProvider;
 using liba32android::compat::kA32AndroidLogShimIdentity;
 using liba32android::compat::kA32AndroidLogShimSoname;
 using liba32android::compat::kA32AndroidLogWriteShimSvcImmediate;
-using liba32android::compat::make_a32_android_log_shim_catalog_entry;
 using liba32android::cpu::ExecutionRequest;
 using liba32android::cpu::InstructionSet;
 using liba32android::elf::Elf32DependencyCatalogEntry;
 using liba32android::elf::Elf32DependencyCatalogProvider;
 using liba32android::elf::Elf32DependencyLoadOptions;
 using liba32android::elf::Elf32DependencyLoadSource;
+using liba32android::elf::Elf32DependencyProvider;
+using liba32android::elf::Elf32DependencyProviderChain;
 using liba32android::elf::Elf32GraphSymbolLookupResult;
 using liba32android::elf::Elf32RelocationOptions;
 using liba32android::elf::Elf32SymbolLookupOptions;
@@ -138,6 +143,22 @@ public:
     }
 };
 
+class RecordingPlatformPolicy final : public A32AndroidPlatformAccessPolicy {
+public:
+    std::size_t calls{};
+    std::string requester;
+    std::string requested;
+
+    A32AndroidPlatformAccessDecision decide(
+        std::string_view requester_identity,
+        std::string_view requested_name) override {
+        ++calls;
+        requester.assign(requester_identity.data(), requester_identity.size());
+        requested.assign(requested_name.data(), requested_name.size());
+        return A32AndroidPlatformAccessDecision::Allow;
+    }
+};
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -154,10 +175,17 @@ int main(int argc, char** argv) {
     }
 
     MappedGuestMemory memory;
-    const std::array<Elf32DependencyCatalogEntry, 1> catalog{{
-        make_a32_android_log_shim_catalog_entry(shim_image),
+
+    const std::array<Elf32DependencyCatalogEntry, 0> app_entries{};
+    Elf32DependencyCatalogProvider app_provider{std::span{app_entries}};
+    RecordingPlatformPolicy platform_policy;
+    A32AndroidPlatformProvider platform_provider{
+        std::span{shim_image}, platform_policy};
+    const std::array<Elf32DependencyProvider*, 2> provider_list{{
+        &app_provider,
+        &platform_provider,
     }};
-    Elf32DependencyCatalogProvider provider{std::span{catalog}};
+    Elf32DependencyProviderChain provider_chain{std::span{provider_list}};
 
     Elf32DependencyLoadOptions load_options;
     load_options.max_objects = 8;
@@ -173,15 +201,18 @@ int main(int argc, char** argv) {
             .identity = "android-log-consumer",
             .image = consumer_image,
         },
-        provider,
+        provider_chain,
         load_options);
     if (!graph_result) {
         return fail(
             std::string("Android log shim dependency graph load failed: ") +
             liba32android::elf::to_string(graph_result.error));
     }
-    if (graph_result.graph.objects.size() != 2) {
-        return fail("Android log shim did not form the expected two-object graph");
+    if (graph_result.graph.objects.size() != 2 ||
+        platform_policy.calls != 1 ||
+        platform_policy.requester != "android-log-consumer" ||
+        platform_policy.requested != kA32AndroidLogShimSoname) {
+        return fail("Android platform provider did not preserve requester-aware fallback");
     }
 
     const auto& consumer = graph_result.graph.objects[0];
@@ -308,6 +339,8 @@ int main(int argc, char** argv) {
         << "fixture.android_log.object_count="
         << graph_result.graph.objects.size() << '\n'
         << "fixture.android_log.needed=" << kA32AndroidLogShimSoname << '\n'
+        << "fixture.android_log.platform_policy_calls="
+        << platform_policy.calls << '\n'
         << "fixture.android_log.symbol_object="
         << log_write.symbol.object_index << '\n'
         << "fixture.android_log.relocation_count="

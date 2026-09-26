@@ -1,0 +1,29 @@
+schema = 1
+change = "028-a32-android-platform-provider"
+
+[[evidence]]
+id = "platform-provider-regressions"
+kind = "test"
+status = "not_run"
+claim = "Focused tests cover exact requester forwarding, access decisions, resource validation, unknown-name behavior, context-free lookup, and application-first chain fallback."
+source = "tests/compat/a32_android_platform_provider.cpp"
+result = "Source and CTest registration are prepared; exact-head execution has not been observed yet."
+limitations = "Prepared tests do not constitute passing evidence."
+
+[[evidence]]
+id = "real-shim-platform-selection"
+kind = "test"
+status = "not_run"
+claim = "The generated liblog.so integration loads through application-first/platform-fallback composition while preserving the root requester identity into platform policy."
+source = "tests/compat/a32_android_log_shim.cpp"
+result = "Integration source is updated; exact-head execution has not been observed yet."
+limitations = "This proves one explicit platform library and does not implement Android namespaces/search."
+
+[[evidence]]
+id = "exact-head-ci"
+kind = "validation"
+status = "not_run"
+claim = "Feature 028 passes dedicated shim integration, Linux A32 smoke, and both required Android checks."
+source = "GitHub commit checks on the eventual feature-028 implementation revision"
+result = ""
+limitations = "Feature 028 remains implemented rather than verified/done until terminal exact-head checks are observed."

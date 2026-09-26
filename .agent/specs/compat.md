@@ -60,3 +60,24 @@ The runtime does not embed or own the generated shim DSO. Automatic platform
 catalog installation, filesystem/namespace search policy,
 `__android_log_print`/`__android_log_vprint`, and general `liblog.so`
 compatibility remain separate work.
+
+## L32-C005 — Explicit Android platform-provider policy seam
+
+`A32AndroidPlatformProvider` is a requester-aware
+`Elf32DependencyProvider` for concrete compatibility libraries. Feature 028
+recognizes only the exact name `liblog.so`; every other requested name returns
+`NotFound` without invoking platform-access policy.
+
+For an exact `liblog.so` request, the provider passes the borrowed requester
+identity and requested name byte-for-byte to a caller-owned
+`A32AndroidPlatformAccessPolicy`. `Allow` delegates to the existing exact
+catalog semantics, including non-empty image and maximum-image-byte validation.
+`NotFound` and `Failed` are propagated without publishing source data.
+Context-free `resolve` is represented to policy by an empty requester
+identity.
+
+The provider borrows both the policy object and generated liblog image for its
+entire lifetime. It is non-copyable and non-movable because its internal catalog
+span refers to its own entry storage. It does not normalize request names,
+interpret pathnames, define Android namespaces/links, inspect filesystem/APK
+paths, or install itself automatically into an application provider chain.

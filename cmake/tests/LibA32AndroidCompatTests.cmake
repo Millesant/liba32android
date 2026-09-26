@@ -9,6 +9,16 @@ add_test(
 )
 
 liba32android_add_test_executable(
+    compat_android_platform_provider_test
+    tests/compat/a32_android_platform_provider.cpp
+)
+
+add_test(
+    NAME a32_android_platform_provider
+    COMMAND compat_android_platform_provider_test
+)
+
+liba32android_add_test_executable(
     compat_android_log_shim_integration_test
     tests/compat/a32_android_log_shim.cpp
 )
