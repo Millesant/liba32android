@@ -110,6 +110,11 @@ Exceptions and memory faults remain explicit terminal states.
 Feature 019 uses this seam for INIT_ARRAY constructors; the CPU layer remains
 unaware of ELF or lifecycle policy.
 
+Feature 019 result revision `28a4f92f78b8ff156ee9dd3083d1218af8b7b125`
+PASSed exact-head Linux A32 smoke and both required Android checks. The CPU
+regressions specifically prove ARM/Thumb return to an unmapped stop PC,
+initial stop-before-fetch, and stop arrival on the final permitted instruction.
+
 ## Correctness policy
 
 Dynarmic documents known accuracy tradeoffs and is not treated as a formal ARM reference implementation. Tiny regression binaries and, where practical, a slower reference path will be used to verify runtime behavior. Unsupported behavior must be surfaced rather than silently declared compatible.

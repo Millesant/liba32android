@@ -1,6 +1,6 @@
 # ELF32 lifecycle arrays
 
-Status: feature 018 planning complete; feature 019 bounded INIT_ARRAY execution implemented, exact-head verification pending
+Status: feature 019 bounded INIT_ARRAY execution complete; exact-head implementation CI PASSed
 
 ## Boundary
 
@@ -136,3 +136,18 @@ No later call is claimed or attempted.
 The executor does not allocate a stack, map/protect/unmap memory, roll back
 constructor side effects, persist constructor-called state, or implement
 legacy INIT/PREINIT/destructor lifecycle.
+
+
+## Feature 019 validation
+
+At result revision `28a4f92f78b8ff156ee9dd3083d1218af8b7b125`:
+
+- Linux A32 smoke check `108311078482` PASSed;
+- Android x86_64 address-space probe check `108311078471` PASSed;
+- Android arm64-v8a cross-build check `108311078359` PASSed.
+
+The Linux lane covers ARM and Thumb stop-PC returns, arrival on the final
+instruction budget, initial stop-before-fetch, planner-to-executor composition,
+ordered guest side effects, failure provenance, memory-fault precedence,
+exception handling, instruction exhaustion, and no execution of later calls
+after failure.

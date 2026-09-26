@@ -4,7 +4,7 @@ Repository integration is on `bleeding`. The current control-plane round is pinn
 
 `project-cleanup-v8` and its source/test, tooling, and documentation child changes are DONE. Features `011-elf32-combined-relocation-transaction` through `017-elf32-lifecycle-array-metadata` are DONE. Feature 017 result revision `e380b96f4e5d2c81a471d051f568b7c2dbef2c1c` passed exact-head Linux A32 smoke and both required Android checks.
 
-Feature `019-elf32-init-call-execution` is ACTIVE and implemented in the current tree. Exact stop-PC A32 termination, ARM/Thumb constructor invocation, caller-owned aligned stack/return state, per-call bounds, ordered side effects, and stop-on-first-failure coverage are present. Exact-head CI verification/convergence is the remaining step before closure.
+Feature 019 is DONE. Result revision `28a4f92f78b8ff156ee9dd3083d1218af8b7b125` passed exact-head Linux A32 smoke and both required Android checks. Constructor metadata, dependency-first planning, and bounded ARM/Thumb INIT_ARRAY execution are now one verified path; persisted called-state and destructor/unload lifecycle remain separate.
 
 ## Candidate runtime directions
 
@@ -13,7 +13,7 @@ Choose a bounded next feature from accepted gaps rather than continuing cosmetic
 Current candidates include:
 
 - layer Android namespace/search-path/platform-provider policy above the persistent link-map provider boundary;
-- complete feature 019 bounded guest constructor invocation, then decide between Android platform-provider/search policy and FINI/destructor lifecycle;
+- add requester-aware Android platform-provider/search policy above the feature-016 persistent link-map boundary;
 - broader ARM relocation coverage beyond REL32, such as COPY/instruction families or RELA/RELR/Android packed encodings, when a concrete target requires them;
 - TLS/IFUNC groundwork when a concrete target requires it;
 - end-to-end real ARM32 fixture execution on Android once the required runtime environment is available.
