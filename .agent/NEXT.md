@@ -4,7 +4,7 @@ Repository integration is on `bleeding`. The current control-plane round is pinn
 
 `project-cleanup-v8` and its source/test, tooling, and documentation child changes are DONE. Features `011-elf32-combined-relocation-transaction` through `017-elf32-lifecycle-array-metadata` are DONE. Feature 017 result revision `e380b96f4e5d2c81a471d051f568b7c2dbef2c1c` passed exact-head Linux A32 smoke and both required Android checks.
 
-Feature 018 is DONE. Result revision `002a938ad0e5bd657716e1cc978d65e0ade4869e` passed exact-head Linux A32 smoke and both required Android checks. The next lifecycle slice can add bounded guest constructor invocation on top of the verified call plan without reopening metadata or graph ordering.
+Feature `019-elf32-init-call-execution` is ACTIVE. It adds a generic CPU stop-PC termination condition and uses it to invoke feature-018 constructor calls with ARM/Thumb state derived from each raw function value, a caller-owned 8-byte-aligned guest stack top, and a per-call instruction ceiling. No scratch mapping, legacy INIT/PREINIT, persisted called-state, or destructor lifecycle is absorbed.
 
 ## Candidate runtime directions
 
@@ -13,7 +13,7 @@ Choose a bounded next feature from accepted gaps rather than continuing cosmetic
 Current candidates include:
 
 - layer Android namespace/search-path/platform-provider policy above the persistent link-map provider boundary;
-- add bounded guest constructor invocation from the verified feature-018 plan, keeping legacy DT_INIT/PREINIT and destructor/unload semantics separate;
+- complete feature 019 bounded guest constructor invocation, then decide between Android platform-provider/search policy and FINI/destructor lifecycle;
 - broader ARM relocation coverage beyond REL32, such as COPY/instruction families or RELA/RELR/Android packed encodings, when a concrete target requires them;
 - TLS/IFUNC groundwork when a concrete target requires it;
 - end-to-end real ARM32 fixture execution on Android once the required runtime environment is available.
