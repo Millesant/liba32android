@@ -4,7 +4,7 @@ Repository integration is on `bleeding`. The current control-plane round is pinn
 
 `project-cleanup-v8` and its source/test, tooling, and documentation child changes are DONE. Features `011-elf32-combined-relocation-transaction` through `017-elf32-lifecycle-array-metadata` are DONE. Feature 017 result revision `e380b96f4e5d2c81a471d051f568b7c2dbef2c1c` passed exact-head Linux A32 smoke and both required Android checks.
 
-Feature `018-elf32-init-lifecycle-planning` is ACTIVE. It builds the next non-executing lifecycle seam on feature 017: dependency-first constructor planning for one graph root, one-time object visitation across cycles/shared dependencies, caller ceilings, and null/all-ones sentinel filtering. Guest CPU invocation, legacy DT_INIT, PREINIT_ARRAY, and destructor/unload planning remain separate.
+Feature `018-elf32-init-lifecycle-planning` is ACTIVE and implemented in the current tree. Root-scoped dependency-first constructor planning, cycle/shared-dependency suppression, caller object/entry ceilings, nested decoder error propagation, sentinel filtering, provenance retention, and no-mutation coverage are present. Exact-head CI verification/convergence is the remaining step before closure.
 
 ## Candidate runtime directions
 

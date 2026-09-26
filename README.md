@@ -12,7 +12,7 @@ The current C++20/CMake runtime provides:
 - an engine-independent `memory::GuestMemory` seam with deterministic and mapped backends;
 - logical 32-bit guest virtual addresses with optional high-base 4 GiB fastmem backing and callback fallback;
 - validated ARM ELF32 `ET_EXEC` / `ET_DYN` mapping, shared pre-mutation load planning, and bounded automatic `ET_DYN` placement;
-- structural `PT_DYNAMIC` parsing plus validated linker metadata, bounded string materialization, and caller-bounded raw INIT_ARRAY/FINI_ARRAY decoding;
+- structural `PT_DYNAMIC` parsing plus validated linker metadata, bounded string materialization, caller-bounded raw INIT_ARRAY/FINI_ARRAY decoding, and dependency-first INIT_ARRAY call planning;
 - bounded provider-backed dependency acquisition, transactional recursive dependency-graph loading, and a persistent cross-root link map with DF_1_GLOBAL/global-root scope ordering;
 - SysV/GNU dynamic-symbol indexing and deterministic graph-local symbol lookup;
 - transactional main `DT_REL` relocation application for the implemented AArch32 relocation set;
