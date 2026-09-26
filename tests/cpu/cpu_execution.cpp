@@ -342,12 +342,108 @@ int run_thumb_svc_exception() {
     }
 
     const auto result = liba32android::cpu::execute(memory, thumb_request(1));
-    if (!result.exception_raised || result.memory_fault || result.instructions_executed != 1) {
+    if (!result.exception_raised || result.memory_fault ||
+        result.instructions_executed != 1 ||
+        !result.svc_immediate.has_value() ||
+        *result.svc_immediate != 0 ||
+        result.regs[15] != 2 ||
+        (result.cpsr & 0x20U) == 0) {
         std::cerr << "Thumb SVC test failed: executed=" << result.instructions_executed
                   << " exception=" << result.exception_raised
-                  << " memory_fault=" << result.memory_fault << '\n';
+                  << " memory_fault=" << result.memory_fault
+                  << " pc=" << result.regs[15]
+                  << " svc="
+                  << (result.svc_immediate.has_value()
+                          ? *result.svc_immediate
+                          : 0xffffffffU)
+                  << '\n';
         return 1;
     }
+    return 0;
+}
+
+int run_svc_resume_state() {
+    {
+        // mov r0,#1; svc #0x123456; add r0,r0,#1
+        constexpr std::array<std::uint8_t, 12> code{
+            0x01, 0x00, 0xA0, 0xE3,
+            0x56, 0x34, 0x12, 0xEF,
+            0x01, 0x00, 0x80, 0xE2,
+        };
+        LinearGuestMemory memory{kMemorySize};
+        if (!load_code(memory, code)) return 1;
+
+        ExecutionRequest first{};
+        first.instruction_count = 2;
+        const auto trapped = liba32android::cpu::execute(memory, first);
+        if (!trapped.exception_raised || trapped.memory_fault ||
+            trapped.instructions_executed != 2 ||
+            !trapped.svc_immediate.has_value() ||
+            *trapped.svc_immediate != 0x123456U ||
+            trapped.regs[0] != 1 ||
+            trapped.regs[15] != 8) {
+            std::cerr << "ARM SVC state test failed: r0=" << trapped.regs[0]
+                      << " pc=" << trapped.regs[15] << '\n';
+            return 1;
+        }
+
+        ExecutionRequest resume{};
+        resume.regs = trapped.regs;
+        resume.entry_pc = trapped.regs[15];
+        resume.instruction_count = 1;
+        resume.initial_cpsr = trapped.cpsr;
+        const auto continued = liba32android::cpu::execute(memory, resume);
+        if (!execution_ok(continued, 1) || continued.svc_immediate.has_value() ||
+            continued.regs[0] != 2 || continued.regs[15] != 12) {
+            std::cerr << "ARM SVC resume failed: r0=" << continued.regs[0]
+                      << " pc=" << continued.regs[15] << '\n';
+            return 1;
+        }
+    }
+
+    {
+        // movs r0,#1; svc #0x7a; adds r0,#1
+        constexpr std::array<std::uint8_t, 6> code{
+            0x01, 0x20,
+            0x7A, 0xDF,
+            0x01, 0x30,
+        };
+        LinearGuestMemory memory{kMemorySize};
+        if (!load_code(memory, code)) return 1;
+
+        auto first = thumb_request(2);
+        const auto trapped = liba32android::cpu::execute(memory, first);
+        if (!trapped.exception_raised || trapped.memory_fault ||
+            trapped.instructions_executed != 2 ||
+            !trapped.svc_immediate.has_value() ||
+            *trapped.svc_immediate != 0x7aU ||
+            trapped.regs[0] != 1 ||
+            trapped.regs[15] != 4 ||
+            (trapped.cpsr & 0x20U) == 0) {
+            std::cerr << "Thumb SVC state test failed: r0=" << trapped.regs[0]
+                      << " pc=" << trapped.regs[15] << '\n';
+            return 1;
+        }
+
+        // Deliberately leave instruction_set at its default ARM value. The
+        // returned CPSR T bit must be what restores Thumb execution.
+        ExecutionRequest resume{};
+        resume.regs = trapped.regs;
+        resume.entry_pc = trapped.regs[15];
+        resume.instruction_count = 1;
+        resume.initial_cpsr = trapped.cpsr;
+        const auto continued = liba32android::cpu::execute(memory, resume);
+        if (!execution_ok(continued, 1) || continued.svc_immediate.has_value() ||
+            continued.regs[0] != 2 || continued.regs[15] != 6 ||
+            (continued.cpsr & 0x20U) == 0) {
+            std::cerr << "Thumb SVC resume failed: r0=" << continued.regs[0]
+                      << " pc=" << continued.regs[15]
+                      << " cpsr=0x" << std::hex << continued.cpsr
+                      << std::dec << '\n';
+            return 1;
+        }
+    }
+
     return 0;
 }
 
@@ -393,7 +489,7 @@ int main(int argc, char** argv) {
         std::cerr
             << "usage: cpu_execution "
                "<registers|branch|call|memory|stack|thumb_branch|thumb_call|"
-               "thumb_memory|thumb_stack|thumb_svc|fetch_fault|thumb_data_fault>\n";
+               "thumb_memory|thumb_stack|thumb_svc|svc_resume|fetch_fault|thumb_data_fault>\n";
         return 2;
     }
 
@@ -427,6 +523,9 @@ int main(int argc, char** argv) {
     }
     if (mode == "thumb_svc") {
         return run_thumb_svc_exception();
+    }
+    if (mode == "svc_resume") {
+        return run_svc_resume_state();
     }
     if (mode == "fetch_fault") {
         return run_instruction_fetch_fault();

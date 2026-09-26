@@ -107,7 +107,8 @@ public:
         exception_raised_ = true;
     }
 
-    void CallSVC(std::uint32_t) override {
+    void CallSVC(std::uint32_t immediate) override {
+        svc_immediate_ = immediate;
         exception_raised_ = true;
     }
 
@@ -127,6 +128,10 @@ public:
 
     [[nodiscard]] bool memory_fault() const noexcept {
         return memory_fault_;
+    }
+
+    [[nodiscard]] std::optional<std::uint32_t> svc_immediate() const noexcept {
+        return svc_immediate_;
     }
 
     [[nodiscard]] std::size_t code_read_callbacks() const noexcept {
@@ -163,6 +168,7 @@ private:
     memory::GuestMemory& memory_;
     bool exception_raised_ = false;
     bool memory_fault_ = false;
+    std::optional<std::uint32_t> svc_immediate_;
     std::size_t code_read_callbacks_ = 0;
     std::size_t data_read_callbacks_ = 0;
     std::size_t data_write_callbacks_ = 0;
@@ -190,9 +196,11 @@ ExecutionResult execute(memory::GuestMemory& memory, const ExecutionRequest& req
     jit.ExtRegs().fill(0);
     jit.Regs()[15] = request.entry_pc;
 
-    // Execute in ARMv7 user mode; CPSR.T selects Thumb state.
-    const std::uint32_t cpsr = request.instruction_set == InstructionSet::Thumb ? 0x30u : 0x10u;
-    jit.SetCpsr(cpsr);
+    // By default execute in ARMv7 user mode; CPSR.T selects Thumb state.
+    // A caller may instead seed an exact returned CPSR snapshot to resume.
+    const std::uint32_t default_cpsr =
+        request.instruction_set == InstructionSet::Thumb ? 0x30u : 0x10u;
+    jit.SetCpsr(request.initial_cpsr.value_or(default_cpsr));
 
     std::size_t executed = 0;
     bool stop_pc_reached =
@@ -217,6 +225,7 @@ ExecutionResult execute(memory::GuestMemory& memory, const ExecutionRequest& req
         .exception_raised = environment.exception_raised(),
         .memory_fault = environment.memory_fault(),
         .stop_pc_reached = stop_pc_reached,
+        .svc_immediate = environment.svc_immediate(),
         .fastmem_enabled = fastmem.has_value(),
         .code_read_callbacks = environment.code_read_callbacks(),
         .data_read_callbacks = environment.data_read_callbacks(),

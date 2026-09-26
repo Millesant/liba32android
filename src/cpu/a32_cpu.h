@@ -24,6 +24,9 @@ struct ExecutionRequest {
     // Optional normalized logical guest PC. When reached, execution stops
     // before fetching/executing an instruction at this address.
     std::optional<std::uint32_t> stop_pc;
+    // Optional exact initial CPSR snapshot for resumable execution. When
+    // absent, execution derives ARMv7 user-mode CPSR from instruction_set.
+    std::optional<std::uint32_t> initial_cpsr;
 };
 
 struct ExecutionResult {
@@ -33,6 +36,9 @@ struct ExecutionResult {
     bool exception_raised{};
     bool memory_fault{};
     bool stop_pc_reached{};
+    // Present when execution terminated through the A32 SVC callback. The
+    // existing exception_raised flag remains true for backward compatibility.
+    std::optional<std::uint32_t> svc_immediate;
 
     // Internal diagnostics used to prove which CPU/memory path was configured
     // and whether a fastmem fault fell back to callbacks. These fields are not
