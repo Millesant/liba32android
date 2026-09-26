@@ -212,4 +212,101 @@ const char* to_string(Elf32InitPlanError error) noexcept {
     return "unknown";
 }
 
+namespace {
+
+[[nodiscard]] Elf32InitExecutionResult execution_failure(
+    Elf32InitExecutionError error,
+    std::size_t calls_completed,
+    std::size_t failing_call,
+    std::size_t failing_object,
+    std::optional<cpu::ExecutionResult> cpu_result = std::nullopt) {
+    Elf32InitExecutionResult result;
+    result.error = error;
+    result.calls_completed = calls_completed;
+    result.failing_call = failing_call;
+    result.failing_object = failing_object;
+    result.cpu_result = std::move(cpu_result);
+    return result;
+}
+
+}  // namespace
+
+Elf32InitExecutionResult execute_elf32_init_calls(
+    memory::GuestMemory& memory,
+    std::span<const Elf32InitCall> calls,
+    const Elf32InitExecutionOptions& options) {
+    if (options.stack_top == 0U ||
+        (options.stack_top & 7U) != 0U ||
+        (options.return_pc & 1U) != 0U ||
+        options.max_instructions_per_call == 0U) {
+        Elf32InitExecutionResult result;
+        result.error = Elf32InitExecutionError::InvalidOptions;
+        return result;
+    }
+
+    Elf32InitExecutionResult result;
+    for (std::size_t index = 0; index < calls.size(); ++index) {
+        const auto& call = calls[index];
+        const bool thumb = (call.function & 1U) != 0U;
+        const std::uint32_t entry_pc = call.function & ~1U;
+        if (call.function == 0U ||
+            call.function == std::numeric_limits<std::uint32_t>::max() ||
+            entry_pc == options.return_pc ||
+            (!thumb && (entry_pc & 3U) != 0U)) {
+            return execution_failure(
+                Elf32InitExecutionError::InvalidFunctionAddress,
+                result.calls_completed, index, call.object_index);
+        }
+
+        cpu::ExecutionRequest request{};
+        request.instruction_set =
+            thumb ? cpu::InstructionSet::Thumb : cpu::InstructionSet::Arm;
+        request.entry_pc = entry_pc;
+        request.regs[13] = options.stack_top;
+        request.regs[14] = options.return_pc | (thumb ? 1U : 0U);
+        request.instruction_count = options.max_instructions_per_call;
+        request.stop_pc = options.return_pc;
+
+        auto cpu_result = cpu::execute(memory, request);
+        if (cpu_result.exception_raised) {
+            return execution_failure(
+                Elf32InitExecutionError::CpuException,
+                result.calls_completed, index, call.object_index,
+                std::move(cpu_result));
+        }
+        if (cpu_result.memory_fault) {
+            return execution_failure(
+                Elf32InitExecutionError::MemoryFault,
+                result.calls_completed, index, call.object_index,
+                std::move(cpu_result));
+        }
+        if (!cpu_result.stop_pc_reached) {
+            return execution_failure(
+                Elf32InitExecutionError::InstructionLimitExceeded,
+                result.calls_completed, index, call.object_index,
+                std::move(cpu_result));
+        }
+
+        ++result.calls_completed;
+    }
+    return result;
+}
+
+const char* to_string(Elf32InitExecutionError error) noexcept {
+    switch (error) {
+    case Elf32InitExecutionError::None: return "none";
+    case Elf32InitExecutionError::InvalidOptions:
+        return "invalid_options";
+    case Elf32InitExecutionError::InvalidFunctionAddress:
+        return "invalid_function_address";
+    case Elf32InitExecutionError::CpuException:
+        return "cpu_exception";
+    case Elf32InitExecutionError::MemoryFault:
+        return "memory_fault";
+    case Elf32InitExecutionError::InstructionLimitExceeded:
+        return "instruction_limit_exceeded";
+    }
+    return "unknown";
+}
+
 }  // namespace liba32android::elf

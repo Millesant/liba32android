@@ -3,8 +3,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <vector>
 
+#include "cpu/a32_cpu.h"
 #include "elf/elf32_dependency_graph.h"
 #include "elf/elf32_linker_metadata.h"
 #include "memory/guest_memory.h"
@@ -90,5 +92,47 @@ struct Elf32InitPlanResult {
     const Elf32InitPlanOptions& options);
 
 [[nodiscard]] const char* to_string(Elf32InitPlanError error) noexcept;
+
+struct Elf32InitExecutionOptions {
+    // Caller-owned writable stack top. The executor does not map or unmap it.
+    std::uint32_t stack_top{};
+    // Normalized logical guest PC used only as a stop target; it need not be
+    // mapped because CPU execution stops before fetching it.
+    std::uint32_t return_pc{};
+    std::size_t max_instructions_per_call{};
+};
+
+enum class Elf32InitExecutionError : std::uint8_t {
+    None = 0,
+    InvalidOptions,
+    InvalidFunctionAddress,
+    CpuException,
+    MemoryFault,
+    InstructionLimitExceeded,
+};
+
+struct Elf32InitExecutionResult {
+    Elf32InitExecutionError error{Elf32InitExecutionError::None};
+    std::size_t calls_completed{};
+    std::optional<std::size_t> failing_call;
+    std::optional<std::size_t> failing_object;
+    std::optional<cpu::ExecutionResult> cpu_result;
+
+    [[nodiscard]] explicit operator bool() const noexcept {
+        return error == Elf32InitExecutionError::None;
+    }
+};
+
+// Execute a precomputed INIT_ARRAY call plan in order. Each call starts with
+// deterministic zeroed registers except SP/LR, derives ARM/Thumb from function
+// bit 0, and must return to return_pc within the per-call instruction ceiling.
+// Completed constructor side effects are intentionally not rolled back.
+[[nodiscard]] Elf32InitExecutionResult execute_elf32_init_calls(
+    memory::GuestMemory& memory,
+    std::span<const Elf32InitCall> calls,
+    const Elf32InitExecutionOptions& options);
+
+[[nodiscard]] const char* to_string(
+    Elf32InitExecutionError error) noexcept;
 
 }  // namespace liba32android::elf

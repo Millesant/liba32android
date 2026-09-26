@@ -13,9 +13,13 @@ using liba32android::elf::Elf32DependencyGraph;
 using liba32android::elf::Elf32FunctionArrayDecodeError;
 using liba32android::elf::Elf32FunctionArrayDecodeOptions;
 using liba32android::elf::Elf32FunctionArrayMetadata;
+using liba32android::elf::Elf32InitCall;
+using liba32android::elf::Elf32InitExecutionError;
+using liba32android::elf::Elf32InitExecutionOptions;
 using liba32android::elf::Elf32InitPlanError;
 using liba32android::elf::Elf32InitPlanOptions;
 using liba32android::elf::decode_elf32_function_array;
+using liba32android::elf::execute_elf32_init_calls;
 using liba32android::elf::plan_elf32_init_array_calls;
 using liba32android::memory::LinearGuestMemory;
 
@@ -213,6 +217,161 @@ int test_init_plan_dependency_order_cycles_and_sentinels() {
     return 0;
 }
 
+int test_init_execution_arm_thumb_and_side_effects() {
+    LinearGuestMemory memory(0x500, 0x1000);
+
+    // ARM constructor: *0x1200 = 42; bx lr.
+    constexpr std::array<std::uint8_t, 20> arm_code{
+        0x08, 0x00, 0x9F, 0xE5,
+        0x2A, 0x10, 0xA0, 0xE3,
+        0x00, 0x10, 0x80, 0xE5,
+        0x1E, 0xFF, 0x2F, 0xE1,
+        0x00, 0x12, 0x00, 0x00,
+    };
+    if (!memory.write(0x1100, arm_code)) {
+        return fail("could not stage ARM INIT_ARRAY constructor");
+    }
+
+    // Thumb constructor: ++*0x1200; bx lr.
+    constexpr std::array<std::uint8_t, 16> thumb_code{
+        0x02, 0x48,
+        0x01, 0x68,
+        0x01, 0x31,
+        0x01, 0x60,
+        0x70, 0x47,
+        0x00, 0xBF,
+        0x00, 0x12, 0x00, 0x00,
+    };
+    if (!memory.write(0x1140, thumb_code)) {
+        return fail("could not stage Thumb INIT_ARRAY constructor");
+    }
+
+    const std::array calls{
+        Elf32InitCall{.object_index = 3, .array_index = 0, .function = 0x1100},
+        Elf32InitCall{.object_index = 1, .array_index = 2, .function = 0x1141},
+    };
+    const auto result = execute_elf32_init_calls(
+        memory, calls,
+        Elf32InitExecutionOptions{
+            .stack_top = 0x13f8,
+            .return_pc = 0x2000,
+            .max_instructions_per_call = 16,
+        });
+    std::uint32_t value = 0;
+    std::array<std::uint8_t, 4> bytes{};
+    if (!memory.read(0x1200, bytes)) {
+        return fail("could not read constructor side effect");
+    }
+    value = static_cast<std::uint32_t>(bytes[0]) |
+            (static_cast<std::uint32_t>(bytes[1]) << 8U) |
+            (static_cast<std::uint32_t>(bytes[2]) << 16U) |
+            (static_cast<std::uint32_t>(bytes[3]) << 24U);
+    if (!result || result.calls_completed != 2 || value != 43U) {
+        return fail("ARM/Thumb INIT_ARRAY calls did not execute in plan order");
+    }
+    return 0;
+}
+
+int test_init_execution_failures_stop_progress() {
+    LinearGuestMemory memory(0x500, 0x1000);
+
+    constexpr std::array<std::uint8_t, 4> return_code{
+        0x1E, 0xFF, 0x2F, 0xE1,
+    };
+    constexpr std::array<std::uint8_t, 4> loop_code{
+        0xFE, 0xFF, 0xFF, 0xEA,
+    };
+    constexpr std::array<std::uint8_t, 4> svc_code{
+        0x00, 0x00, 0x00, 0xEF,
+    };
+    if (!memory.write(0x1100, return_code) ||
+        !memory.write(0x1120, loop_code) ||
+        !memory.write(0x1140, svc_code)) {
+        return fail("could not stage INIT_ARRAY execution failure code");
+    }
+
+    const Elf32InitExecutionOptions valid{
+        .stack_top = 0x13f8,
+        .return_pc = 0x2000,
+        .max_instructions_per_call = 2,
+    };
+
+    const std::array one_return{
+        Elf32InitCall{.object_index = 0, .array_index = 0, .function = 0x1100},
+    };
+    const auto bad_options = execute_elf32_init_calls(
+        memory, one_return,
+        Elf32InitExecutionOptions{
+            .stack_top = 0x13fc,
+            .return_pc = 0x2000,
+            .max_instructions_per_call = 2,
+        });
+    if (bad_options.error != Elf32InitExecutionError::InvalidOptions ||
+        bad_options.calls_completed != 0) {
+        return fail("unaligned INIT_ARRAY stack top was not rejected");
+    }
+
+    const std::array bad_function{
+        Elf32InitCall{.object_index = 7, .array_index = 4, .function = 0x1102},
+    };
+    const auto invalid = execute_elf32_init_calls(memory, bad_function, valid);
+    if (invalid.error != Elf32InitExecutionError::InvalidFunctionAddress ||
+        !invalid.failing_call.has_value() || *invalid.failing_call != 0 ||
+        !invalid.failing_object.has_value() || *invalid.failing_object != 7) {
+        return fail("misaligned ARM constructor was not rejected with provenance");
+    }
+
+    const std::array exhausted_calls{
+        Elf32InitCall{.object_index = 1, .array_index = 0, .function = 0x1100},
+        Elf32InitCall{.object_index = 2, .array_index = 0, .function = 0x1120},
+        Elf32InitCall{.object_index = 3, .array_index = 0, .function = 0x1100},
+    };
+    const auto exhausted =
+        execute_elf32_init_calls(memory, exhausted_calls, valid);
+    if (exhausted.error !=
+            Elf32InitExecutionError::InstructionLimitExceeded ||
+        exhausted.calls_completed != 1 ||
+        !exhausted.failing_call.has_value() ||
+        *exhausted.failing_call != 1 ||
+        !exhausted.failing_object.has_value() ||
+        *exhausted.failing_object != 2 ||
+        !exhausted.cpu_result.has_value() ||
+        exhausted.cpu_result->instructions_executed != 2 ||
+        exhausted.cpu_result->stop_pc_reached) {
+        return fail("constructor instruction exhaustion did not stop later calls");
+    }
+
+    const std::array exception_call{
+        Elf32InitCall{.object_index = 5, .array_index = 0, .function = 0x1140},
+    };
+    const auto exception =
+        execute_elf32_init_calls(memory, exception_call, valid);
+    if (exception.error != Elf32InitExecutionError::CpuException ||
+        exception.calls_completed != 0 ||
+        !exception.cpu_result.has_value() ||
+        !exception.cpu_result->exception_raised) {
+        return fail("constructor CPU exception was not surfaced");
+    }
+
+    const std::array fault_call{
+        Elf32InitCall{.object_index = 6, .array_index = 0, .function = 0x2000},
+    };
+    const auto fault = execute_elf32_init_calls(
+        memory, fault_call,
+        Elf32InitExecutionOptions{
+            .stack_top = 0x13f8,
+            .return_pc = 0x3000,
+            .max_instructions_per_call = 2,
+        });
+    if (fault.error != Elf32InitExecutionError::MemoryFault ||
+        fault.calls_completed != 0 ||
+        !fault.cpu_result.has_value() ||
+        !fault.cpu_result->memory_fault) {
+        return fail("constructor memory fault was not surfaced");
+    }
+    return 0;
+}
+
 int test_init_plan_input_limits_and_decode_failures() {
     LinearGuestMemory memory(0x200, 0x1000);
 
@@ -332,6 +491,14 @@ int main() {
         return status;
     }
     if (const int status = test_init_plan_input_limits_and_decode_failures();
+        status != 0) {
+        return status;
+    }
+    if (const int status = test_init_execution_arm_thumb_and_side_effects();
+        status != 0) {
+        return status;
+    }
+    if (const int status = test_init_execution_failures_stop_progress();
         status != 0) {
         return status;
     }
