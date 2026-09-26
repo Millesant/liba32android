@@ -1,0 +1,29 @@
+schema = 1
+change = "026-a32-android-log-write-service"
+
+[[evidence]]
+id = "api-abi-contract"
+kind = "research"
+status = "passed"
+claim = "The chosen bridge shape matches authoritative Android __android_log_write and AAPCS32 register/result contracts."
+source = "docs/research/evidence/android-log-write-contract-2026-09-26.md"
+result = "AOSP exposes int __android_log_write(int,const char*,const char*); AAPCS32 supplies the three machine arguments in r0-r2 and the 32-bit result in r0. Current AOSP also preserves null-tag default policy and documents 1/-EPERM outcomes."
+limitations = "API/ABI evidence does not itself validate guest memory decoding, SVC integration, a guest ELF shim, or application compatibility."
+
+[[evidence]]
+id = "compat-regressions"
+kind = "test"
+status = "not_run"
+claim = "Compatibility regressions cover A32 log-write ABI/service behavior and feature-024/025 composition."
+source = "tests/compat/a32_android_log_write.cpp"
+result = "Test source and CMake registration are prepared; exact-head execution has not been observed yet."
+limitations = "Prepared tests are not passing evidence until the exact implementation revision runs them."
+
+[[evidence]]
+id = "exact-head-ci"
+kind = "validation"
+status = "not_run"
+claim = "The Android log-write service bridge passes the required Linux A32 smoke and Android matrix."
+source = "GitHub commit checks on the eventual feature-026 implementation revision"
+result = ""
+limitations = "Feature 026 remains implemented rather than verified/done until terminal exact-head checks are observed."

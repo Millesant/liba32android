@@ -30,6 +30,7 @@ CTest registration is split across:
 
 - `cmake/tests/LibA32AndroidCpuTests.cmake`
 - `cmake/tests/LibA32AndroidRuntimeTests.cmake`
+- `cmake/tests/LibA32AndroidCompatTests.cmake`
 - `cmake/tests/LibA32AndroidMemoryTests.cmake`
 - `cmake/tests/LibA32AndroidElfTests.cmake`
 

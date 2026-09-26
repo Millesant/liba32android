@@ -4,37 +4,29 @@ Repository integration is on `bleeding`. The current control-plane round is
 pinned to
 `millesant/.gpt@f4e926e81ad91d13d02a006f4a18a00f66ae0bab`.
 
-Features 011 through 025 are DONE. The latest behavior-changing result is
-feature 025 at `c2fb94e450619378bb0b77880fb0454e53ce38b3`, which passed
+Features 011 through 025 are DONE. The latest accepted behavior-changing result
+is feature 025 at `c2fb94e450619378bb0b77880fb0454e53ce38b3`, which passed
 Linux A32 smoke and both required Android checks.
 
-`project-cleanup-v9` is DONE at
-`567ab4931d3d0af69edb7680b0a266be7672df64`; Linux A32 smoke and both required
-Android checks passed. Canonical state/current architecture docs distinguish
-implemented downstream behavior, layer-local non-goals, genuine deferred gaps,
-and historical numbered-spec snapshots.
+`026-a32-android-log-write-service` is IMPLEMENTED with the compatibility
+adapter, bounded GuestMemory string handling, sink boundary, compatibility
+regression/CMake registration, API/AAPCS evidence, current compatibility spec,
+architecture docs, and durable change records prepared. Its exact-head Linux
+A32 smoke and both required Android checks are NOT RUN; closing those checks is
+the immediate next step before feature 026 may become accepted state.
 
 ## Candidate runtime directions
 
-The supplied VLC ARMv7/FMOD evidence shows the observed relocation set is
-already inside the implemented REL/JUMP_SLOT subset. Provider composition,
-exact-name catalogs, INIT_ARRAY planning/execution, resumable SVC state,
-bounded host-service dispatch, and exact service-number registry composition are
-implemented.
+The supplied ARM32 FMOD library and VLC ARMv7 `libvlc.so` both import
+`__android_log_write`. Feature 026 models that three-register call without
+pulling `__android_log_print`/`__android_log_vprint` varargs into the same
+change.
 
-A fresh bounded static scan of the supplied artifacts is recorded in
-`docs/research/evidence/android-log-imports-2026-09-26.md`. It shows both the
-supplied ARM32 `libfmod.so` and VLC's ARMv7 `libvlc.so` import
-`__android_log_write`, making that symbol the narrowest shared concrete
-platform-service target observed so far.
+After feature 026 acceptance, current bounded candidates are:
 
-Current bounded candidates are:
-
-- verify the authoritative Android API/ABI contract for
-  `__android_log_write`, then implement the smallest bounded host-service
-  adapter plus guest compatibility-shim path for that one symbol without
-  pulling varargs `__android_log_print`/`__android_log_vprint` into the same
-  change;
+- build the smallest guest ELF `liblog.so` compatibility-shim/provider path
+  that exports `__android_log_write` and traps through the now-verified
+  service bridge, without adding print/vprint yet;
 - add Android namespace/search/path policy above the requester-aware provider
   chain/catalog boundary;
 - add persisted lifecycle state plus FINI/destructor/unload ordering;
