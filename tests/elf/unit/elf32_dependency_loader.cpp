@@ -247,6 +247,7 @@ Elf32DependencyProviderResult success(
 class RecordingProvider final : public Elf32DependencyProvider {
 public:
     std::vector<Elf32DependencyProviderResult> responses;
+    std::vector<std::string> requesters;
     std::vector<std::string> requests;
     std::vector<std::uint64_t> limits;
 
@@ -262,6 +263,15 @@ public:
             return result;
         }
         return responses[index];
+    }
+
+    Elf32DependencyProviderResult resolve_for(
+        std::string_view requester_identity,
+        std::string_view requested_name,
+        std::uint64_t max_image_bytes) override {
+        requesters.emplace_back(requester_identity.data(),
+                                requester_identity.size());
+        return resolve(requested_name, max_image_bytes);
     }
 };
 
@@ -385,8 +395,10 @@ int test_persistent_link_map_dependency_reuse() {
         link_map.graph.objects[2].dependencies.size() != 1 ||
         link_map.graph.objects[2].dependencies[0].target_object != 1 ||
         provider.requests !=
-            std::vector<std::string>{"shared-a.so", "shared-b.so"}) {
-        return fail("persistent link map did not reuse dependency identity across roots");
+            std::vector<std::string>{"shared-a.so", "shared-b.so"} ||
+        provider.requesters !=
+            std::vector<std::string>{"root-a", "root-b"}) {
+        return fail("persistent link map did not reuse dependency identity/requester context across roots");
     }
     return 0;
 }
@@ -1108,8 +1120,9 @@ int test_transitive_dependency_loading() {
     if (!result || result.graph.objects.size() != 3) {
         return fail("transitive dependency graph did not load");
     }
-    if (provider.requests != std::vector<std::string>{"b.so", "c.so"}) {
-        return fail("transitive provider order was not depth-first");
+    if (provider.requests != std::vector<std::string>{"b.so", "c.so"} ||
+        provider.requesters != std::vector<std::string>{"root", "id-b"}) {
+        return fail("transitive provider order/requester identity was incorrect");
     }
     if (result.graph.objects[0].dependencies.size() != 1 ||
         result.graph.objects[0].dependencies[0].target_object != 1 ||

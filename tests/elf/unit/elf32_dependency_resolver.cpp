@@ -53,6 +53,41 @@ public:
     }
 };
 
+class RequesterRecordingProvider final : public Elf32DependencyProvider {
+public:
+    std::vector<Elf32DependencyProviderResult> responses;
+    std::vector<std::string> requesters;
+    std::vector<std::string> requests;
+    std::vector<std::uint64_t> limits;
+    std::size_t legacy_calls{};
+
+    Elf32DependencyProviderResult resolve(
+        std::string_view,
+        std::uint64_t) override {
+        ++legacy_calls;
+        Elf32DependencyProviderResult result;
+        result.error = Elf32DependencyProviderError::Failed;
+        return result;
+    }
+
+    Elf32DependencyProviderResult resolve_for(
+        std::string_view requester_identity,
+        std::string_view requested_name,
+        std::uint64_t max_image_bytes) override {
+        requesters.emplace_back(requester_identity.data(),
+                                requester_identity.size());
+        requests.emplace_back(requested_name.data(), requested_name.size());
+        limits.push_back(max_image_bytes);
+        const std::size_t index = requests.size() - 1;
+        if (index >= responses.size()) {
+            Elf32DependencyProviderResult result;
+            result.error = Elf32DependencyProviderError::Failed;
+            return result;
+        }
+        return responses[index];
+    }
+};
+
 Elf32DependencyResolveOptions options(std::uint32_t max_dependencies = 8) {
     return Elf32DependencyResolveOptions{
         .max_dependencies = max_dependencies,
@@ -95,6 +130,36 @@ int test_ordered_success_and_owned_results() {
     if (result.dependencies.ordered[0].identity != "provider:a" ||
         result.dependencies.ordered[0].image.size() != 5) {
         return fail("resolved dependency result depended on provider storage lifetime");
+    }
+    return 0;
+}
+
+int test_requester_context_is_forwarded_exactly() {
+    Elf32LinkerStrings strings;
+    strings.needed = {"first.so", "second.so"};
+
+    RequesterRecordingProvider provider;
+    provider.responses = {
+        success("first-id", {1}),
+        success("second-id", {2}),
+    };
+
+    const std::string requester{"root\0id", 7};
+    auto configured = options();
+    configured.requester_identity =
+        std::string_view{requester.data(), requester.size()};
+
+    const auto result =
+        resolve_elf32_dependencies(strings, provider, configured);
+    const std::vector<std::string> expected_requesters{requester, requester};
+    if (!result ||
+        provider.requesters != expected_requesters ||
+        provider.requests !=
+            std::vector<std::string>{"first.so", "second.so"} ||
+        provider.limits != std::vector<std::uint64_t>{4096, 4096} ||
+        provider.legacy_calls != 0 ||
+        result.dependencies.ordered.size() != 2) {
+        return fail("requester-aware provider context was not forwarded exactly");
     }
     return 0;
 }
@@ -361,6 +426,7 @@ int test_later_failure_returns_no_partial_aggregate() {
 
 int main() {
     if (const int status = test_ordered_success_and_owned_results(); status != 0) return status;
+    if (const int status = test_requester_context_is_forwarded_exactly(); status != 0) return status;
     if (const int status = test_repeated_occurrences_are_not_deduplicated(); status != 0) return status;
     if (const int status = test_empty_set_and_count_precheck(); status != 0) return status;
     if (const int status = test_empty_name_rejected_before_its_provider_call(); status != 0) return status;
