@@ -2,10 +2,11 @@ schema = 1
 id = "024-a32-host-service-dispatch"
 kind = "feature"
 size = "S2"
-status = "active"
+status = "done"
 workflow = "feature"
 control_revision = "f4e926e81ad91d13d02a006f4a18a00f66ae0bab"
 base_revision = "1f6b4c61c493ba38d7e6bdc3b39e63ba2234cc9f"
+result_revision = "d4e7b480e28d13e8edc5dd1ccf28abbc3072a7a1"
 acceptance = [
   "a new game-agnostic runtime layer sits above cpu::execute and memory::GuestMemory; Dynarmic types and Android API policy remain outside it",
   "a caller-owned host-service handler receives the exact SVC immediate plus mutable guest registers/CPSR and GuestMemory, and returns Handled, Unhandled, or Failed",
@@ -20,12 +21,12 @@ acceptance = [
 ]
 
 [convergence]
-requirements = "pending"
-specs = "pending"
-implementation = "pending"
-tests = "pending"
-documentation = "pending"
+requirements = "aligned"
+specs = "aligned"
+implementation = "aligned"
+tests = "aligned"
+documentation = "aligned"
 decisions = "not_applicable"
-tasks = "pending"
-evidence = "pending"
-repository = "pending"
+tasks = "aligned"
+evidence = "aligned"
+repository = "aligned"

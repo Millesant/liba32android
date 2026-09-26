@@ -1,6 +1,6 @@
 # A32 host-service dispatch
 
-Status: feature 024 implemented; exact-head verification pending
+Status: feature 024 complete; exact-head implementation CI PASSed
 
 ## Boundary
 
@@ -67,3 +67,16 @@ exhaustion, and no-stop fixed-budget compatibility.
 
 No Android service implementation, AAPCS stack marshalling, shim ELF, syscall
 ABI, or namespace/provider policy is claimed by this feature.
+
+
+## Feature 024 validation
+
+Result revision `d4e7b480e28d13e8edc5dd1ccf28abbc3072a7a1`
+PASSed Linux A32 smoke check `108377362582`, Android x86_64
+address-space probe check `108377362552`, and Android arm64-v8a cross-build
+check `108377362391`.
+
+The Linux runtime suite covers ARM/Thumb service resume, exact service IDs,
+handler register/memory mutation, service limits, unhandled/failed handlers,
+preservation of completed handler side effects, CPU faults/exceptions,
+requested-stop budget exhaustion, and no-stop fixed-budget completion.

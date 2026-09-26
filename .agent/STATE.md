@@ -7,7 +7,7 @@ Cleanup implementation revision: `5b1cf991272632ed44d6276d6ec5e982ef732f28`
 
 ## Phase
 
-M4 runtime/linker scope is stable through bounded main REL including R_ARM_REL32, eager JUMP_SLOT relocation, one per-object combined main+PLT relocation transaction, GNU RELRO, host execution of the linked real ARM32 fixture, bounded GNU/SysV symbol-version matching, requester/global symbol-scope ordering, a persistent caller-owned ELF32 link map/global group, validated bounded INIT_ARRAY/FINI_ARRAY metadata decoding, and dependency-first INIT_ARRAY lifecycle planning. Features `023-a32-svc-resume-state`, `022-elf32-dependency-catalog-provider`, `021-elf32-provider-chain`, `020-elf32-requester-aware-provider`, `019-elf32-init-call-execution`, `018-elf32-init-lifecycle-planning`, `017-elf32-lifecycle-array-metadata`, `016-elf32-link-map-global-group`, `015-elf32-symbol-scope-policy`, `014-elf32-symbol-versioning`, `013-real-arm32-fixture-execution`, `012-elf32-rel32-relocation`, `011-elf32-combined-relocation-transaction`, and repository-wide maintenance change `project-cleanup-v8` are DONE. Feature `024-a32-host-service-dispatch` is ACTIVE: add a game-agnostic bounded runtime loop that handles reported SVC traps through a caller-owned host-service interface and resumes CPU state without putting platform policy in the CPU adapter.
+M4 runtime/linker scope is stable through bounded main REL including R_ARM_REL32, eager JUMP_SLOT relocation, one per-object combined main+PLT relocation transaction, GNU RELRO, host execution of the linked real ARM32 fixture, bounded GNU/SysV symbol-version matching, requester/global symbol-scope ordering, a persistent caller-owned ELF32 link map/global group, validated bounded INIT_ARRAY/FINI_ARRAY metadata decoding, and dependency-first INIT_ARRAY lifecycle planning. Features `024-a32-host-service-dispatch`, `023-a32-svc-resume-state`, `022-elf32-dependency-catalog-provider`, `021-elf32-provider-chain`, `020-elf32-requester-aware-provider`, `019-elf32-init-call-execution`, `018-elf32-init-lifecycle-planning`, `017-elf32-lifecycle-array-metadata`, `016-elf32-link-map-global-group`, `015-elf32-symbol-scope-policy`, `014-elf32-symbol-versioning`, `013-real-arm32-fixture-execution`, `012-elf32-rel32-relocation`, `011-elf32-combined-relocation-transaction`, and repository-wide maintenance change `project-cleanup-v8` are DONE.
 
 ## Repository organization
 
@@ -25,7 +25,7 @@ Persisted inspection at `5b1cf991272632ed44d6276d6ec5e982ef732f28` confirmed 30 
 
 - A32 ARM/Thumb execution is isolated behind `src/cpu/` with pinned Dynarmic.
 - Feature 023 adds exact SVC-immediate reporting plus optional initial-CPSR seeding to the engine-independent CPU seam. SVC still raises the existing generic exception flag, while returned registers/PC/CPSR can be fed into a follow-up bounded request to resume ARM or Thumb execution after the trap. Exact-head Linux and required Android CI are verified.
-- Feature 024 adds a game-agnostic `src/runtime/` host-service dispatcher above CPU and GuestMemory. It carries one total instruction budget across SVC resumptions, separately bounds handled service calls, forwards exact SVC IDs to a caller-owned mutable register/CPSR/memory handler, preserves stop-PC semantics and completed handler side effects, and classifies memory faults, ordinary CPU exceptions, service-limit, unhandled/failed service, and instruction exhaustion distinctly. Focused runtime tests are implemented; exact-head verification is pending.
+- Feature 024 adds a game-agnostic `src/runtime/` host-service dispatcher above CPU and GuestMemory. It carries one total instruction budget across SVC resumptions, separately bounds handled service calls, forwards exact SVC IDs to a caller-owned mutable register/CPSR/memory handler, preserves stop-PC semantics and completed handler side effects, and classifies memory faults, ordinary CPU exceptions, service-limit, unhandled/failed service, and instruction exhaustion distinctly. Exact-head Linux and required Android CI are verified.
 - `memory::GuestMemory` is the engine-independent memory seam.
 - `LinearGuestMemory` provides deterministic correctness behavior.
 - `MappedGuestMemory` provides logical 32-bit guest mappings, map/protect/unmap lifecycle, high-base 4 GiB reservation support, Dynarmic fastmem, and callback fallback.
@@ -166,6 +166,13 @@ Feature 023 exact-head implementation validation at `4b6234232cef70655272b0877f6
 - Android x86_64 address-space probe check `108375486470` — PASS.
 - Android arm64-v8a cross-build check `108375486484` — PASS.
 - Focused CPU coverage proves exact ARM 24-bit and Thumb 8-bit SVC immediates, post-SVC logical PC/register/CPSR state, backward-compatible exception reporting, default execution behavior when no initial CPSR is supplied, and continuation from returned ARM/Thumb state.
+
+Feature 024 exact-head implementation validation at `d4e7b480e28d13e8edc5dd1ccf28abbc3072a7a1`:
+
+- Linux A32 smoke check `108377362582` — PASS.
+- Android x86_64 address-space probe check `108377362552` — PASS.
+- Android arm64-v8a cross-build check `108377362391` — PASS.
+- Focused runtime coverage proves ARM/Thumb service resume, exact IDs, handler register/memory effects, service ceilings, unhandled/failed handlers, preserved completed side effects, CPU fault/exception propagation, requested-stop instruction exhaustion, and no-stop fixed-budget compatibility.
 
 ## Current blockers / external evidence gaps
 
