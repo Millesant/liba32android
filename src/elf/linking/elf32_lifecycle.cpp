@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <vector>
 
 namespace liba32android::elf {
 namespace {
@@ -73,6 +74,139 @@ const char* to_string(Elf32FunctionArrayDecodeError error) noexcept {
         return "too_many_entries";
     case Elf32FunctionArrayDecodeError::ReadFailed:
         return "read_failed";
+    }
+    return "unknown";
+}
+
+namespace {
+
+enum class InitVisitState : std::uint8_t {
+    Unseen = 0,
+    Visiting,
+    Complete,
+};
+
+[[nodiscard]] Elf32InitPlanResult plan_failure(
+    Elf32InitPlanError error,
+    std::optional<std::size_t> failing_object = std::nullopt,
+    Elf32FunctionArrayDecodeError decode_error =
+        Elf32FunctionArrayDecodeError::None) {
+    Elf32InitPlanResult result;
+    result.error = error;
+    result.decode_error = decode_error;
+    result.failing_object = failing_object;
+    return result;
+}
+
+struct InitPlanContext {
+    const memory::GuestMemory& memory;
+    const Elf32DependencyGraph& graph;
+    const Elf32InitPlanOptions& options;
+    std::vector<InitVisitState> states;
+    std::uint32_t visited_objects{};
+    std::uint32_t decoded_entries{};
+    std::vector<Elf32InitCall> calls;
+
+    [[nodiscard]] Elf32InitPlanResult visit(std::size_t object_index) {
+        if (states[object_index] == InitVisitState::Complete ||
+            states[object_index] == InitVisitState::Visiting) {
+            return {};
+        }
+        if (visited_objects >= options.max_objects) {
+            return plan_failure(Elf32InitPlanError::ObjectLimitExceeded,
+                                object_index);
+        }
+
+        ++visited_objects;
+        states[object_index] = InitVisitState::Visiting;
+        const auto& object = graph.objects[object_index];
+
+        for (const auto& edge : object.dependencies) {
+            if (edge.target_object >= graph.objects.size()) {
+                return plan_failure(Elf32InitPlanError::InvalidGraphEdge,
+                                    object_index);
+            }
+            auto nested = visit(edge.target_object);
+            if (!nested) return nested;
+        }
+
+        if (object.linker_metadata.init_array.has_value()) {
+            const std::uint32_t remaining =
+                options.max_entries - decoded_entries;
+            const auto decoded = decode_elf32_function_array(
+                memory, *object.linker_metadata.init_array,
+                Elf32FunctionArrayDecodeOptions{.max_entries = remaining});
+            if (!decoded) {
+                const Elf32InitPlanError error =
+                    decoded.error ==
+                            Elf32FunctionArrayDecodeError::TooManyEntries
+                        ? Elf32InitPlanError::EntryLimitExceeded
+                        : Elf32InitPlanError::DecodeFailed;
+                return plan_failure(error, object_index, decoded.error);
+            }
+
+            decoded_entries +=
+                static_cast<std::uint32_t>(decoded.entries.size());
+            for (std::size_t index = 0; index < decoded.entries.size();
+                 ++index) {
+                const std::uint32_t function = decoded.entries[index];
+                if (function == 0U ||
+                    function == std::numeric_limits<std::uint32_t>::max()) {
+                    continue;
+                }
+                calls.push_back(Elf32InitCall{
+                    .object_index = object_index,
+                    .array_index = static_cast<std::uint32_t>(index),
+                    .function = function,
+                });
+            }
+        }
+
+        states[object_index] = InitVisitState::Complete;
+        return {};
+    }
+};
+
+}  // namespace
+
+Elf32InitPlanResult plan_elf32_init_array_calls(
+    const memory::GuestMemory& memory,
+    const Elf32DependencyGraph& graph,
+    std::size_t root_object,
+    const Elf32InitPlanOptions& options) {
+    if (options.max_objects == 0) {
+        return plan_failure(Elf32InitPlanError::InvalidOptions);
+    }
+    if (root_object >= graph.objects.size()) {
+        return plan_failure(Elf32InitPlanError::InvalidRootObject,
+                            root_object);
+    }
+
+    InitPlanContext context{
+        .memory = memory,
+        .graph = graph,
+        .options = options,
+        .states =
+            std::vector<InitVisitState>(graph.objects.size(),
+                                        InitVisitState::Unseen),
+    };
+    auto result = context.visit(root_object);
+    if (!result) return result;
+    result.calls = std::move(context.calls);
+    return result;
+}
+
+const char* to_string(Elf32InitPlanError error) noexcept {
+    switch (error) {
+    case Elf32InitPlanError::None: return "none";
+    case Elf32InitPlanError::InvalidOptions: return "invalid_options";
+    case Elf32InitPlanError::InvalidRootObject: return "invalid_root_object";
+    case Elf32InitPlanError::InvalidGraphEdge: return "invalid_graph_edge";
+    case Elf32InitPlanError::ObjectLimitExceeded:
+        return "object_limit_exceeded";
+    case Elf32InitPlanError::EntryLimitExceeded:
+        return "entry_limit_exceeded";
+    case Elf32InitPlanError::DecodeFailed: return "decode_failed";
     }
     return "unknown";
 }
