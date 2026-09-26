@@ -4,28 +4,26 @@ Last updated: 2026-09-26
 Integration branch: `bleeding`
 Control-plane round: `millesant/.gpt@f4e926e81ad91d13d02a006f4a18a00f66ae0bab`
 Latest maintenance result: `project-cleanup-v9@567ab4931d3d0af69edb7680b0a266be7672df64`
-Active change: `025-a32-host-service-registry` — IMPLEMENTED, exact-head validation NOT RUN.
 
 ## Phase
 
-M4 runtime/linker work is stable through features 011-024. The accepted stack
+M4 runtime/linker work is stable through features 011-025. The accepted stack
 now includes combined main+PLT relocation transactions, R_ARM_REL32, host
 execution of the linked real ARM32 fixture, symbol versioning, requester/global
 scope ordering, a persistent link map/global group, lifecycle-array decoding
 and dependency-first INIT_ARRAY execution, requester-aware/provider-chain
-dependency acquisition with exact-name catalogs, resumable A32 SVC state, and
-bounded game-agnostic host-service dispatch.
+dependency acquisition with exact-name catalogs, resumable A32 SVC state,
+bounded game-agnostic host-service dispatch, and exact-SVC host-service registry
+composition.
 
 Features `011-elf32-combined-relocation-transaction` through
-`024-a32-host-service-dispatch` are DONE. Feature
-`025-a32-host-service-registry` now has implementation/tests/docs prepared but
-is not accepted until its exact-head Linux A32 smoke and both required Android
-checks pass. `project-cleanup-v8` and `project-cleanup-v9` are DONE.
+`025-a32-host-service-registry` are DONE. `project-cleanup-v8` and
+`project-cleanup-v9` are DONE.
 
 ## Repository organization
 
 - `src/cpu/`: engine-independent A32 execution contract plus pinned Dynarmic adapter.
-- `src/runtime/`: game-agnostic CPU/memory orchestration, including bounded host-service dispatch and the feature-025 exact-SVC registry implementation awaiting exact-head validation.
+- `src/runtime/`: game-agnostic CPU/memory orchestration, including bounded host-service dispatch and exact-SVC registry composition.
 - `src/memory/`: logical 32-bit guest-memory contracts and mapped address space.
 - `src/elf/*.h`: ELF layer contracts; implementations are grouped under `loading/`, `metadata/`, `linking/`, `hardening/`, and `internal/`.
 - `tests/cpu/`, `tests/runtime/`, `tests/memory/`, and `tests/elf/`: subsystem regressions and real-fixture integration.
@@ -35,10 +33,9 @@ checks pass. `project-cleanup-v8` and `project-cleanup-v9` are DONE.
 
 ## Implemented runtime
 
-Accepted behavior through feature 024:
-
 - Bounded ARM/Thumb execution with exact stop-PC termination, optional exact initial CPSR, exact SVC-immediate reporting, and resumable post-SVC state.
 - Bounded game-agnostic host-service dispatch with one total guest-instruction budget, a separate service-call ceiling, explicit service/fault errors, and preserved completed handler side effects.
+- Exact-SVC `A32HostServiceRegistry` composition over caller-owned handlers: unknown IDs remain unhandled; ambiguous/null/direct-self matching entries fail before child dispatch; valid children receive the original memory/register/CPSR state and exact immediate.
 - `GuestMemory` engine boundary with deterministic `LinearGuestMemory` and mapped `MappedGuestMemory`, including logical guest VAs, protection lifecycle, optional high-base fastmem, and callback fallback.
 - Validated ARM little-endian ELF32 `ET_EXEC`/`ET_DYN` loading, shared pre-mutation planning, bounded automatic placement, structural `PT_DYNAMIC` parsing, and explicit GNU RELRO sealing.
 - Linker metadata/string handling for the accepted STRTAB/SYMTAB/hash/main REL/PLT REL/SONAME/NEEDED/version/lifecycle/DT_SYMBOLIC/DF_SYMBOLIC/DF_1_GLOBAL scope.
@@ -48,12 +45,6 @@ Accepted behavior through feature 024:
 - Transactional main `DT_REL` support for `R_ARM_NONE`, `R_ARM_RELATIVE`, `R_ARM_GLOB_DAT`, `R_ARM_ABS32`, and `R_ARM_REL32`, plus eager `R_ARM_JUMP_SLOT`.
 - Combined per-object main+PLT preflight/write/rollback and explicit post-relocation GNU RELRO hardening.
 - Reproducible ARMv7 fixtures and host-side integrated execution of the linked real fixture through load, dependency graph, relocation, BSS, RELRO, and A32 execution.
-
-Current unverified feature-025 implementation:
-
-- an exact-SVC `A32HostServiceRegistry` composes caller-owned handlers without allocation or platform policy;
-- unknown service IDs remain `Unhandled`; duplicate matching IDs, matching null handlers, and direct self-entries fail before child invocation;
-- direct registry coverage plus an ARM SVC -> registry -> feature-024 dispatch/resume integration test are registered but NOT RUN on this exact implementation revision yet.
 
 ## Deferred / partial
 
@@ -72,28 +63,30 @@ Still outside the accepted implementation:
 
 ## Validation and repository-truth evidence
 
-Latest accepted behavior-changing result: feature 024 at
-`d4e7b480e28d13e8edc5dd1ccf28abbc3072a7a1`:
+Latest behavior-changing result: feature 025 at
+`c2fb94e450619378bb0b77880fb0454e53ce38b3`:
 
-- Linux A32 smoke check `108377362582` — PASS.
-- Android x86_64 address-space probe check `108377362552` — PASS.
-- Android arm64-v8a cross-build check `108377362391` — PASS.
+- Linux A32 smoke check `108385436541` — PASS.
+- Android x86_64 address-space probe check `108385436452` — PASS.
+- Android arm64-v8a cross-build check `108385436554` — PASS.
 
-Feature 025 exact-head validation: NOT RUN. Its implementation revision is not
-accepted until the required matrix reports terminal success.
+Feature-025 exact-SVC lookup, configuration-failure behavior, child state/result
+forwarding, and ARM SVC -> registry -> feature-024 resume composition are
+covered by the registered runtime regression. No Android API or shim behavior is
+claimed by that feature.
 
 Cleanup-v9 audit evidence:
 
-- complete non-truncated repository-tree/CMake comparison: 17 source `.cpp`
+- complete non-truncated repository-tree/CMake comparison at the cleanup revision: 17 source `.cpp`
   files and 35 test `.cpp` files, with zero unreferenced source/test `.cpp`
   files;
-- 35 current test executable identities and 55 unique CTest names, with no
+- 35 current-at-cleanup test executable identities and 55 unique CTest names, with no
   duplicate registrations;
 - bounded searches found zero TODO, FIXME, placeholder, DISABLED_, GTEST_SKIP,
   not_implemented, assert(false), or logic-error placeholder patterns in the
   implementation surface;
 - historical root numbered specs may contain stale ACTIVE/NOT-RUN snapshot
-  text by design; `specs/README.md` now makes that provenance boundary
+  text by design; `specs/README.md` makes that provenance boundary
   explicit instead of treating those snapshots as current work.
 
 Per-feature exact-head evidence lives in completed
