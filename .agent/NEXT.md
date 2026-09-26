@@ -4,7 +4,7 @@ Repository integration is on `bleeding`. The current control-plane round is pinn
 
 `project-cleanup-v8` and its source/test, tooling, and documentation child changes are DONE. Features `011-elf32-combined-relocation-transaction` through `019-elf32-init-call-execution` are DONE. Feature 019 result revision `28a4f92f78b8ff156ee9dd3083d1218af8b7b125` passed exact-head Linux A32 smoke and both required Android checks.
 
-Feature 020 is DONE. Result revision `2509dce17e8d1b993325ed810d37a29e1b46df45` passed exact-head Linux A32 smoke and both required Android checks. The next provider slice can compose application-local and platform providers in a bounded ordered chain without absorbing Android path/namespace search into the ELF core.
+Feature 020 is DONE. Result revision `2509dce17e8d1b993325ed810d37a29e1b46df45` passed exact-head Linux A32 smoke and both required Android checks. Feature `021-elf32-provider-chain` is ACTIVE: add a bounded caller-owned ordered provider chain with NotFound-only fallback, hard-failure short-circuit, and exact requester/name/limit forwarding.
 
 ## Candidate runtime directions
 
@@ -13,7 +13,7 @@ Choose a bounded next feature from accepted gaps rather than continuing cosmetic
 Current candidates include:
 
 - layer Android namespace/search-path/platform-provider policy above the persistent link-map provider boundary;
-- implement bounded ordered application/platform provider composition above feature 020, with NotFound-only fallback and unchanged requester/resource semantics;
+- complete feature 021 ordered provider composition, then add concrete Android application/platform provider policy above that generic chain;
 - broader ARM relocation coverage beyond REL32, such as COPY/instruction families or RELA/RELR/Android packed encodings, when a concrete target requires them;
 - TLS/IFUNC groundwork when a concrete target requires it;
 - end-to-end real ARM32 fixture execution on Android once the required runtime environment is available.
