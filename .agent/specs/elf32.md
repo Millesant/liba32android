@@ -59,6 +59,10 @@ The generated feature-014 two-DSO ARM32 fixture records a `LIBC` version require
 
 Validated INIT_ARRAY/FINI_ARRAY descriptors feed a read-only caller-bounded decoder. It returns raw logical 32-bit function values in declaration order, preserves null and all-ones sentinels, rejects non-integral sizes, guest-range overflow, entry ceilings, and read failures explicitly, and never mutates guest memory. It does not filter sentinels or execute guest functions.
 
-## L32-E014 — Deferred linker/runtime scope
+## L32-E014 — INIT_ARRAY lifecycle planning
 
-Still outside the accepted implementation: Android namespace/search-path/pathname accessibility and platform-provider policy; LD_PRELOAD/RTLD selection semantics; protected-reference self-binding; lazy binding; broader ARM relocation families; RELA/RELR/Android packed relocations; TLS/IFUNC; legacy `DT_INIT/DT_FINI`, `DT_PREINIT_ARRAY`, dependency-order constructor/destructor planning and execution, recursion guards, `dlopen`/`dlsym`/unload; and guest execution of the real ARM32 fixture on Android. Persistent cross-root object lifetime and generic global-group membership are implemented by feature 016.
+A root-scoped read-only constructor planner traverses reachable dependency edges before the requester in deterministic stored edge order. Transient visiting/complete state suppresses cycles and shared dependencies so each reachable object contributes at most once. Caller ceilings bound unique objects and total raw INIT_ARRAY entries decoded. Null and all-ones values consume the entry budget but are filtered from the call plan; retained calls preserve defining object index, array entry index, and the raw logical 32-bit function value including any Thumb bit. Failure returns no successful partial call list and never mutates guest memory or graph state.
+
+## L32-E015 — Deferred linker/runtime scope
+
+Still outside the accepted implementation: Android namespace/search-path/pathname accessibility and platform-provider policy; LD_PRELOAD/RTLD selection semantics; protected-reference self-binding; lazy binding; broader ARM relocation families; RELA/RELR/Android packed relocations; TLS/IFUNC; legacy `DT_INIT/DT_FINI`, `DT_PREINIT_ARRAY`, guest constructor invocation and persisted constructor-called state, FINI_ARRAY/destructor planning/execution, recursion state across calls, `dlopen`/`dlsym`/unload; and guest execution of the real ARM32 fixture on Android. Persistent cross-root object lifetime and generic global-group membership are implemented by feature 016.

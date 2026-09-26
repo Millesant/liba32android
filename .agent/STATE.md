@@ -34,6 +34,7 @@ Persisted inspection at `5b1cf991272632ed44d6276d6ec5e982ef732f28` confirmed 30 
 - PT_DYNAMIC parsing is structural and guest-memory based.
 - Linker metadata/strings validate the implemented STRTAB/SYMTAB/main REL/PLT REL/SONAME/NEEDED scope, retain DT_SYMBOLIC plus DF_SYMBOLIC requester-binding metadata, and retain raw DT_FLAGS_1 with explicit DF_1_GLOBAL membership for feature 016 link-map policy.
 - Lifecycle metadata validates paired DT_INIT_ARRAY/DT_INIT_ARRAYSZ and DT_FINI_ARRAY/DT_FINI_ARRAYSZ declarations, rebases guest addresses once, validates integral 4-byte entries and readable ranges, and exposes guest-only descriptors. A separate caller-bounded read-only decoder returns raw 32-bit entries in declaration order while preserving null/all-ones sentinels and never executing guest code.
+- Feature 018 adds root-scoped dependency-first INIT_ARRAY planning above the raw decoder. Cycles/shared dependencies contribute each object at most once, unique-object and total-entry work are caller-bounded, null/all-ones entries are filtered only at the planning boundary, and retained calls preserve object/entry/function provenance. Focused tests are implemented; exact-head CI verification is pending.
 - Dependency acquisition is provider-backed and bounded; recursive one-shot dependency graph loading remains transactional. The caller-owned persistent link map preserves stable object indexes/mappings across root loads, reuses equal identity/image pairs, rejects malformed persistent state before mutation, and rolls back only append-owned state on failure. Its deduplicated global scope is maintained in accumulated object-discovery order from caller-designated global roots plus DF_1_GLOBAL objects and feeds feature-015 reference lookup directly.
 - Plain symbol lookup supports bounded SysV/GNU hash indexing and deterministic graph-local breadth-first resolution. Relocation/reference lookup can additionally consume an ordered caller-owned global-scope list from the same graph; ordinary requesters search global then local scope, while DT_SYMBOLIC/DF_SYMBOLIC requesters search self then global then remaining local scope. Version matching applies across the selected ordering and all unique candidates share the existing scope ceiling.
 - Main DT_REL relocation supports R_ARM_NONE, R_ARM_RELATIVE, R_ARM_GLOB_DAT, R_ARM_ABS32, and AAELF32 R_ARM_REL32 transactionally, including defining-symbol Thumb T-bit handling.
@@ -50,7 +51,7 @@ Still outside the accepted implementation:
 - Android search-path/namespace/pathname/accessibility policy, LD_PRELOAD/RTLD policy, and platform-library provider composition above the persistent link map;
 - lazy binding and DT_PLTGOT resolver state;
 - broader ARM relocation families, packed/RELA/RELR forms;
-- TLS/IFUNC and constructor/destructor ordering/execution beyond the implemented INIT_ARRAY/FINI_ARRAY metadata/decoder boundary;
+- TLS/IFUNC and guest constructor/destructor execution beyond the implemented INIT_ARRAY metadata/decoder/planning boundary;
 - dlopen/dlsym/unload semantics;
 - libc/JNI/graphics/audio compatibility layers;
 - end-to-end execution of the current real ARM32 fixture through the runtime on Android;

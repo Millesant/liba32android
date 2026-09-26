@@ -1,6 +1,6 @@
 # ELF32 lifecycle arrays
 
-Status: feature 017 metadata/decoder boundary complete; exact-head implementation CI PASSed
+Status: feature 017 metadata/decoder boundary complete; feature 018 INIT_ARRAY planning implemented, exact-head verification pending
 
 ## Boundary
 
@@ -66,3 +66,29 @@ Focused unit coverage proves exact decoding, raw sentinel preservation,
 entry-ceiling preflight, malformed-size and range rejection, unreadable and
 zero-length arrays, metadata duplicate/incomplete handling, rebasing/range
 validation, and no guest mutation.
+
+
+## Feature 018 dependency-first constructor planning
+
+`plan_elf32_init_array_calls` consumes one dependency graph and root object.
+It performs a transient depth-first walk in stored dependency-edge order,
+marking objects visiting before recursion and complete after contribution.
+Re-entering a visiting object suppresses a cycle edge; reaching a complete
+object suppresses a shared dependency duplicate. Every first visit consumes the
+caller-selected `max_objects` budget.
+
+After dependencies complete, the object's validated INIT_ARRAY descriptor is
+decoded through feature 017 using the remaining total `max_entries` budget.
+Raw sentinel entries still consume that budget. Values `0` and
+`0xffffffff` are omitted from the final call list; every other entry retains
+the defining object index, original array index, and raw 32-bit function value,
+including bit 0 for later ARM/Thumb execution policy.
+
+Invalid roots/edges, object-ceiling exhaustion, total-entry exhaustion, or
+nested lifecycle decode failures return no successful partial call vector.
+Planning is read-only: no guest byte, mapping, dependency edge, or persistent
+constructor state is changed.
+
+Feature 018 deliberately stops before legacy `DT_INIT`, PREINIT_ARRAY,
+FINI_ARRAY/destructor planning, persisted constructor-called state, guest CPU
+invocation, dlopen lifecycle, or unload.
