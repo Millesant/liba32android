@@ -1,13 +1,13 @@
 # Current State
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 Integration branch: `bleeding`
-Control-plane round: `millesant/.gpt@2b7c8b9245a64560cc9e986d554d99233e34b8c5`
+Control-plane round: `millesant/.gpt@f4e926e81ad91d13d02a006f4a18a00f66ae0bab`
 Cleanup implementation revision: `5b1cf991272632ed44d6276d6ec5e982ef732f28`
 
 ## Phase
 
-M4 runtime/linker scope is stable through bounded main REL including R_ARM_REL32, eager JUMP_SLOT relocation, one per-object combined main+PLT relocation transaction, GNU RELRO, host execution of the linked real ARM32 fixture, bounded GNU/SysV symbol-version matching, requester/global symbol-scope ordering, a persistent caller-owned ELF32 link map/global group, validated bounded INIT_ARRAY/FINI_ARRAY metadata decoding, and dependency-first INIT_ARRAY lifecycle planning. Features `024-a32-host-service-dispatch`, `023-a32-svc-resume-state`, `022-elf32-dependency-catalog-provider`, `021-elf32-provider-chain`, `020-elf32-requester-aware-provider`, `019-elf32-init-call-execution`, `018-elf32-init-lifecycle-planning`, `017-elf32-lifecycle-array-metadata`, `016-elf32-link-map-global-group`, `015-elf32-symbol-scope-policy`, `014-elf32-symbol-versioning`, `013-real-arm32-fixture-execution`, `012-elf32-rel32-relocation`, `011-elf32-combined-relocation-transaction`, and repository-wide maintenance change `project-cleanup-v8` are DONE.
+M4 runtime/linker scope is stable through bounded main REL including R_ARM_REL32, eager JUMP_SLOT relocation, one per-object combined main+PLT relocation transaction, GNU RELRO, host execution of the linked real ARM32 fixture, bounded GNU/SysV symbol-version matching, requester/global symbol-scope ordering, a persistent caller-owned ELF32 link map/global group, validated bounded INIT_ARRAY/FINI_ARRAY metadata decoding, and dependency-first INIT_ARRAY lifecycle planning. Features `024-a32-host-service-dispatch`, `023-a32-svc-resume-state`, `022-elf32-dependency-catalog-provider`, `021-elf32-provider-chain`, `020-elf32-requester-aware-provider`, `019-elf32-init-call-execution`, `018-elf32-init-lifecycle-planning`, `017-elf32-lifecycle-array-metadata`, `016-elf32-link-map-global-group`, `015-elf32-symbol-scope-policy`, `014-elf32-symbol-versioning`, `013-real-arm32-fixture-execution`, `012-elf32-rel32-relocation`, `011-elf32-combined-relocation-transaction`, and repository-wide maintenance change `project-cleanup-v8` are DONE. Repository maintenance change `project-cleanup-v9` is ACTIVE to reconcile stale current-state/documentation claims and prove no hidden orphan/placeholder implementation is being mistaken for completed work.
 
 ## Repository organization
 

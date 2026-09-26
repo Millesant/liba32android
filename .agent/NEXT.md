@@ -6,6 +6,8 @@ Repository integration is on `bleeding`. The current control-plane round is pinn
 
 Features 020 through 024 are DONE. Feature 024 result revision `d4e7b480e28d13e8edc5dd1ccf28abbc3072a7a1` passed exact-head Linux A32 smoke and both required Android checks. The runtime now has requester-aware provider composition, exact-name image catalogs, resumable SVC traps, and a bounded game-agnostic host-service dispatcher.
 
+Repository maintenance change `project-cleanup-v9` is ACTIVE. It audits canonical state/current docs against source, CMake registration, and exact-head evidence before the next runtime feature.
+
 ## Candidate runtime directions
 
 Choose a bounded next feature from accepted gaps rather than continuing cosmetic repository churn. The supplied VLC ARMv7 four-DSO scan is recorded in `docs/research/evidence/vlc-armv7-gap-scan-2026-09-25.md`: every observed relocation is already inside the implemented REL/JUMP_SLOT set, while APK-external Android providers and INIT_ARRAY/FINI_ARRAY lifecycle metadata are concrete remaining requirements.
