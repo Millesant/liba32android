@@ -2,10 +2,11 @@ schema = 1
 id = "021-elf32-provider-chain"
 kind = "feature"
 size = "S1"
-status = "active"
+status = "done"
 workflow = "feature"
 control_revision = "f4e926e81ad91d13d02a006f4a18a00f66ae0bab"
 base_revision = "03bd07909e0fa41d2480173d9e030fba0e5ed29f"
+result_revision = "4324883faef008810bcf77c390eecd92c16718cd"
 acceptance = [
   "a caller-owned ordered provider chain implements Elf32DependencyProvider without changing the existing resolver/loader APIs",
   "providers are tried strictly in caller order and fallback continues only when a provider returns NotFound",
@@ -19,12 +20,12 @@ acceptance = [
 ]
 
 [convergence]
-requirements = "pending"
-specs = "pending"
-implementation = "pending"
-tests = "pending"
-documentation = "pending"
+requirements = "aligned"
+specs = "aligned"
+implementation = "aligned"
+tests = "aligned"
+documentation = "aligned"
 decisions = "not_applicable"
-tasks = "pending"
-evidence = "pending"
-repository = "pending"
+tasks = "aligned"
+evidence = "aligned"
+repository = "aligned"

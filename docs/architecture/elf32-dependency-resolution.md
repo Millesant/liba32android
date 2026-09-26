@@ -1,6 +1,6 @@
 # ELF32 dependency resolution
 
-Status: feature 020 requester context verified; feature 021 ordered provider chain implemented, exact-head verification pending
+Status: feature 021 ordered provider chain complete; exact-head implementation CI PASSed
 
 ## Boundary
 
@@ -158,12 +158,17 @@ The higher `elf32_dependency_loader` layer consumes this resolver's host-owned r
 
 The resolver itself still does none of that work. This preserves the acquisition boundary and the project invariant that guest virtual addresses are logical 32-bit values independent of host-pointer identity. Persistent link-map lifetime is implemented downstream, while Android namespace/search policy remains external even though feature 020 now supplies the requester-context seam it requires. Symbols, relocations, and execution remain separate concerns.
 
-## Feature 021 implementation coverage
+## Feature 021 validation
+
+Result revision `4324883faef008810bcf77c390eecd92c16718cd`
+PASSed Linux A32 smoke check `108371320947`, Android x86_64
+address-space probe check `108371320869`, and Android arm64-v8a cross-build
+check `108371320992`.
 
 Focused resolver tests cover NotFound fallback, success/hard-failure
-short-circuit, exact requester/request/limit forwarding, empty/null chains,
-legacy child-provider compatibility, and preservation of resolver validation.
-Exact-head CI verification is pending.
+short-circuit, exact requester/request/limit forwarding, context-free child
+dispatch, empty/null chains, legacy child-provider compatibility, and
+preservation of resolver validation.
 
 ## Validation evidence
 
